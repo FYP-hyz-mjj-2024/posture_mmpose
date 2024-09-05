@@ -30,23 +30,33 @@ register_all_modules()
 
 
 def process_one_image(img,
-                      detector,
-                      pose_estimator,
-                      visualizer=None,
+                      bbox_detector_model,
+                      pose_estimator_model,
+                      estim_results_visualizer=None,
                       show_interval=0):
-    """Visualize predicted keypoints (and heatmaps) of one image."""
+    """
+    Visualize predicted key points (and heatmaps) of one image.
+    Given an image, first use bbox detection model to retrieve object boundary boxes.
+    Then, feed the sub images defined by the bbox into the pose estimation model to get key points.
+    Lastly, render and output the key points.
+    :param img: The image.
+    :param bbox_detector_model: The model to retrieve boundary boxes.
+    :param pose_estimator_model: The model to estimate a person's pose, i.e., retrieve key points.
+    :param estim_results_visualizer: The results visualizer.
+    """
 
     # predict bbox
-    det_result = inference_detector(detector, img)
+    det_result = inference_detector(bbox_detector_model, img)
     pred_instance = det_result.pred_instances.cpu().numpy()
     bboxes = np.concatenate(
-        (pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
+        (pred_instance.bboxes, pred_instance.scores[:, None]),
+        axis=1)
     bboxes = bboxes[np.logical_and(pred_instance.labels == cfg.det_cat_id,
                                    pred_instance.scores > cfg.bbox_thr)]
     bboxes = bboxes[nms(bboxes, cfg.nms_thr), :4]
 
     # predict keypoints
-    pose_results = inference_topdown(pose_estimator, img, bboxes)
+    pose_results = inference_topdown(pose_estimator_model, img, bboxes)
     data_samples = merge_data_samples(pose_results)
 
     # show the results
@@ -55,8 +65,8 @@ def process_one_image(img,
     elif isinstance(img, np.ndarray):
         img = mmcv.bgr2rgb(img)
 
-    if visualizer is not None:
-        visualizer.add_datasample(
+    if estim_results_visualizer is not None:
+        estim_results_visualizer.add_datasample(
             'result',
             img,
             data_sample=data_samples,
