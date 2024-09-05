@@ -62,3 +62,6 @@ data/test/img/
 
 # MMPose config files
 *.pth
+
+# Custom files
+step01_annotate_image_mmpose/_disabled/
