@@ -69,7 +69,7 @@ def calc_keypoint_angle(keypoints_one_person, edge_keypoints, mid_keypoint):
     coord1, coord2 = keypoints_one_person[keypoint_indexes[n1]][:2], keypoints_one_person[keypoint_indexes[n2]][:2]
     coordm = keypoints_one_person[keypoint_indexes[nm]][:2]
 
-    return _calc_angle([coord1, coord2], keypoint_indexes[coordm])
+    return _calc_angle([coord1, coord2], coordm)
 
 
 def process_one_image(img,
@@ -178,9 +178,17 @@ if __name__ == "__main__":
         # Boundary Boxes coordinates
         xyxy_list = _pred_instances.bboxes  #(n,4) => (num_people, (xmin, ymin, xmax, ymax))
 
+        # TODO: Test angle calculation.
+        target = [("Body-Left_shoulder", "Body-Left_wrist"), "Body-Left_elbow"]
+
         for idx, (keypoints, xyxy) in enumerate(zip(keypoints_list, xyxy_list)):
             print("Key points:")
             for keypoint_idx, keypoint in enumerate(keypoints):
                 print(f"({round(keypoint[0],3):.3f}, {round(keypoint[1],3):.3f}), score={round(keypoint[2],4):.4f} - "
                       f"{keypoint_names[keypoint_idx]}")
-            print(f"xyxy:\n{xyxy}\n\n")
+            print(f"xyxy:\n{xyxy}")
+
+            target_angle = calc_keypoint_angle(keypoints, target[0], target[1])
+            print(f"target_angle: {target_angle}\n\n")
+
+
