@@ -5,6 +5,7 @@ bbox_thr = 0.3
 det_cat_id = 0
 det_checkpoint = '../model_config/checkpoints/rtmdet_m_8xb32-100e_coco-obj365-person-235e8209.pth'
 det_config = '../model_config/configs/rtmdet_m_640-8xb32_coco-person.py'
+# device = 'cuda:0' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 draw_bbox = False
 draw_heatmap = False
