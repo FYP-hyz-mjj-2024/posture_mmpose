@@ -1,10 +1,11 @@
+import torch
 
 alpha = 0.8
 bbox_thr = 0.3
 det_cat_id = 0
 det_checkpoint = 'https://download.openmmlab.com/mmpose/v1/projects/rtmpose/rtmdet_m_8xb32-100e_coco-obj365-person-235e8209.pth'
 det_config = 'rtmdet_m_640-8xb32_coco-person.py'
-device = 'cpu'
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 draw_bbox = False
 draw_heatmap = False
 input = 'demo.png'
