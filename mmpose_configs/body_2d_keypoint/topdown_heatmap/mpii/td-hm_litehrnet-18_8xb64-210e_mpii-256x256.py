@@ -1,4 +1,4 @@
-_base_ = ['../mmpose_configs/_base_/default_runtime.py']
+_base_ = ['../../../_base_/default_runtime.py']
 
 # runtime
 train_cfg = dict(max_epochs=210, val_interval=10)
@@ -27,16 +27,11 @@ param_scheduler = [
 auto_scale_lr = dict(base_batch_size=512)
 
 # hooks
-default_hooks = dict(
-    checkpoint=dict(save_best='coco-wholebody/AP', rule='greater'))
+default_hooks = dict(checkpoint=dict(save_best='PCK', rule='greater'))
 
 # codec settings
 codec = dict(
-    type='MSRAHeatmap',
-    input_size=(288, 384),
-    heatmap_size=(72, 96),
-    sigma=3,
-    unbiased=True)
+    type='MSRAHeatmap', input_size=(256, 256), heatmap_size=(64, 64), sigma=2)
 
 # model settings
 model = dict(
@@ -47,42 +42,29 @@ model = dict(
         std=[58.395, 57.12, 57.375],
         bgr_to_rgb=True),
     backbone=dict(
-        type='HRNet',
+        type='LiteHRNet',
         in_channels=3,
         extra=dict(
-            stage1=dict(
-                num_modules=1,
-                num_branches=1,
-                block='BOTTLENECK',
-                num_blocks=(4, ),
-                num_channels=(64, )),
-            stage2=dict(
-                num_modules=1,
-                num_branches=2,
-                block='BASIC',
-                num_blocks=(4, 4),
-                num_channels=(48, 96)),
-            stage3=dict(
-                num_modules=4,
-                num_branches=3,
-                block='BASIC',
-                num_blocks=(4, 4, 4),
-                num_channels=(48, 96, 192)),
-            stage4=dict(
-                num_modules=3,
-                num_branches=4,
-                block='BASIC',
-                num_blocks=(4, 4, 4, 4),
-                num_channels=(48, 96, 192, 384))),
-        init_cfg=dict(
-            type='Pretrained',
-            checkpoint='https://download.openmmlab.com/mmpose/'
-            'pretrain_models/hrnet_w48-8ef0771d.pth'),
-    ),
+            stem=dict(stem_channels=32, out_channels=32, expand_ratio=1),
+            num_stages=3,
+            stages_spec=dict(
+                num_modules=(2, 4, 2),
+                num_branches=(2, 3, 4),
+                num_blocks=(2, 2, 2),
+                module_type=('LITE', 'LITE', 'LITE'),
+                with_fuse=(True, True, True),
+                reduce_ratios=(8, 8, 8),
+                num_channels=(
+                    (40, 80),
+                    (40, 80, 160),
+                    (40, 80, 160, 320),
+                )),
+            with_head=True,
+        )),
     head=dict(
         type='HeatmapHead',
-        in_channels=48,
-        out_channels=133,
+        in_channels=40,
+        out_channels=16,
         deconv_out_channels=None,
         loss=dict(type='KeypointMSELoss', use_target_weight=True),
         decoder=codec),
@@ -93,17 +75,20 @@ model = dict(
     ))
 
 # base dataset settings
-dataset_type = 'CocoWholeBodyDataset'
+dataset_type = 'MpiiDataset'
 data_mode = 'topdown'
-data_root = 'data/coco/'
+data_root = 'data/mpii/'
 
 # pipelines
 train_pipeline = [
     dict(type='LoadImage'),
     dict(type='GetBBoxCenterScale'),
     dict(type='RandomFlip', direction='horizontal'),
-    dict(type='RandomHalfBody'),
-    dict(type='RandomBBoxTransform'),
+    dict(
+        type='RandomBBoxTransform',
+        shift_prob=0,
+        rotate_factor=60,
+        scale_factor=(0.75, 1.25)),
     dict(type='TopdownAffine', input_size=codec['input_size']),
     dict(type='GenerateTarget', encoder=codec),
     dict(type='PackPoseInputs')
@@ -117,7 +102,7 @@ val_pipeline = [
 
 # data loaders
 train_dataloader = dict(
-    batch_size=32,
+    batch_size=64,
     num_workers=2,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
@@ -125,8 +110,8 @@ train_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_train_v1.0.json',
-        data_prefix=dict(img='train2017/'),
+        ann_file='annotations/mpii_train.json',
+        data_prefix=dict(img='images/'),
         pipeline=train_pipeline,
     ))
 val_dataloader = dict(
@@ -139,16 +124,14 @@ val_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_val_v1.0.json',
-        data_prefix=dict(img='val2017/'),
+        ann_file='annotations/mpii_val.json',
+        headbox_file='data/mpii/annotations/mpii_gt_val.mat',
+        data_prefix=dict(img='images/'),
         test_mode=True,
-        bbox_file='data/coco/person_detection_results/'
-        'COCO_val2017_detections_AP_H_56_person.json',
         pipeline=val_pipeline,
     ))
 test_dataloader = val_dataloader
 
-val_evaluator = dict(
-    type='CocoWholeBodyMetric',
-    ann_file=data_root + 'annotations/coco_wholebody_val_v1.0.json')
+# evaluators
+val_evaluator = dict(type='MpiiPCKAccuracy')
 test_evaluator = val_evaluator

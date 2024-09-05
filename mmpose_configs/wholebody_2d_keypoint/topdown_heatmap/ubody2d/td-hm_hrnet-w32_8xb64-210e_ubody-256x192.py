@@ -1,4 +1,4 @@
-_base_ = ['../mmpose_configs/_base_/default_runtime.py']
+_base_ = ['../../../_base_/default_runtime.py']
 
 # runtime
 train_cfg = dict(max_epochs=210, val_interval=10)
@@ -32,11 +32,7 @@ default_hooks = dict(
 
 # codec settings
 codec = dict(
-    type='MSRAHeatmap',
-    input_size=(288, 384),
-    heatmap_size=(72, 96),
-    sigma=3,
-    unbiased=True)
+    type='MSRAHeatmap', input_size=(192, 256), heatmap_size=(48, 64), sigma=2)
 
 # model settings
 model = dict(
@@ -61,27 +57,27 @@ model = dict(
                 num_branches=2,
                 block='BASIC',
                 num_blocks=(4, 4),
-                num_channels=(48, 96)),
+                num_channels=(32, 64)),
             stage3=dict(
                 num_modules=4,
                 num_branches=3,
                 block='BASIC',
                 num_blocks=(4, 4, 4),
-                num_channels=(48, 96, 192)),
+                num_channels=(32, 64, 128)),
             stage4=dict(
                 num_modules=3,
                 num_branches=4,
                 block='BASIC',
                 num_blocks=(4, 4, 4, 4),
-                num_channels=(48, 96, 192, 384))),
+                num_channels=(32, 64, 128, 256))),
         init_cfg=dict(
             type='Pretrained',
             checkpoint='https://download.openmmlab.com/mmpose/'
-            'pretrain_models/hrnet_w48-8ef0771d.pth'),
+            'pretrain_models/hrnet_w32-36af842e.pth'),
     ),
     head=dict(
         type='HeatmapHead',
-        in_channels=48,
+        in_channels=32,
         out_channels=133,
         deconv_out_channels=None,
         loss=dict(type='KeypointMSELoss', use_target_weight=True),
@@ -93,9 +89,36 @@ model = dict(
     ))
 
 # base dataset settings
-dataset_type = 'CocoWholeBodyDataset'
+dataset_type = 'UBody2dDataset'
 data_mode = 'topdown'
-data_root = 'data/coco/'
+data_root = 'data/UBody/'
+
+scenes = [
+    'Magic_show', 'Entertainment', 'ConductMusic', 'Online_class', 'TalkShow',
+    'Speech', 'Fitness', 'Interview', 'Olympic', 'TVShow', 'Singing',
+    'SignLanguage', 'Movie', 'LiveVlog', 'VideoConference'
+]
+
+train_datasets = [
+    dict(
+        type='CocoWholeBodyDataset',
+        data_root='data/coco/',
+        data_mode=data_mode,
+        ann_file='annotations/coco_wholebody_train_v1.0.json',
+        data_prefix=dict(img='train2017/'),
+        pipeline=[])
+]
+
+for scene in scenes:
+    train_dataset = dict(
+        type=dataset_type,
+        data_root=data_root,
+        data_mode=data_mode,
+        ann_file=f'annotations/{scene}/train_annotations.json',
+        data_prefix=dict(img='images/'),
+        pipeline=[],
+        sample_interval=10)
+    train_datasets.append(train_dataset)
 
 # pipelines
 train_pipeline = [
@@ -117,17 +140,16 @@ val_pipeline = [
 
 # data loaders
 train_dataloader = dict(
-    batch_size=32,
+    batch_size=64,
     num_workers=2,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
     dataset=dict(
-        type=dataset_type,
-        data_root=data_root,
-        data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_train_v1.0.json',
-        data_prefix=dict(img='train2017/'),
+        type='CombinedDataset',
+        metainfo=dict(from_file='configs/_base_/datasets/coco_wholebody.py'),
+        datasets=train_datasets,
         pipeline=train_pipeline,
+        test_mode=False,
     ))
 val_dataloader = dict(
     batch_size=32,
@@ -136,19 +158,16 @@ val_dataloader = dict(
     drop_last=False,
     sampler=dict(type='DefaultSampler', shuffle=False, round_up=False),
     dataset=dict(
-        type=dataset_type,
-        data_root=data_root,
-        data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_val_v1.0.json',
-        data_prefix=dict(img='val2017/'),
-        test_mode=True,
+        type='CocoWholeBodyDataset',
+        ann_file='data/coco/annotations/coco_wholebody_val_v1.0.json',
+        data_prefix=dict(img='data/coco/val2017/'),
+        pipeline=val_pipeline,
         bbox_file='data/coco/person_detection_results/'
         'COCO_val2017_detections_AP_H_56_person.json',
-        pipeline=val_pipeline,
-    ))
+        test_mode=True))
 test_dataloader = val_dataloader
 
 val_evaluator = dict(
     type='CocoWholeBodyMetric',
-    ann_file=data_root + 'annotations/coco_wholebody_val_v1.0.json')
+    ann_file='data/coco/annotations/coco_wholebody_val_v1.0.json')
 test_evaluator = val_evaluator

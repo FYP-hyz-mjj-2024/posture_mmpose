@@ -1,7 +1,7 @@
-_base_ = ['../mmpose_configs/_base_/default_runtime.py']
+_base_ = ['../../../_base_/default_runtime.py']
 
 # runtime
-train_cfg = dict(max_epochs=210, val_interval=10)
+train_cfg = dict(max_epochs=20, val_interval=1)
 
 # optimizer
 optim_wrapper = dict(optimizer=dict(
@@ -17,8 +17,8 @@ param_scheduler = [
     dict(
         type='MultiStepLR',
         begin=0,
-        end=210,
-        milestones=[170, 200],
+        end=20,
+        milestones=[10, 15],
         gamma=0.1,
         by_epoch=True)
 ]
@@ -28,17 +28,18 @@ auto_scale_lr = dict(base_batch_size=512)
 
 # hooks
 default_hooks = dict(
-    checkpoint=dict(save_best='coco-wholebody/AP', rule='greater'))
+    checkpoint=dict(
+        save_best='posetrack18/Total AP', rule='greater', interval=1))
+
+# load from the pretrained model
+load_from = 'https://download.openmmlab.com/mmpose/v1/body_2d_keypoint/topdown_heatmap/coco/td-hm_hrnet-w32_8xb64-210e_coco-384x288-ca5956af_20220909.pth'  # noqa: E501
 
 # codec settings
 codec = dict(
-    type='MSRAHeatmap',
-    input_size=(288, 384),
-    heatmap_size=(72, 96),
-    sigma=3,
-    unbiased=True)
+    type='MSRAHeatmap', input_size=(288, 384), heatmap_size=(72, 96), sigma=3)
 
 # model settings
+norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopdownPoseEstimator',
     data_preprocessor=dict(
@@ -61,28 +62,24 @@ model = dict(
                 num_branches=2,
                 block='BASIC',
                 num_blocks=(4, 4),
-                num_channels=(48, 96)),
+                num_channels=(32, 64)),
             stage3=dict(
                 num_modules=4,
                 num_branches=3,
                 block='BASIC',
                 num_blocks=(4, 4, 4),
-                num_channels=(48, 96, 192)),
+                num_channels=(32, 64, 128)),
             stage4=dict(
                 num_modules=3,
                 num_branches=4,
                 block='BASIC',
                 num_blocks=(4, 4, 4, 4),
-                num_channels=(48, 96, 192, 384))),
-        init_cfg=dict(
-            type='Pretrained',
-            checkpoint='https://download.openmmlab.com/mmpose/'
-            'pretrain_models/hrnet_w48-8ef0771d.pth'),
+                num_channels=(32, 64, 128, 256))),
     ),
     head=dict(
         type='HeatmapHead',
-        in_channels=48,
-        out_channels=133,
+        in_channels=32,
+        out_channels=17,
         deconv_out_channels=None,
         loss=dict(type='KeypointMSELoss', use_target_weight=True),
         decoder=codec),
@@ -93,9 +90,9 @@ model = dict(
     ))
 
 # base dataset settings
-dataset_type = 'CocoWholeBodyDataset'
+dataset_type = 'PoseTrack18Dataset'
 data_mode = 'topdown'
-data_root = 'data/coco/'
+data_root = 'data/posetrack18/'
 
 # pipelines
 train_pipeline = [
@@ -108,6 +105,7 @@ train_pipeline = [
     dict(type='GenerateTarget', encoder=codec),
     dict(type='PackPoseInputs')
 ]
+
 val_pipeline = [
     dict(type='LoadImage'),
     dict(type='GetBBoxCenterScale'),
@@ -117,7 +115,7 @@ val_pipeline = [
 
 # data loaders
 train_dataloader = dict(
-    batch_size=32,
+    batch_size=64,
     num_workers=2,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
@@ -125,8 +123,8 @@ train_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_train_v1.0.json',
-        data_prefix=dict(img='train2017/'),
+        ann_file='annotations/posetrack18_train.json',
+        data_prefix=dict(img=''),
         pipeline=train_pipeline,
     ))
 val_dataloader = dict(
@@ -139,16 +137,19 @@ val_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_val_v1.0.json',
-        data_prefix=dict(img='val2017/'),
+        ann_file='annotations/posetrack18_val.json',
+        # comment `bbox_file` and '`filter_cfg` if use gt bbox for evaluation
+        bbox_file='data/posetrack18/annotations/'
+        'posetrack18_val_human_detections.json',
+        filter_cfg=dict(bbox_score_thr=0.4),
+        data_prefix=dict(img=''),
         test_mode=True,
-        bbox_file='data/coco/person_detection_results/'
-        'COCO_val2017_detections_AP_H_56_person.json',
         pipeline=val_pipeline,
     ))
 test_dataloader = val_dataloader
 
 val_evaluator = dict(
-    type='CocoWholeBodyMetric',
-    ann_file=data_root + 'annotations/coco_wholebody_val_v1.0.json')
+    type='PoseTrack18Metric',
+    ann_file=data_root + 'annotations/posetrack18_val.json',
+)
 test_evaluator = val_evaluator

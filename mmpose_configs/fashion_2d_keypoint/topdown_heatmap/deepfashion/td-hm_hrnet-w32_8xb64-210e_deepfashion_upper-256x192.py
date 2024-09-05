@@ -1,4 +1,4 @@
-_base_ = ['../mmpose_configs/_base_/default_runtime.py']
+_base_ = '../../../_base_/default_runtime.py'
 
 # runtime
 train_cfg = dict(max_epochs=210, val_interval=10)
@@ -28,15 +28,12 @@ auto_scale_lr = dict(base_batch_size=512)
 
 # hooks
 default_hooks = dict(
-    checkpoint=dict(save_best='coco-wholebody/AP', rule='greater'))
+    logger=dict(type='LoggerHook', interval=10),
+    checkpoint=dict(save_best='AUC', rule='greater'))
 
 # codec settings
 codec = dict(
-    type='MSRAHeatmap',
-    input_size=(288, 384),
-    heatmap_size=(72, 96),
-    sigma=3,
-    unbiased=True)
+    type='MSRAHeatmap', input_size=(192, 256), heatmap_size=(48, 64), sigma=2)
 
 # model settings
 model = dict(
@@ -61,28 +58,28 @@ model = dict(
                 num_branches=2,
                 block='BASIC',
                 num_blocks=(4, 4),
-                num_channels=(48, 96)),
+                num_channels=(32, 64)),
             stage3=dict(
                 num_modules=4,
                 num_branches=3,
                 block='BASIC',
                 num_blocks=(4, 4, 4),
-                num_channels=(48, 96, 192)),
+                num_channels=(32, 64, 128)),
             stage4=dict(
                 num_modules=3,
                 num_branches=4,
                 block='BASIC',
                 num_blocks=(4, 4, 4, 4),
-                num_channels=(48, 96, 192, 384))),
+                num_channels=(32, 64, 128, 256))),
         init_cfg=dict(
             type='Pretrained',
             checkpoint='https://download.openmmlab.com/mmpose/'
-            'pretrain_models/hrnet_w48-8ef0771d.pth'),
+            'pretrain_models/hrnet_w32-36af842e.pth'),
     ),
     head=dict(
         type='HeatmapHead',
-        in_channels=48,
-        out_channels=133,
+        in_channels=32,
+        out_channels=6,
         deconv_out_channels=None,
         loss=dict(type='KeypointMSELoss', use_target_weight=True),
         decoder=codec),
@@ -93,16 +90,15 @@ model = dict(
     ))
 
 # base dataset settings
-dataset_type = 'CocoWholeBodyDataset'
+dataset_type = 'DeepFashionDataset'
 data_mode = 'topdown'
-data_root = 'data/coco/'
+data_root = 'data/fld/'
 
 # pipelines
 train_pipeline = [
     dict(type='LoadImage'),
     dict(type='GetBBoxCenterScale'),
     dict(type='RandomFlip', direction='horizontal'),
-    dict(type='RandomHalfBody'),
     dict(type='RandomBBoxTransform'),
     dict(type='TopdownAffine', input_size=codec['input_size']),
     dict(type='GenerateTarget', encoder=codec),
@@ -114,19 +110,21 @@ val_pipeline = [
     dict(type='TopdownAffine', input_size=codec['input_size']),
     dict(type='PackPoseInputs')
 ]
+test_pipeline = val_pipeline
 
 # data loaders
 train_dataloader = dict(
-    batch_size=32,
+    batch_size=64,
     num_workers=2,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
     dataset=dict(
         type=dataset_type,
+        subset='upper',
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_train_v1.0.json',
-        data_prefix=dict(img='train2017/'),
+        ann_file='annotations/fld_upper_train.json',
+        data_prefix=dict(img='img/'),
         pipeline=train_pipeline,
     ))
 val_dataloader = dict(
@@ -137,18 +135,35 @@ val_dataloader = dict(
     sampler=dict(type='DefaultSampler', shuffle=False, round_up=False),
     dataset=dict(
         type=dataset_type,
+        subset='upper',
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_val_v1.0.json',
-        data_prefix=dict(img='val2017/'),
+        ann_file='annotations/fld_upper_val.json',
+        data_prefix=dict(img='img/'),
         test_mode=True,
-        bbox_file='data/coco/person_detection_results/'
-        'COCO_val2017_detections_AP_H_56_person.json',
         pipeline=val_pipeline,
     ))
-test_dataloader = val_dataloader
+test_dataloader = dict(
+    batch_size=32,
+    num_workers=2,
+    persistent_workers=True,
+    drop_last=False,
+    sampler=dict(type='DefaultSampler', shuffle=False, round_up=False),
+    dataset=dict(
+        type=dataset_type,
+        subset='upper',
+        data_root=data_root,
+        data_mode=data_mode,
+        ann_file='annotations/fld_upper_test.json',
+        data_prefix=dict(img='img/'),
+        test_mode=True,
+        pipeline=test_pipeline,
+    ))
 
-val_evaluator = dict(
-    type='CocoWholeBodyMetric',
-    ann_file=data_root + 'annotations/coco_wholebody_val_v1.0.json')
+# evaluators
+val_evaluator = [
+    dict(type='PCKAccuracy', thr=0.2),
+    dict(type='AUC'),
+    dict(type='EPE'),
+]
 test_evaluator = val_evaluator

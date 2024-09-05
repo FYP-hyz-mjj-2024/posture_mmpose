@@ -1,7 +1,7 @@
-_base_ = ['../mmpose_configs/_base_/default_runtime.py']
+_base_ = ['../../../_base_/default_runtime.py']
 
 # runtime
-train_cfg = dict(max_epochs=210, val_interval=10)
+train_cfg = dict(max_epochs=40, val_interval=1)
 
 # optimizer
 optim_wrapper = dict(optimizer=dict(
@@ -17,26 +17,22 @@ param_scheduler = [
     dict(
         type='MultiStepLR',
         begin=0,
-        end=210,
-        milestones=[170, 200],
+        end=40,
+        milestones=[20, 30],
         gamma=0.1,
         by_epoch=True)
 ]
 
 # automatically scaling LR based on the actual training batch size
-auto_scale_lr = dict(base_batch_size=512)
+auto_scale_lr = dict(base_batch_size=256)
 
 # hooks
 default_hooks = dict(
-    checkpoint=dict(save_best='coco-wholebody/AP', rule='greater'))
+    checkpoint=dict(save_best='PCK', rule='greater', interval=1))
 
 # codec settings
 codec = dict(
-    type='MSRAHeatmap',
-    input_size=(288, 384),
-    heatmap_size=(72, 96),
-    sigma=3,
-    unbiased=True)
+    type='MSRAHeatmap', input_size=(368, 368), heatmap_size=(46, 46), sigma=2)
 
 # model settings
 model = dict(
@@ -47,43 +43,18 @@ model = dict(
         std=[58.395, 57.12, 57.375],
         bgr_to_rgb=True),
     backbone=dict(
-        type='HRNet',
+        type='CPM',
         in_channels=3,
-        extra=dict(
-            stage1=dict(
-                num_modules=1,
-                num_branches=1,
-                block='BOTTLENECK',
-                num_blocks=(4, ),
-                num_channels=(64, )),
-            stage2=dict(
-                num_modules=1,
-                num_branches=2,
-                block='BASIC',
-                num_blocks=(4, 4),
-                num_channels=(48, 96)),
-            stage3=dict(
-                num_modules=4,
-                num_branches=3,
-                block='BASIC',
-                num_blocks=(4, 4, 4),
-                num_channels=(48, 96, 192)),
-            stage4=dict(
-                num_modules=3,
-                num_branches=4,
-                block='BASIC',
-                num_blocks=(4, 4, 4, 4),
-                num_channels=(48, 96, 192, 384))),
-        init_cfg=dict(
-            type='Pretrained',
-            checkpoint='https://download.openmmlab.com/mmpose/'
-            'pretrain_models/hrnet_w48-8ef0771d.pth'),
-    ),
+        out_channels=15,
+        feat_channels=128,
+        num_stages=6),
     head=dict(
-        type='HeatmapHead',
-        in_channels=48,
-        out_channels=133,
+        type='CPMHead',
+        in_channels=15,
+        out_channels=15,
+        num_stages=6,
         deconv_out_channels=None,
+        final_layer=None,
         loss=dict(type='KeypointMSELoss', use_target_weight=True),
         decoder=codec),
     test_cfg=dict(
@@ -93,21 +64,24 @@ model = dict(
     ))
 
 # base dataset settings
-dataset_type = 'CocoWholeBodyDataset'
+dataset_type = 'JhmdbDataset'
 data_mode = 'topdown'
-data_root = 'data/coco/'
+data_root = 'data/jhmdb/'
 
 # pipelines
 train_pipeline = [
     dict(type='LoadImage'),
     dict(type='GetBBoxCenterScale'),
     dict(type='RandomFlip', direction='horizontal'),
-    dict(type='RandomHalfBody'),
-    dict(type='RandomBBoxTransform'),
+    dict(
+        type='RandomBBoxTransform',
+        rotate_factor=60,
+        scale_factor=(0.75, 1.25)),
     dict(type='TopdownAffine', input_size=codec['input_size']),
     dict(type='GenerateTarget', encoder=codec),
     dict(type='PackPoseInputs')
 ]
+
 val_pipeline = [
     dict(type='LoadImage'),
     dict(type='GetBBoxCenterScale'),
@@ -125,8 +99,8 @@ train_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_train_v1.0.json',
-        data_prefix=dict(img='train2017/'),
+        ann_file='annotations/Sub3_train.json',
+        data_prefix=dict(img=''),
         pipeline=train_pipeline,
     ))
 val_dataloader = dict(
@@ -139,16 +113,15 @@ val_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_val_v1.0.json',
-        data_prefix=dict(img='val2017/'),
+        ann_file='annotations/Sub3_test.json',
+        data_prefix=dict(img=''),
         test_mode=True,
-        bbox_file='data/coco/person_detection_results/'
-        'COCO_val2017_detections_AP_H_56_person.json',
         pipeline=val_pipeline,
     ))
 test_dataloader = val_dataloader
 
-val_evaluator = dict(
-    type='CocoWholeBodyMetric',
-    ann_file=data_root + 'annotations/coco_wholebody_val_v1.0.json')
+# evaluators
+val_evaluator = [
+    dict(type='JhmdbPCKAccuracy', thr=0.2, norm_item=['bbox', 'torso']),
+]
 test_evaluator = val_evaluator

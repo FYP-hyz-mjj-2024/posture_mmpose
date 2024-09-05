@@ -1,4 +1,4 @@
-_base_ = ['../mmpose_configs/_base_/default_runtime.py']
+_base_ = ['../../../_base_/default_runtime.py']
 
 # runtime
 train_cfg = dict(max_epochs=210, val_interval=10)
@@ -27,16 +27,11 @@ param_scheduler = [
 auto_scale_lr = dict(base_batch_size=512)
 
 # hooks
-default_hooks = dict(
-    checkpoint=dict(save_best='coco-wholebody/AP', rule='greater'))
+default_hooks = dict(checkpoint=dict(save_best='coco/AP', rule='greater'))
 
 # codec settings
 codec = dict(
-    type='MSRAHeatmap',
-    input_size=(288, 384),
-    heatmap_size=(72, 96),
-    sigma=3,
-    unbiased=True)
+    type='MSRAHeatmap', input_size=(192, 256), heatmap_size=(48, 64), sigma=2)
 
 # model settings
 model = dict(
@@ -61,28 +56,30 @@ model = dict(
                 num_branches=2,
                 block='BASIC',
                 num_blocks=(4, 4),
-                num_channels=(48, 96)),
+                num_channels=(32, 64)),
             stage3=dict(
                 num_modules=4,
                 num_branches=3,
                 block='BASIC',
                 num_blocks=(4, 4, 4),
-                num_channels=(48, 96, 192)),
+                num_channels=(32, 64, 128)),
             stage4=dict(
                 num_modules=3,
                 num_branches=4,
                 block='BASIC',
                 num_blocks=(4, 4, 4, 4),
-                num_channels=(48, 96, 192, 384))),
+                num_channels=(32, 64, 128, 256))),
         init_cfg=dict(
             type='Pretrained',
-            checkpoint='https://download.openmmlab.com/mmpose/'
-            'pretrain_models/hrnet_w48-8ef0771d.pth'),
+            prefix='backbone.',
+            checkpoint='https://download.openmmlab.com/mmpose/v1/'
+            'body_2d_keypoint/topdown_heatmap/coco/'
+            'td-hm_hrnet-w32_8xb64-210e_coco-256x192-81c58e40_20220909.pth'),
     ),
     head=dict(
         type='HeatmapHead',
-        in_channels=48,
-        out_channels=133,
+        in_channels=32,
+        out_channels=17,
         deconv_out_channels=None,
         loss=dict(type='KeypointMSELoss', use_target_weight=True),
         decoder=codec),
@@ -93,7 +90,7 @@ model = dict(
     ))
 
 # base dataset settings
-dataset_type = 'CocoWholeBodyDataset'
+dataset_type = 'CocoDataset'
 data_mode = 'topdown'
 data_root = 'data/coco/'
 
@@ -105,6 +102,19 @@ train_pipeline = [
     dict(type='RandomHalfBody'),
     dict(type='RandomBBoxTransform'),
     dict(type='TopdownAffine', input_size=codec['input_size']),
+    dict(
+        type='Albumentation',
+        transforms=[
+            dict(
+                type='CoarseDropout',
+                max_holes=8,
+                max_height=40,
+                max_width=40,
+                min_holes=1,
+                min_height=10,
+                min_width=10,
+                p=0.5),
+        ]),
     dict(type='GenerateTarget', encoder=codec),
     dict(type='PackPoseInputs')
 ]
@@ -117,7 +127,7 @@ val_pipeline = [
 
 # data loaders
 train_dataloader = dict(
-    batch_size=32,
+    batch_size=64,
     num_workers=2,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
@@ -125,7 +135,7 @@ train_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_train_v1.0.json',
+        ann_file='annotations/person_keypoints_train2017.json',
         data_prefix=dict(img='train2017/'),
         pipeline=train_pipeline,
     ))
@@ -139,16 +149,17 @@ val_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_val_v1.0.json',
-        data_prefix=dict(img='val2017/'),
-        test_mode=True,
+        ann_file='annotations/person_keypoints_val2017.json',
         bbox_file='data/coco/person_detection_results/'
         'COCO_val2017_detections_AP_H_56_person.json',
+        data_prefix=dict(img='val2017/'),
+        test_mode=True,
         pipeline=val_pipeline,
     ))
 test_dataloader = val_dataloader
 
+# evaluators
 val_evaluator = dict(
-    type='CocoWholeBodyMetric',
-    ann_file=data_root + 'annotations/coco_wholebody_val_v1.0.json')
+    type='CocoMetric',
+    ann_file=data_root + 'annotations/person_keypoints_val2017.json')
 test_evaluator = val_evaluator

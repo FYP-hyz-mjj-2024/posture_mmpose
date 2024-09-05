@@ -1,4 +1,4 @@
-_base_ = ['../mmpose_configs/_base_/default_runtime.py']
+_base_ = ['../../../_base_/default_runtime.py']
 
 # runtime
 train_cfg = dict(max_epochs=210, val_interval=10)
@@ -24,19 +24,13 @@ param_scheduler = [
 ]
 
 # automatically scaling LR based on the actual training batch size
-auto_scale_lr = dict(base_batch_size=512)
+auto_scale_lr = dict(base_batch_size=256)
 
 # hooks
-default_hooks = dict(
-    checkpoint=dict(save_best='coco-wholebody/AP', rule='greater'))
-
+default_hooks = dict(checkpoint=dict(save_best='AUC', rule='greater'))
 # codec settings
 codec = dict(
-    type='MSRAHeatmap',
-    input_size=(288, 384),
-    heatmap_size=(72, 96),
-    sigma=3,
-    unbiased=True)
+    type='MSRAHeatmap', input_size=(256, 256), heatmap_size=(64, 64), sigma=2)
 
 # model settings
 model = dict(
@@ -47,42 +41,29 @@ model = dict(
         std=[58.395, 57.12, 57.375],
         bgr_to_rgb=True),
     backbone=dict(
-        type='HRNet',
+        type='LiteHRNet',
         in_channels=3,
         extra=dict(
-            stage1=dict(
-                num_modules=1,
-                num_branches=1,
-                block='BOTTLENECK',
-                num_blocks=(4, ),
-                num_channels=(64, )),
-            stage2=dict(
-                num_modules=1,
-                num_branches=2,
-                block='BASIC',
-                num_blocks=(4, 4),
-                num_channels=(48, 96)),
-            stage3=dict(
-                num_modules=4,
-                num_branches=3,
-                block='BASIC',
-                num_blocks=(4, 4, 4),
-                num_channels=(48, 96, 192)),
-            stage4=dict(
-                num_modules=3,
-                num_branches=4,
-                block='BASIC',
-                num_blocks=(4, 4, 4, 4),
-                num_channels=(48, 96, 192, 384))),
-        init_cfg=dict(
-            type='Pretrained',
-            checkpoint='https://download.openmmlab.com/mmpose/'
-            'pretrain_models/hrnet_w48-8ef0771d.pth'),
-    ),
+            stem=dict(stem_channels=32, out_channels=32, expand_ratio=1),
+            num_stages=3,
+            stages_spec=dict(
+                num_modules=(2, 4, 2),
+                num_branches=(2, 3, 4),
+                num_blocks=(2, 2, 2),
+                module_type=('LITE', 'LITE', 'LITE'),
+                with_fuse=(True, True, True),
+                reduce_ratios=(8, 8, 8),
+                num_channels=(
+                    (40, 80),
+                    (40, 80, 160),
+                    (40, 80, 160, 320),
+                )),
+            with_head=True,
+        )),
     head=dict(
         type='HeatmapHead',
-        in_channels=48,
-        out_channels=133,
+        in_channels=40,
+        out_channels=21,
         deconv_out_channels=None,
         loss=dict(type='KeypointMSELoss', use_target_weight=True),
         decoder=codec),
@@ -93,7 +74,7 @@ model = dict(
     ))
 
 # base dataset settings
-dataset_type = 'CocoWholeBodyDataset'
+dataset_type = 'CocoWholeBodyHandDataset'
 data_mode = 'topdown'
 data_root = 'data/coco/'
 
@@ -101,9 +82,10 @@ data_root = 'data/coco/'
 train_pipeline = [
     dict(type='LoadImage'),
     dict(type='GetBBoxCenterScale'),
+    dict(
+        type='RandomBBoxTransform', rotate_factor=180,
+        scale_factor=(0.7, 1.3)),
     dict(type='RandomFlip', direction='horizontal'),
-    dict(type='RandomHalfBody'),
-    dict(type='RandomBBoxTransform'),
     dict(type='TopdownAffine', input_size=codec['input_size']),
     dict(type='GenerateTarget', encoder=codec),
     dict(type='PackPoseInputs')
@@ -142,13 +124,13 @@ val_dataloader = dict(
         ann_file='annotations/coco_wholebody_val_v1.0.json',
         data_prefix=dict(img='val2017/'),
         test_mode=True,
-        bbox_file='data/coco/person_detection_results/'
-        'COCO_val2017_detections_AP_H_56_person.json',
         pipeline=val_pipeline,
     ))
 test_dataloader = val_dataloader
 
-val_evaluator = dict(
-    type='CocoWholeBodyMetric',
-    ann_file=data_root + 'annotations/coco_wholebody_val_v1.0.json')
+val_evaluator = [
+    dict(type='PCKAccuracy', thr=0.2),
+    dict(type='AUC'),
+    dict(type='EPE')
+]
 test_evaluator = val_evaluator

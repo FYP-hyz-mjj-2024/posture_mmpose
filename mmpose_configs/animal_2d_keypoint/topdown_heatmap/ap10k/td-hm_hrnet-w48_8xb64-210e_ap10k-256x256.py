@@ -1,4 +1,4 @@
-_base_ = ['../mmpose_configs/_base_/default_runtime.py']
+_base_ = ['../../../_base_/default_runtime.py']
 
 # runtime
 train_cfg = dict(max_epochs=210, val_interval=10)
@@ -27,16 +27,11 @@ param_scheduler = [
 auto_scale_lr = dict(base_batch_size=512)
 
 # hooks
-default_hooks = dict(
-    checkpoint=dict(save_best='coco-wholebody/AP', rule='greater'))
+default_hooks = dict(checkpoint=dict(save_best='coco/AP', rule='greater'))
 
 # codec settings
 codec = dict(
-    type='MSRAHeatmap',
-    input_size=(288, 384),
-    heatmap_size=(72, 96),
-    sigma=3,
-    unbiased=True)
+    type='MSRAHeatmap', input_size=(256, 256), heatmap_size=(64, 64), sigma=2)
 
 # model settings
 model = dict(
@@ -82,7 +77,7 @@ model = dict(
     head=dict(
         type='HeatmapHead',
         in_channels=48,
-        out_channels=133,
+        out_channels=17,
         deconv_out_channels=None,
         loss=dict(type='KeypointMSELoss', use_target_weight=True),
         decoder=codec),
@@ -93,9 +88,9 @@ model = dict(
     ))
 
 # base dataset settings
-dataset_type = 'CocoWholeBodyDataset'
+dataset_type = 'AP10KDataset'
 data_mode = 'topdown'
-data_root = 'data/coco/'
+data_root = 'data/ap10k/'
 
 # pipelines
 train_pipeline = [
@@ -117,21 +112,21 @@ val_pipeline = [
 
 # data loaders
 train_dataloader = dict(
-    batch_size=32,
-    num_workers=2,
+    batch_size=64,
+    num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_train_v1.0.json',
-        data_prefix=dict(img='train2017/'),
+        ann_file='annotations/ap10k-train-split1.json',
+        data_prefix=dict(img='data/'),
         pipeline=train_pipeline,
     ))
 val_dataloader = dict(
     batch_size=32,
-    num_workers=2,
+    num_workers=4,
     persistent_workers=True,
     drop_last=False,
     sampler=dict(type='DefaultSampler', shuffle=False, round_up=False),
@@ -139,16 +134,31 @@ val_dataloader = dict(
         type=dataset_type,
         data_root=data_root,
         data_mode=data_mode,
-        ann_file='annotations/coco_wholebody_val_v1.0.json',
-        data_prefix=dict(img='val2017/'),
+        ann_file='annotations/ap10k-val-split1.json',
+        data_prefix=dict(img='data/'),
         test_mode=True,
-        bbox_file='data/coco/person_detection_results/'
-        'COCO_val2017_detections_AP_H_56_person.json',
         pipeline=val_pipeline,
     ))
-test_dataloader = val_dataloader
+test_dataloader = dict(
+    batch_size=32,
+    num_workers=4,
+    persistent_workers=True,
+    drop_last=False,
+    sampler=dict(type='DefaultSampler', shuffle=False, round_up=False),
+    dataset=dict(
+        type=dataset_type,
+        data_root=data_root,
+        data_mode=data_mode,
+        ann_file='annotations/ap10k-test-split1.json',
+        data_prefix=dict(img='data/'),
+        test_mode=True,
+        pipeline=val_pipeline,
+    ))
 
+# evaluators
 val_evaluator = dict(
-    type='CocoWholeBodyMetric',
-    ann_file=data_root + 'annotations/coco_wholebody_val_v1.0.json')
-test_evaluator = val_evaluator
+    type='CocoMetric',
+    ann_file=data_root + 'annotations/ap10k-val-split1.json')
+test_evaluator = dict(
+    type='CocoMetric',
+    ann_file=data_root + 'annotations/ap10k-test-split1.json')
