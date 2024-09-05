@@ -48,7 +48,7 @@ environment, which is not cool.
 
 For mac users, please install openmim by running:
 ```shell
-pip install -U openmim
+<PATH_TO_YOUR_VIRTUAL_ENVIRONMENT>/bin/pip install -U openmim
 ```
 after you have activated your conda environment.
 
@@ -64,22 +64,9 @@ https://mmcv.readthedocs.io/en/latest/get_started/installation.html.
 | mmengine | 0.10.4  | https://github.com/open-mmlab/mmengine    |
 | mmpose   | 1.3.2   | https://github.com/open-mmlab/mmpose      |
 
-Install `mmcv`
+Install MM related packages:
 ```shell
-mim install "mmcv==2.1.0"
+mim install "mmcv==2.1.0" "mmdet==3.2.0" "mmengine==0.10.4" "mmpose==1.3.2"
 ```
 
-Install `mmdet`
-```shell
-mim install "mmdet==3.2.0"
-```
-
-Install `mmengine`
-```shell
-mim install "mmengine==0.10.4"
-```
-
-Install `mmpose`
-```shell
-mim install "mmpose==1.3.2"
-```
+## Body Points
