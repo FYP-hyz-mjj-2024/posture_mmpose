@@ -124,9 +124,14 @@ if __name__ == "__main__":
     input_type = 'image'
 
     if input_type == 'image':
-        # inference
-        pred_instances = process_one_image(cfg.input, detector,
-                                           pose_estimator, visualizer)
+        _pred_instances = process_one_image(cfg.input, detector, pose_estimator, visualizer)
+
+        _keypoints_coords = _pred_instances.keypoints
+        _keypoints_scores = np.expand_dims(_pred_instances.keypoint_scores, axis=-1)
+        _combined_data = np.concatenate((_keypoints_coords, _keypoints_scores), axis=-1)
+
+        keypoints = _combined_data[:, list(range(0, 91)), :]
+        xyxy = _pred_instances.bboxes
 
         # for idx, instance in enumerate(split_instances(pred_instances)):
         #     print(f"\n{idx}.\nkeypoints:\n")
@@ -134,11 +139,5 @@ if __name__ == "__main__":
         #         print(f"\t{keypoint}")
         #     print(f"bbox:\n{instance['bbox']}\nscore:\n{instance['bbox_score']}\n")
 
-    # _keypoints_coords = _batch_results[0].pred_instances.keypoints
-    # _keypoints_scores = _batch_results[0].pred_instances.keypoints_scores
-    #
-    # _combined_keypoints = np.concatenate((_keypoints_coords, _keypoints_scores), axis=-1)
-    # _indices = list(range(0, 17)) + list(range(23, 91))
-    #
-    # keypoints = _combined_keypoints[:, _indices, :]
+
     pause = 0
