@@ -73,7 +73,7 @@ mim install "mmcv==2.1.0" "mmdet==3.2.0" "mmengine==0.10.4" "mmpose==1.3.2"
 Below is a table of the categories and details of key-points, according to the opensource project mmpose. We named
 the categories and details. The name of each keypoint will be `<CATEGORY>-<DETAILS>`.
 
-For instance, for keypoint `Chin` in category `Right_eye` at index `2`, the name of this keypoint
+For instance, for keypoint `Right_eye` in category `Body` at index `2`, the name of this keypoint
 is restricted to be `Body-Right_eye`.
 
 | Index | Category | Details               |
