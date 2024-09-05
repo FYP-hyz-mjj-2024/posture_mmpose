@@ -38,8 +38,8 @@ register_all_modules()
 args = load_default_args()
 
 # Initialize Model
-config_file = 'model_config/td-hm_hrnet-w48_8xb32-210e_coco-256x192.py'
-checkpoint_file = 'model_config/td-hm_hrnet-w48_8xb32-210e_coco-256x192-0e67c616_20220913.pth'
+config_file = 'model_config/configs/td-hm_hrnet-w48_8xb32-210e_coco-256x192.py'
+checkpoint_file = 'model_config/checkpoints/td-hm_hrnet-w48_8xb32-210e_coco-256x192-0e67c616_20220913.pth'
 model = init_model(config_file, checkpoint_file, device='cuda:0')  # or device='cuda:0'
 
 # Initialize Visualizer
