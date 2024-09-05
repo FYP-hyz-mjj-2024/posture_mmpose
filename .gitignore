@@ -59,3 +59,6 @@ Follow
 # Raw training image data
 data/train/img/
 data/test/img/
+
+# MMPose config files
+*.pth
