@@ -69,13 +69,20 @@ Install MM related packages:
 mim install "mmcv==2.1.0" "mmdet==3.2.0" "mmengine==0.10.4" "mmpose==1.3.2"
 ```
 
-#### 2.3 Checkpoint Files
-&emsp; Checkpoint files are essential to this project, yet they are too big to upload to github. Please download all
-of them by clicking these links:
+#### 2.3 Checkpoint & Configuration Files
+&emsp; Checkpoint files are essential to this project, yet they are too big to upload to github. 
+There are two kinds of files: Checkpoint files and config files for both boundary detection and pose estimation.
+Please download all of them by clicking these links:
 
-- https://download.openmmlab.com/mmpose/v1/projects/rtmpose/rtmdet_m_8xb32-100e_coco-obj365-person-235e8209.pth
-- https://download.openmmlab.com/mmpose/top_down/hrnet/hrnet_w48_coco_wholebody_384x288_dark-f5726563_20200918.pth
-- 
+- config files (`.py`):
+  - det config (boundary detection): https://github.com/open-mmlab/mmpose/blob/dev-1.x/projects/rtmpose/rtmdet/person/rtmdet_nano_320-8xb32_coco-person.py
+  - pose config (pose estimation): https://github.com/open-mmlab/mmpose/blob/dev-1.x/projects/rtmpose/rtmpose/body_2d_keypoint/rtmpose-t_8xb256-420e_coco-256x192.py
+After downloading from the browser, please move them into `model_config/configs/`. You may need to create this
+folder first.
+
+- checkpoint files (`.pth`):
+  - det checkpoint: https://download.openmmlab.com/mmpose/v1/projects/rtmpose/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth
+  - pose checkpoint: https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192-cfc8f33d_20230126.pth
 After downloading from the browser, please move them into `model_config/checkpoints/`. You may need to create this
 folder first.
 

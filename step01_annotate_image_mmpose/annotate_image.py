@@ -94,7 +94,8 @@ def process_one_image(img,
     _keypoints_scores_coords = np.concatenate(  # Shape: (num_people, 133, 3)
         (_keypoints_coords, _keypoints_scores),
         axis=-1)
-    keypoints_list = _keypoints_scores_coords[:, list(range(0, 91)), :]  # Shape: (num_people, 91, 3)
+    # keypoints_list = _keypoints_scores_coords[:, list(range(0, 91)), :]  # Shape: (num_people, 91, 3)
+    keypoints_list = _keypoints_scores_coords   # Shape: (num_people, 17, 3)
 
     # Boundary Boxes coordinates --> (num_people, 4)
     xyxy_list = raw_predictions.bboxes  # Shape: (num_people, 4)
@@ -189,7 +190,8 @@ def video_demo(bbox_detector_model,
                pose_estimator_model,
                estim_results_visualizer):
 
-    cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
+    # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
+    cap = cv2.VideoCapture(1)
 
     while cap.isOpened():
         ret, frame = cap.read()
