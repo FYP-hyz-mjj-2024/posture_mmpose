@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import cv2
 import json_tricks as json
 import mmcv
@@ -166,7 +167,7 @@ def _calc_angle(
 def calc_keypoint_angle(
         keypoints_one_person,
         edge_keypoints_names: [str, str],
-        mid_keypoint_name: str) -> float:
+        mid_keypoint_name: str) -> [float, float]:
     """
     Calculate the angle using the given edge pionts and middle point by their names.
     :param keypoints_one_person: The set of keypoints of a single person. (91, 3)
@@ -184,7 +185,14 @@ def calc_keypoint_angle(
     coord1, coord2 = keypoints_one_person[keypoint_indexes[n1]][:2], keypoints_one_person[keypoint_indexes[n2]][:2]
     coordm = keypoints_one_person[keypoint_indexes[nm]][:2]
 
-    return _calc_angle([coord1, coord2], coordm)
+    # Score of the angle
+    s1, s2 = keypoints_one_person[keypoint_indexes[n1]][2], keypoints_one_person[keypoint_indexes[n2]][2]
+    sm = keypoints_one_person[keypoint_indexes[nm]][2]
+
+    # Angle Score: Geometric Mean
+    angle_score = math.exp((1/3) * (math.log(s1) + math.log(s2) + math.log(sm)))
+
+    return _calc_angle([coord1, coord2], coordm), angle_score
 
 
 if __name__ == "__main__":
@@ -221,7 +229,7 @@ if __name__ == "__main__":
     """
     4. Initialize Detection Targets
     """
-    targets = [
+    target_list = [
         [("Body-Left_shoulder", "Body-Left_wrist"), "Body-Left_elbow"],
         [("Body-Right_shoulder", "Body-Right_wrist"), "Body-Right_elbow"],
         [("Body-Left_hip", "Body-Left_elbow"), "Body-Left_shoulder"],
@@ -256,10 +264,8 @@ if __name__ == "__main__":
 
             # 3.3 Key Angles
             print(f"{_title}Key Angles (Display only to 4 digits after .):{title_}")
-            for target in targets:
-                target_angle = calc_keypoint_angle(keypoints, target[0], target[1])
+            for target in target_list:
+                target_angle, target_angle_score = calc_keypoint_angle(keypoints, target[0], target[1])
                 angle_name = f"{target[0][0]}_|_{target[1]}_|_{target[0][1]}"
-                print(f"{target_angle:4f} - {angle_name}")
+                print(f"value={target_angle:4f} deg - score={target_angle_score} - {angle_name}")
             print("\n")
-
-        # TODO: Score of an angle. Suggestion: log(score_1 * score_2 * score_mid)?
