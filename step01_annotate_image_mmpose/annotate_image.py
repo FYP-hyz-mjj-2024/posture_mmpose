@@ -82,62 +82,106 @@ def process_one_image(img,
             kpt_thr=cfg.kpt_thr)
 
     # if there is no instance detected, return None
-    return data_samples.get('pred_instances', None)
-
-
-def get_keypoints_and_xyxy(raw_predictions):
-    """
-    From the raw prediction data of process_one_image, retrieve key coordinates of landmarks and boundary box frames.
-    :param raw_predictions: The prediction data from process_one_image.
-    :returns: keypoints_list (n, 91, 3); xyxy_list: boundary box coordinates (n, 4).
-    """
-
-    """Example formats of returned objects.
-    1. keypoints_list: keypoints coordinates of landmarks and boundary.
-        - Shape: (num_people, 91, 3) => (num_people, num_targets, (x,y,score))
-    
-        - Format:
-        [
-          [                             # First Person
-              [x_0, y_0, score_0],
-              [x_1, y_1, score_1],
-              ...
-              [x_90, y_n, score_90]
-          ],
-          [                             # Second Person
-              [x_0, y_0, score_0],
-              [x_1, y_1, score_1],
-              ...
-              [x_90, y_n, score_90]
-          ],
-          ...                           # ... and so on
-        ]
-
-    2. xyxy_list: Coordinates of boundary boxes, i.e. individual person.
-        - Shape: (num_people, 4) => (xmin, ymin, xmax, ymax)
-        - Format:
-        [
-            [xmin, ymin, xmax, ymax],       # First Person
-            [xmin, ymin, xmax, ymax],       # Second Person
-            [xmin, ymin, xmax, ymax],       # Third Person
-            ...                             # ... and so on
-        ]
-    """
+    # return data_samples.get('pred_instances', None)
+    raw_predictions = data_samples.get('pred_instances', None)
 
     # Keypoint coordinates --> (num_people, 91, 3)
-    _keypoints_coords = raw_predictions.keypoints   # Shape: (num_people, 133, 2)
-    _keypoints_scores = np.expand_dims(             # Shape: (num_people, 133, 1)
+    _keypoints_coords = raw_predictions.keypoints  # Shape: (num_people, 133, 2)
+    _keypoints_scores = np.expand_dims(  # Shape: (num_people, 133, 1)
         raw_predictions.keypoint_scores,
         axis=-1)
-    _keypoints_scores_coords = np.concatenate(      # Shape: (num_people, 133, 3)
+    _keypoints_scores_coords = np.concatenate(  # Shape: (num_people, 133, 3)
         (_keypoints_coords, _keypoints_scores),
         axis=-1)
-    keypoints_list = _keypoints_scores_coords[:, list(range(0, 91)), :]     # Shape: (num_people, 91, 3)
+    keypoints_list = _keypoints_scores_coords[:, list(range(0, 91)), :]  # Shape: (num_people, 91, 3)
 
     # Boundary Boxes coordinates --> (num_people, 4)
-    xyxy_list = raw_predictions.bboxes              # Shape: (num_people, 4)
+    xyxy_list = raw_predictions.bboxes  # Shape: (num_people, 4)
+
+    """Example formats of returned objects.
+       1. keypoints_list: keypoints coordinates of landmarks and boundary.
+           - Shape: (num_people, 91, 3) => (num_people, num_targets, (x,y,score))
+
+           - Format:
+           [
+             [                             # First Person
+                 [x_0, y_0, score_0],
+                 [x_1, y_1, score_1],
+                 ...
+                 [x_90, y_n, score_90]
+             ],
+             [                             # Second Person
+                 [x_0, y_0, score_0],
+                 [x_1, y_1, score_1],
+                 ...
+                 [x_90, y_n, score_90]
+             ],
+             ...                           # ... and so on
+           ]
+
+       2. xyxy_list: Coordinates of boundary boxes, i.e. individual person.
+           - Shape: (num_people, 4) => (xmin, ymin, xmax, ymax)
+           - Format:
+           [
+               [xmin, ymin, xmax, ymax],       # First Person
+               [xmin, ymin, xmax, ymax],       # Second Person
+               [xmin, ymin, xmax, ymax],       # Third Person
+               ...                             # ... and so on
+           ]
+       """
 
     return keypoints_list, xyxy_list
+
+
+def process_multiple_images(img_dir: str,
+                            bbox_detector_model,
+                            pose_estimator_model,
+                            estim_results_visualizer=None,
+                            show_interval=0,
+                            detection_target_list=None):
+    """
+    Batch annotate multiple images within a directory.
+    :param img_dir:
+    :param bbox_detector_model:
+    :param pose_estimator_model:
+    :param estim_results_visualizer:
+    :param show_interval:
+    :param detection_target_list:
+    :return:
+    """
+
+    # Shape: (num_file=num_people, num_targets, 1+1),
+    # Not: (num_file, num_people_per_file, num_targets, 1+1),
+    # where 1+1 means angle_value and angle_score.
+    kas_multiple_images = []
+
+    for root, dirs, files in os.walk(img_dir):
+        # For multiple images, do:
+        for file in files:
+            if not file.endswith(".png"):
+                continue
+            file_path = os.path.join(root, file)
+
+            # Single Image, may be multiple person
+            keypoints_list, xyxy_list = process_one_image(
+                file_path,
+                bbox_detector_model,
+                pose_estimator_model,
+                estim_results_visualizer)
+
+            # For all the person in the image, do:
+            kas_one_image = []      # For an image, shape=(num_people_in_frame, target_num, 2)
+            for idx, (keypoints, xyxy) in enumerate(zip(keypoints_list, xyxy_list)):
+                # For a single person, get key angles and scores (target_num, 2)
+                kas_one_person = []
+                for target in detection_target_list:
+                    angle_value, angle_score = calc_keypoint_angle(keypoints, target[0], target[1])
+                    kas_one_person.append([angle_value, angle_score])
+                kas_one_image.append(kas_one_person)
+
+            kas_multiple_images.append(kas_one_image[0])
+
+    return kas_multiple_images
 
 
 def _calc_angle(
@@ -242,11 +286,20 @@ if __name__ == "__main__":
     input_type = 'image'
 
     if input_type == 'image':
-        # 1. Raw predictions
-        _pred_instances = process_one_image(cfg.input, detector, pose_estimator, visualizer)
 
-        # 2. Keypoints List (n, 91, 3), Boundary Boxes (n, 4)
-        keypoints_list, xyxy_list = get_keypoints_and_xyxy(_pred_instances)
+        kas_multiple_images = process_multiple_images(
+            "../data/train/img/using/",
+            bbox_detector_model=detector,
+            pose_estimator_model=pose_estimator,
+            estim_results_visualizer=visualizer,
+            detection_target_list=target_list)
+
+        print(kas_multiple_images)
+
+        exit()
+
+        # 1. Keypoints_list, xyxy_list
+        keypoints_list, xyxy_list = process_one_image(cfg.input, detector, pose_estimator, visualizer)
 
         # 3. For each detected person.
         _title, title_ = "\033[1;34m", "\033[00m"
