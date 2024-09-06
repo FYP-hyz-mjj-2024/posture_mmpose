@@ -34,7 +34,8 @@ def process_one_image(img,
                       bbox_detector_model,
                       pose_estimator_model,
                       estim_results_visualizer=None,
-                      show_interval=0):
+                      bbox_threshold = cfg.bbox_thr_single,
+                      show_interval=0.001):
     """
     Given an image, first use bbox detection model to retrieve object boundary boxes.
     Then, feed the sub images defined by the bbox into the pose estimation model to get key points.
@@ -55,7 +56,7 @@ def process_one_image(img,
     pred_instance = det_result.pred_instances.cpu().numpy()
     bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
     bboxes = bboxes[np.logical_and(pred_instance.labels == cfg.det_cat_id,
-                                   pred_instance.scores > cfg.bbox_thr_single)]    # Single box detection
+                                   pred_instance.scores > bbox_threshold)]    # Single box detection
     bboxes = bboxes[nms(bboxes, cfg.nms_thr), :4]
 
     # Get key points
@@ -184,6 +185,28 @@ def process_multiple_images(img_dir: str,
     return kas_multiple_images
 
 
+def video_demo(bbox_detector_model,
+               pose_estimator_model,
+               estim_results_visualizer):
+
+    cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+
+        if not ret or cv2.waitKey(5) & 0xFF == 27:
+            break
+
+        process_one_image(frame,
+                          bbox_detector_model,
+                          pose_estimator_model,
+                          estim_results_visualizer,
+                          bbox_threshold=cfg.bbox_thr)
+
+    cap.release()
+    pass
+
+
 def _calc_angle(
         edge_points: [[float, float], [float, float]],
         mid_point: [float, float]) -> float:
@@ -274,16 +297,20 @@ if __name__ == "__main__":
     4. Initialize Detection Targets
     """
     target_list = [
+        # Body Posture
         [("Body-Left_shoulder", "Body-Left_wrist"), "Body-Left_elbow"],
         [("Body-Right_shoulder", "Body-Right_wrist"), "Body-Right_elbow"],
         [("Body-Left_hip", "Body-Left_elbow"), "Body-Left_shoulder"],
         [("Body-Right_hip", "Body-Right_elbow"), "Body-Right_shoulder"],
+
+        # For 3-D Variables
+        [("Body-Left_shoulder", "Body-Right_shoulder"), "Body-Chin"]
     ]
 
     """
     5. Image Processing
     """
-    input_type = 'image'
+    input_type = 'video'
 
     if input_type == 'image':
 
@@ -322,3 +349,5 @@ if __name__ == "__main__":
                 angle_name = f"{target[0][0]}_|_{target[1]}_|_{target[0][1]}"
                 print(f"value={target_angle:4f} deg - score={target_angle_score} - {angle_name}")
             print("\n")
+    elif input_type == 'video':
+        video_demo(detector, pose_estimator, visualizer)
