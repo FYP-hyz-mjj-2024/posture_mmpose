@@ -65,3 +65,5 @@ data/test/img/
 
 # Custom files
 step01_annotate_image_mmpose/_disabled/
+model_config/configs/rtmdet_nano_320-8xb32_coco-person.py
+model_config/configs/rtmpose-t_8xb256-420e_coco-256x192.py
