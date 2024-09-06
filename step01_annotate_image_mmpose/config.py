@@ -1,7 +1,8 @@
 import torch
 
 alpha = 0.8
-bbox_thr = 0.3
+bbox_thr = 0.3              # Confidence, Higher = Fewer boxes
+bbox_thr_single = 0.85      # Confidence for detecting a single person.
 det_cat_id = 0
 det_checkpoint = '../model_config/checkpoints/rtmdet_m_8xb32-100e_coco-obj365-person-235e8209.pth'
 det_config = '../model_config/configs/rtmdet_m_640-8xb32_coco-person.py'
