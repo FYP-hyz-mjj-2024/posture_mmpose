@@ -53,9 +53,9 @@ def process_one_image(img,
     # Get boundary boxes
     det_result = inference_detector(bbox_detector_model, img)
     pred_instance = det_result.pred_instances.cpu().numpy()
-    bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]),axis=1)
+    bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
     bboxes = bboxes[np.logical_and(pred_instance.labels == cfg.det_cat_id,
-                                   pred_instance.scores > cfg.bbox_thr)]
+                                   pred_instance.scores > cfg.bbox_thr_single)]    # Single box detection
     bboxes = bboxes[nms(bboxes, cfg.nms_thr), :4]
 
     # Get key points
