@@ -186,27 +186,7 @@ def process_multiple_images(img_dir: str,
     return kas_multiple_images
 
 
-def video_demo(bbox_detector_model,
-               pose_estimator_model,
-               estim_results_visualizer):
 
-    # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
-    cap = cv2.VideoCapture(1)
-
-    while cap.isOpened():
-        ret, frame = cap.read()
-
-        if not ret or cv2.waitKey(5) & 0xFF == 27:
-            break
-
-        process_one_image(frame,
-                          bbox_detector_model,
-                          pose_estimator_model,
-                          estim_results_visualizer,
-                          bbox_threshold=cfg.bbox_thr)
-
-    cap.release()
-    pass
 
 
 def _calc_angle(
@@ -264,6 +244,29 @@ def calc_keypoint_angle(
     return _calc_angle([coord1, coord2], coordm), angle_score
 
 
+def video_demo(bbox_detector_model,
+               pose_estimator_model,
+               estim_results_visualizer):
+
+    # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
+    cap = cv2.VideoCapture(1)
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+
+        if not ret or cv2.waitKey(5) & 0xFF == 27:
+            break
+
+        process_one_image(frame,
+                          bbox_detector_model,
+                          pose_estimator_model,
+                          estim_results_visualizer,
+                          bbox_threshold=cfg.bbox_thr)
+
+    cap.release()
+    pass
+
+
 if __name__ == "__main__":
     """
     1. Build bbox detector
@@ -306,13 +309,21 @@ if __name__ == "__main__":
         [("Body-Right_hip", "Body-Right_elbow"), "Body-Right_shoulder"],
 
         # For 3-D Variables
-        [("Body-Left_shoulder", "Body-Right_shoulder"), "Body-Chin"]
+        [("Body-Left_shoulder", "Body-Right_shoulder"), "Body-Chin"],
+
+        # Head directions
+        [("Body-Chin", "Body-Right_ear"), "Body-Right_eye"],
+        [("Body-Chin", "Body-Left_ear"), "Body-Left_eye"],
+
+        # Lower Parts of body
+        [("Body-Left_wrist", "Body-Right_hip"), "Body-Left_hip"],
+        [("Body-Right_wrist", "Body-Left_hip"), "Body-Right_hip"],
     ]
 
     """
     5. Image Processing
     """
-    input_type = 'video'
+    input_type = 'image'
 
     if input_type == 'image':
 
