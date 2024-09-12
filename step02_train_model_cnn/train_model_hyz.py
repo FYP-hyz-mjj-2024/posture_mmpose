@@ -4,6 +4,9 @@ import torch.optim as optim
 import numpy as np
 from sklearn.model_selection import train_test_split
 
+# Local
+from utils.plot_report import plot_report
+
 
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -76,6 +79,7 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust
 
+    report_loss = []
     for epoch in range(num_epochs):
         model.train()
 
@@ -88,9 +92,18 @@ if __name__ == '__main__':
         loss.backward()
         optimizer.step()
 
+        # Report
+        report_loss.append(loss.item())
         if (epoch + 1) % 10 == 0:
             print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}")
 
-
+    plot_report(
+        [report_loss],
+        ['Loss'],
+        {
+            'title': 'Training Loss',
+            'x_name': 'Epoch',
+            'y_name': 'Loss'
+        })
 
 
