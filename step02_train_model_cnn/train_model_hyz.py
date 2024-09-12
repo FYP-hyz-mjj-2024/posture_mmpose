@@ -73,11 +73,11 @@ if __name__ == '__main__':
     input_size = X_train.shape[1]
     hidden_size = 100
     learning_rate = 0.01
-    num_epochs = 1000
+    num_epochs = 100
 
     model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2)
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
 
     report_loss = []
     for epoch in range(num_epochs):
