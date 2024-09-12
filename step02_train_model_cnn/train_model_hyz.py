@@ -11,7 +11,7 @@ from utils.plot_report import plot_report
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(MLP, self).__init__()
-        self.relu = nn.LogSigmoid()
+        self.relu = nn.ReLU()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, hidden_size)
@@ -105,5 +105,19 @@ if __name__ == '__main__':
             'x_name': 'Epoch',
             'y_name': 'Loss'
         })
+
+    # Evaluate the model
+    model.eval()
+    with torch.no_grad():
+        train_outputs = model(X_train_tensor)
+        train_predicted = torch.argmax(train_outputs, dim=1)
+        train_accuracy = (train_predicted == y_train_tensor).float().mean()
+
+        test_outputs = model(X_test_tensor)
+        test_predicted = torch.argmax(test_outputs, dim=1)
+        test_accuracy = (test_predicted == y_test_tensor).float().mean()
+
+    print(f"Train Accuracy: {train_accuracy:.4f}")
+    print(f"Test Accuracy: {test_accuracy:.4f}")
 
 
