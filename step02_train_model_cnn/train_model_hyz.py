@@ -70,17 +70,17 @@ if __name__ == '__main__':
     input_size = X_train.shape[1]
     hidden_size = 100
     learning_rate = 0.01
-    num_epochs = 100
+    num_epochs = 1000
 
     model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2)
-    criterion = nn.BCELoss()    # Binary cross entropy loss
+    criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust
 
     for epoch in range(num_epochs):
         model.train()
 
         # Forward pass
-        logits = model(X_train_tensor)
+        logits = model(X_train_tensor)      # Shape=(num_people, 2), where 2 is the two probs of "using" & "not using"
         loss = criterion(logits, y_train_tensor)
 
         # Backward pass, optimizer
