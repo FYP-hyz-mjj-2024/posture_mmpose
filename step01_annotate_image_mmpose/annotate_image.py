@@ -375,31 +375,3 @@ if __name__ == "__main__":
 
     elif input_type == 'video':
         video_demo(detector, pose_estimator, visualizer)
-
-
-# exit()
-#
-# # 1. Keypoints_list, xyxy_list
-# keypoints_list, xyxy_list = process_one_image(cfg.input, detector, pose_estimator, visualizer)
-#
-# # 3. For each detected person.
-# _title, title_ = "\033[1;34m", "\033[00m"
-# for idx, (keypoints, xyxy) in enumerate(zip(keypoints_list, xyxy_list)):
-#     # 3.1 Keypoints
-#     print(f"{_title}No.{idx+1}.\n"
-#           f"Key points:{title_}")
-#     for keypoint_idx, keypoint in enumerate(keypoints):
-#         print(f"({round(keypoint[0],3):.3f}, {round(keypoint[1],3):.3f}), score={round(keypoint[2],4):.4f} - "
-#               f"{keypoint_names[keypoint_idx]}")
-#
-#     # 3.2 Boundaries
-#     print(f"{_title}xyxy:{title_}\n"
-#           f"{xyxy}")
-#
-#     # 3.3 Key Angles
-#     print(f"{_title}Key Angles (Display only to 4 digits after .):{title_}")
-#     for target in target_list:
-#         target_angle, target_angle_score = calc_keypoint_angle(keypoints, target[0], target[1])
-#         angle_name = f"{target[0][0]}_|_{target[1]}_|_{target[0][1]}"
-#         print(f"value={target_angle:4f} deg - score={target_angle_score} - {angle_name}")
-#     print("\n")
