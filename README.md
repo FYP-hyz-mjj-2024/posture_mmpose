@@ -69,6 +69,16 @@ Install MM related packages:
 mim install "mmcv==2.1.0" "mmdet==3.2.0" "mmengine==0.10.4" "mmpose==1.3.2"
 ```
 
+If you encounter an error while installing `mmcv` like this:
+```shell
+error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/
+```
+You are missing a C++ requirement. Please download C++ build tools using the given link, and configure a C++ environment.
+Please inspect this link for more details about C++ environment configuration: https://blog.csdn.net/xiao_yan_/article/details/119538602.
+
+This is highly-likely a windows-only problem, considering macOS has its own gcc. If you use a mac and also received
+similar errors, please don't hesitate to propose an issue.
+
 #### 2.3 Checkpoint & Configuration Files
 &emsp; Checkpoint files are essential to this project, yet they are too big to upload to github. 
 There are two kinds of files: Checkpoint files and config files for both boundary detection and pose estimation.
