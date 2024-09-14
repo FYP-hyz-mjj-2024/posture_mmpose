@@ -3,6 +3,8 @@ import math
 import cv2
 import json_tricks as json
 import mmcv
+from typing import List
+
 import config as cfg
 import mmengine
 import logging
@@ -28,6 +30,61 @@ except (ImportError, ModuleNotFoundError):
 from keypoint_info import keypoint_indexes, keypoint_names
 
 register_all_modules()
+
+
+def _calc_angle(
+        edge_points: [[float, float], [float, float]],
+        mid_point: [float, float]) -> float:
+    """
+    Calculate the angle based on the given edge points and middle point.
+    :param edge_points: A tuple of two coordinates of the edge points of the angle.
+    :param mid_point: The coordinate of the middle point of the angle.
+    :return: The degree value of the angle.
+    """
+    # Left, Right
+    p1, p2 = [np.array(pt) for pt in edge_points]
+
+    # Mid
+    m = np.array(mid_point)
+
+    # Angle
+    radians = np.arctan2(p2[1] - m[1], p2[0] - m[0]) - np.arctan2(p1[1] - m[1], p1[0] - m[0])
+    angle = np.abs(radians * 180.0 / np.pi)
+    if angle > 180.0:
+        angle = 360 - angle
+
+    return angle
+
+
+def calc_keypoint_angle(
+        keypoints_one_person,
+        edge_keypoints_names: [str, str],
+        mid_keypoint_name: str) -> [float, float]:
+    """
+    Calculate the angle using the given edge pionts and middle point by their names.
+    :param keypoints_one_person: The set of keypoints of a single person. (91, 3)
+    :param edge_keypoints_names: A tuple of the names of the two edge keypoints.
+    :param mid_keypoint_name: The name of the middle keypoint.
+    :return: The targeted angle.
+    """
+
+    # Names
+    n1, n2 = edge_keypoints_names
+    nm = mid_keypoint_name
+
+    # Coordinates
+    # Name --> [keypoint_indexes] --> index_number --> [keypoints_one_person] --> (x,y,score) --> [:2] --> (x,y)
+    coord1, coord2 = keypoints_one_person[keypoint_indexes[n1]][:2], keypoints_one_person[keypoint_indexes[n2]][:2]
+    coordm = keypoints_one_person[keypoint_indexes[nm]][:2]
+
+    # Score of the angle
+    s1, s2 = keypoints_one_person[keypoint_indexes[n1]][2], keypoints_one_person[keypoint_indexes[n2]][2]
+    sm = keypoints_one_person[keypoint_indexes[nm]][2]
+
+    # Angle Score: Geometric Mean
+    angle_score = math.exp((1/3) * (math.log(s1) + math.log(s2) + math.log(sm)))
+
+    return _calc_angle([coord1, coord2], coordm), angle_score
 
 
 def process_one_image(img,
@@ -186,6 +243,32 @@ def process_multiple_images(img_dir: str,
     return kas_multiple_images
 
 
+def post_process_feature(key_angle_and_score_multiple_images: List[List[list]],
+                         save_path=None) -> np.ndarray:
+    """
+    Re-formalize the key_angles_and_scores for each person. Flatten each person into a single-layered vector, in the
+    form of [angle, score, angle, score, ...].
+    :param key_angle_and_score_multiple_images: A feature matrix of shape (num_people, num_targets, 2) from
+           process_multiple_images.
+    :param save_path: Path to save the .npy file. This function won't save the matrix if the path is not specified.
+    :return: The formalized numpy feature matrix with shape (num_people, 2*num_targets).
+    """
+    features = []
+    for kas_one_people in key_angle_and_score_multiple_images:
+        vector_one_people = []
+        for angle_and_score in kas_one_people:
+            [vector_one_people.append(num) for num in angle_and_score]
+        features.append(vector_one_people)
+
+    # Shape: (num_people, num_features)
+    feature_matrix = np.array(features)
+
+    if save_path is not None:
+        np.save(save_path, feature_matrix)
+
+    return feature_matrix
+
+
 def video_demo(bbox_detector_model,
                pose_estimator_model,
                estim_results_visualizer):
@@ -207,61 +290,6 @@ def video_demo(bbox_detector_model,
 
     cap.release()
     pass
-
-
-def _calc_angle(
-        edge_points: [[float, float], [float, float]],
-        mid_point: [float, float]) -> float:
-    """
-    Calculate the angle based on the given edge points and middle point.
-    :param edge_points: A tuple of two coordinates of the edge points of the angle.
-    :param mid_point: The coordinate of the middle point of the angle.
-    :return: The degree value of the angle.
-    """
-    # Left, Right
-    p1, p2 = [np.array(pt) for pt in edge_points]
-
-    # Mid
-    m = np.array(mid_point)
-
-    # Angle
-    radians = np.arctan2(p2[1] - m[1], p2[0] - m[0]) - np.arctan2(p1[1] - m[1], p1[0] - m[0])
-    angle = np.abs(radians * 180.0 / np.pi)
-    if angle > 180.0:
-        angle = 360 - angle
-
-    return angle
-
-
-def calc_keypoint_angle(
-        keypoints_one_person,
-        edge_keypoints_names: [str, str],
-        mid_keypoint_name: str) -> [float, float]:
-    """
-    Calculate the angle using the given edge pionts and middle point by their names.
-    :param keypoints_one_person: The set of keypoints of a single person. (91, 3)
-    :param edge_keypoints_names: A tuple of the names of the two edge keypoints.
-    :param mid_keypoint_name: The name of the middle keypoint.
-    :return: The targeted angle.
-    """
-
-    # Names
-    n1, n2 = edge_keypoints_names
-    nm = mid_keypoint_name
-
-    # Coordinates
-    # Name --> [keypoint_indexes] --> index_number --> [keypoints_one_person] --> (x,y,score) --> [:2] --> (x,y)
-    coord1, coord2 = keypoints_one_person[keypoint_indexes[n1]][:2], keypoints_one_person[keypoint_indexes[n2]][:2]
-    coordm = keypoints_one_person[keypoint_indexes[nm]][:2]
-
-    # Score of the angle
-    s1, s2 = keypoints_one_person[keypoint_indexes[n1]][2], keypoints_one_person[keypoint_indexes[n2]][2]
-    sm = keypoints_one_person[keypoint_indexes[nm]][2]
-
-    # Angle Score: Geometric Mean
-    angle_score = math.exp((1/3) * (math.log(s1) + math.log(s2) + math.log(sm)))
-
-    return _calc_angle([coord1, coord2], coordm), angle_score
 
 
 if __name__ == "__main__":
@@ -306,50 +334,44 @@ if __name__ == "__main__":
         [("Body-Right_hip", "Body-Right_elbow"), "Body-Right_shoulder"],
 
         # For 3-D Variables
-        [("Body-Left_shoulder", "Body-Right_shoulder"), "Body-Chin"]
+        [("Body-Left_shoulder", "Body-Right_shoulder"), "Body-Chin"],
+
+        # Head directions
+        [("Body-Chin", "Body-Right_ear"), "Body-Right_eye"],
+        [("Body-Chin", "Body-Left_ear"), "Body-Left_eye"],
+
+        # Lower Parts of body
+        [("Body-Left_wrist", "Body-Right_hip"), "Body-Left_hip"],
+        [("Body-Right_wrist", "Body-Left_hip"), "Body-Right_hip"],
     ]
 
     """
     5. Image Processing
     """
-    input_type = 'video'
+    input_type = 'image'
 
     if input_type == 'image':
 
-        kas_multiple_images = process_multiple_images(
+        # Shape=(num_people, num_targets, 2)
+        kas_multiple_images_using = process_multiple_images(
             "../data/train/img/using/",
             bbox_detector_model=detector,
             pose_estimator_model=pose_estimator,
             estim_results_visualizer=visualizer,
             detection_target_list=target_list)
 
-        print(kas_multiple_images)
+        kas_multiple_images_not_using = process_multiple_images(
+            "../data/train/img/not_using/",
+            bbox_detector_model=detector,
+            pose_estimator_model=pose_estimator,
+            estim_results_visualizer=visualizer,
+            detection_target_list=target_list)
 
-        exit()
+        # Shape: (num_people, num_features)
+        feature_matrix_using = post_process_feature(kas_multiple_images_using,
+                                                    save_path="../data/train/using.npy")
+        feature_matrix_not_using = post_process_feature(kas_multiple_images_using,
+                                                        save_path="../data/train/not_using.npy")
 
-        # 1. Keypoints_list, xyxy_list
-        keypoints_list, xyxy_list = process_one_image(cfg.input, detector, pose_estimator, visualizer)
-
-        # 3. For each detected person.
-        _title, title_ = "\033[1;34m", "\033[00m"
-        for idx, (keypoints, xyxy) in enumerate(zip(keypoints_list, xyxy_list)):
-            # 3.1 Keypoints
-            print(f"{_title}No.{idx+1}.\n"
-                  f"Key points:{title_}")
-            for keypoint_idx, keypoint in enumerate(keypoints):
-                print(f"({round(keypoint[0],3):.3f}, {round(keypoint[1],3):.3f}), score={round(keypoint[2],4):.4f} - "
-                      f"{keypoint_names[keypoint_idx]}")
-
-            # 3.2 Boundaries
-            print(f"{_title}xyxy:{title_}\n"
-                  f"{xyxy}")
-
-            # 3.3 Key Angles
-            print(f"{_title}Key Angles (Display only to 4 digits after .):{title_}")
-            for target in target_list:
-                target_angle, target_angle_score = calc_keypoint_angle(keypoints, target[0], target[1])
-                angle_name = f"{target[0][0]}_|_{target[1]}_|_{target[0][1]}"
-                print(f"value={target_angle:4f} deg - score={target_angle_score} - {angle_name}")
-            print("\n")
     elif input_type == 'video':
         video_demo(detector, pose_estimator, visualizer)
