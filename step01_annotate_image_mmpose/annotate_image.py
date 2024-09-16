@@ -33,12 +33,12 @@ from utils.calculations import calc_keypoint_angle
 register_all_modules()
 
 
-def process_one_image(img,
-                      bbox_detector_model,
-                      pose_estimator_model,
-                      estim_results_visualizer=None,
-                      bbox_threshold = cfg.bbox_thr_single,
-                      show_interval=0.001):
+def processOneImage(img,
+                    bbox_detector_model,
+                    pose_estimator_model,
+                    estim_results_visualizer=None,
+                    bbox_threshold = cfg.bbox_thr_single,
+                    show_interval=0.001):
     """
     Given an image, first use bbox detection model to retrieve object boundary boxes.
     Then, feed the sub images defined by the bbox into the pose estimation model to get key points.
@@ -163,12 +163,12 @@ def getOneFeatureRow(keypoints_list: np.ndarray,
     return kas_one_person
 
 
-def process_multiple_images(img_dir: str,
-                            bbox_detector_model,
-                            pose_estimator_model,
-                            estim_results_visualizer=None,
-                            show_interval=0,
-                            detection_target_list=None)->np.ndarray:
+def processMultipleImages(img_dir: str,
+                          bbox_detector_model,
+                          pose_estimator_model,
+                          estim_results_visualizer=None,
+                          show_interval=0,
+                          detection_target_list=None)->np.ndarray:
     """
     Batch annotate multiple images within a directory.
     :param img_dir:
@@ -192,7 +192,7 @@ def process_multiple_images(img_dir: str,
             file_path = os.path.join(root, file)
 
             # Single Image, may be multiple person
-            keypoints_list, xyxy_list = process_one_image(
+            keypoints_list, xyxy_list = processOneImage(
                 file_path,
                 bbox_detector_model,
                 pose_estimator_model,
@@ -222,9 +222,9 @@ def saveFeatureMatToNPY(mat: np.ndarray, save_path: str):
     np.save(save_path, feature_matrix)
 
 
-def video_demo(bbox_detector_model,
-               pose_estimator_model,
-               estim_results_visualizer):
+def videoDemo(bbox_detector_model,
+              pose_estimator_model,
+              estim_results_visualizer):
 
     # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
     cap = cv2.VideoCapture(1)
@@ -235,11 +235,11 @@ def video_demo(bbox_detector_model,
         if not ret or cv2.waitKey(5) & 0xFF == 27:
             break
 
-        process_one_image(frame,
-                          bbox_detector_model,
-                          pose_estimator_model,
-                          estim_results_visualizer,
-                          bbox_threshold=cfg.bbox_thr)
+        processOneImage(frame,
+                        bbox_detector_model,
+                        pose_estimator_model,
+                        estim_results_visualizer,
+                        bbox_threshold=cfg.bbox_thr)
 
     cap.release()
     pass
@@ -306,14 +306,14 @@ if __name__ == "__main__":
     if input_type == 'image':
 
         # Shape=(num_people, num_targets, 2)
-        kas_multiple_images_using = process_multiple_images(
+        kas_multiple_images_using = processMultipleImages(
             "../data/train/img/using/",
             bbox_detector_model=detector,
             pose_estimator_model=pose_estimator,
             estim_results_visualizer=visualizer,
             detection_target_list=target_list)
 
-        kas_multiple_images_not_using = process_multiple_images(
+        kas_multiple_images_not_using = processMultipleImages(
             "../data/train/img/not_using/",
             bbox_detector_model=detector,
             pose_estimator_model=pose_estimator,
@@ -325,4 +325,4 @@ if __name__ == "__main__":
         saveFeatureMatToNPY(kas_multiple_images_using, save_path="../data/train/not_using.npy")
 
     elif input_type == 'video':
-        video_demo(detector, pose_estimator, visualizer)
+        videoDemo(detector, pose_estimator, visualizer)
