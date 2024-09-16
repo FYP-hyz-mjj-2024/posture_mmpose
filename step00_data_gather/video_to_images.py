@@ -29,8 +29,21 @@ def disassembleOneVideo(video_path: str, images_dir: str = None, max_frames: int
 
     cap.release()
 
-# def disassemble_multiple_videos(video_dir:str, images_dir:str, max_frames_each:List[int]) -> None:
-#     pass
+
+def disassembleMultipleVideos(video_dir: str, images_dir: str, max_frames_each=None) -> None:
+    """
+    Disassemble multiple images.
+    :param video_dir: Directory that stores multiple videos.
+    :param images_dir: Directory to store multiple image frames.
+    :param max_frames_each: For each video, the maximum frame that can be stored.
+    """
+    for root, dirs, files in os.walk(video_dir):
+        for file in files:
+            if not file.endswith(".mp4"):
+                continue
+            disassembleOneVideo(video_path=os.path.join(root, file),
+                                images_dir=images_dir,
+                                max_frames=max_frames_each)
 
 
 if __name__ == '__main__':
