@@ -307,22 +307,22 @@ if __name__ == "__main__":
 
         # Shape=(num_people, num_targets, 2)
         kas_multiple_images_using = processMultipleImages(
-            "../data/train/img_from_video/",
+            "../data/train/img_from_video/using",
             bbox_detector_model=detector,
             pose_estimator_model=pose_estimator,
             estim_results_visualizer=visualizer,
             detection_target_list=target_list)
 
-        # kas_multiple_images_not_using = processMultipleImages(
-        #     "../data/train/img/not_using/",
-        #     bbox_detector_model=detector,
-        #     pose_estimator_model=pose_estimator,
-        #     estim_results_visualizer=visualizer,
-        #     detection_target_list=target_list)
+        kas_multiple_images_not_using = processMultipleImages(
+            "../data/train/img_from_video/not_using",
+            bbox_detector_model=detector,
+            pose_estimator_model=pose_estimator,
+            estim_results_visualizer=visualizer,
+            detection_target_list=target_list)
 
         # Shape: (num_people, num_features)
         saveFeatureMatToNPY(kas_multiple_images_using, save_path="../data/train/using.npy")
-        # saveFeatureMatToNPY(kas_multiple_images_using, save_path="../data/train/not_using.npy")
+        saveFeatureMatToNPY(kas_multiple_images_not_using, save_path="../data/train/not_using.npy")
 
     elif input_type == 'video':
         videoDemo(detector, pose_estimator, visualizer)

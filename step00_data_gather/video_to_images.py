@@ -48,9 +48,12 @@ def disassembleMultipleVideos(video_dir: str, images_dir: str, max_frames_each=N
 
 
 if __name__ == '__main__':
-    disassembleOneVideo(video_path="../data/blob/videos/240916_1616_mjj.mp4",
+    disassembleOneVideo(video_path="../data/blob/videos/using/240916_1616_mjj.mp4",
                         images_dir="../data/train/img_from_video/using",
                         max_frames=1000)
-    disassembleOneVideo(video_path="../data/blob/videos/240918_1436_hyz.mp4",
+    disassembleOneVideo(video_path="../data/blob/videos/using/240918_1436_hyz.mp4",
                         images_dir="../data/train/img_from_video/using",
+                        max_frames=1000)
+    disassembleOneVideo(video_path="../data/blob/videos/not_using/240918_1524_mjj.mp4",
+                        images_dir="../data/train/img_from_video/not_using",
                         max_frames=1000)
