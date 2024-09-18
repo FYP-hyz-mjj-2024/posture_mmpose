@@ -307,7 +307,7 @@ if __name__ == "__main__":
 
         # Shape=(num_people, num_targets, 2)
         kas_multiple_images_using = processMultipleImages(
-            "../data/demo/images_from_video/",
+            "../data/train/img_from_video/",
             bbox_detector_model=detector,
             pose_estimator_model=pose_estimator,
             estim_results_visualizer=visualizer,
