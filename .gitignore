@@ -59,7 +59,7 @@ Follow
 # Raw training image data
 data/train/img/
 data/test/img/
-data/train/img_from_video
+data/train/img_from_video/*
 
 # MMPose config files
 *.pth
@@ -68,4 +68,4 @@ data/train/img_from_video
 step01_annotate_image_mmpose/_disabled/
 model_config/configs/rtmdet_nano_320-8xb32_coco-person.py
 model_config/configs/rtmpose-t_8xb256-420e_coco-256x192.py
-data/blob
+data/blob/videos/*
