@@ -1,3 +1,9 @@
+# A Posture Analysis Model to Detect Cell-Phone Usages
+
+# Personnel
+- Group Members: Mai Jiajun, Huang Yanzhen
+- Supervisor: Prof. Bob Yibo Zhang
+
 ## Configure Project
 
 ### Step 0. Conda
