@@ -12,22 +12,24 @@ def disassembleOneVideo(video_path: str, images_dir: str = None, max_frames: int
     :return:
     """
     cap = cv2.VideoCapture(video_path)
-    frame_idx = 0
-    while cap.isOpened() and (max_frames is None or frame_idx < max_frames):
+
+    frames = []
+
+    while cap.isOpened() and (max_frames is None or len(frames) < max_frames):
         ret, frame = cap.read()
         if cv2.waitKey(1) == 27:
             break
 
-        if not ret:
+        if not ret or (images_dir is None):
             continue
 
-        if images_dir:
-            cv2.imwrite(os.path.join(images_dir, str(frame_idx) + "_" + str(time.time()) + ".jpg"), frame)
+        frames.append(frame)
 
         cv2.imshow("Disassembling Video", frame)
-        frame_idx += 1
-
     cap.release()
+
+    for idx, frame in enumerate(frames):
+        cv2.imwrite(os.path.join(images_dir, str(idx) + "_" + str(time.time()) + ".jpg"), frame)
 
 
 def disassembleMultipleVideos(video_dir: str, images_dir: str, max_frames_each=None) -> None:
@@ -47,6 +49,6 @@ def disassembleMultipleVideos(video_dir: str, images_dir: str, max_frames_each=N
 
 
 if __name__ == '__main__':
-    disassembleOneVideo(video_path="../data/demo/demo_video.mp4",
-                        images_dir="../data/demo/images_from_video",
+    disassembleOneVideo(video_path="../data/blob/videos/240916_1616_mjj.mp4",
+                        images_dir="../data/train/img_from_video/using",
                         max_frames=1000)
