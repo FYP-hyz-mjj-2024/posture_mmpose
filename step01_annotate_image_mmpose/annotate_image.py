@@ -28,71 +28,17 @@ except (ImportError, ModuleNotFoundError):
 
 # Local
 from keypoint_info import keypoint_indexes, keypoint_names
+from utils.calculations import calc_keypoint_angle
 
 register_all_modules()
 
 
-def _calc_angle(
-        edge_points: [[float, float], [float, float]],
-        mid_point: [float, float]) -> float:
-    """
-    Calculate the angle based on the given edge points and middle point.
-    :param edge_points: A tuple of two coordinates of the edge points of the angle.
-    :param mid_point: The coordinate of the middle point of the angle.
-    :return: The degree value of the angle.
-    """
-    # Left, Right
-    p1, p2 = [np.array(pt) for pt in edge_points]
-
-    # Mid
-    m = np.array(mid_point)
-
-    # Angle
-    radians = np.arctan2(p2[1] - m[1], p2[0] - m[0]) - np.arctan2(p1[1] - m[1], p1[0] - m[0])
-    angle = np.abs(radians * 180.0 / np.pi)
-    if angle > 180.0:
-        angle = 360 - angle
-
-    return angle
-
-
-def calc_keypoint_angle(
-        keypoints_one_person,
-        edge_keypoints_names: [str, str],
-        mid_keypoint_name: str) -> [float, float]:
-    """
-    Calculate the angle using the given edge pionts and middle point by their names.
-    :param keypoints_one_person: The set of keypoints of a single person. (91, 3)
-    :param edge_keypoints_names: A tuple of the names of the two edge keypoints.
-    :param mid_keypoint_name: The name of the middle keypoint.
-    :return: The targeted angle.
-    """
-
-    # Names
-    n1, n2 = edge_keypoints_names
-    nm = mid_keypoint_name
-
-    # Coordinates
-    # Name --> [keypoint_indexes] --> index_number --> [keypoints_one_person] --> (x,y,score) --> [:2] --> (x,y)
-    coord1, coord2 = keypoints_one_person[keypoint_indexes[n1]][:2], keypoints_one_person[keypoint_indexes[n2]][:2]
-    coordm = keypoints_one_person[keypoint_indexes[nm]][:2]
-
-    # Score of the angle
-    s1, s2 = keypoints_one_person[keypoint_indexes[n1]][2], keypoints_one_person[keypoint_indexes[n2]][2]
-    sm = keypoints_one_person[keypoint_indexes[nm]][2]
-
-    # Angle Score: Geometric Mean
-    angle_score = math.exp((1/3) * (math.log(s1) + math.log(s2) + math.log(sm)))
-
-    return _calc_angle([coord1, coord2], coordm), angle_score
-
-
-def process_one_image(img,
-                      bbox_detector_model,
-                      pose_estimator_model,
-                      estim_results_visualizer=None,
-                      bbox_threshold = cfg.bbox_thr_single,
-                      show_interval=0.001):
+def processOneImage(img,
+                    bbox_detector_model,
+                    pose_estimator_model,
+                    estim_results_visualizer=None,
+                    bbox_threshold = cfg.bbox_thr_single,
+                    show_interval=0.001):
     """
     Given an image, first use bbox detection model to retrieve object boundary boxes.
     Then, feed the sub images defined by the bbox into the pose estimation model to get key points.
@@ -192,12 +138,37 @@ def process_one_image(img,
     return keypoints_list, xyxy_list
 
 
-def process_multiple_images(img_dir: str,
-                            bbox_detector_model,
-                            pose_estimator_model,
-                            estim_results_visualizer=None,
-                            show_interval=0,
-                            detection_target_list=None):
+def getOneFeatureRow(keypoints_list: np.ndarray,
+                     detection_target_list: List) -> List:
+    """
+    Post process the raw features received from process_one_image.
+    From the keypoints list, extract the most confident person in the image. Then, convert the
+    keypoints list of this person into a flattened feature vector.
+    :param keypoints_list: A list of keypoints set of multiple people, gathered from the image.
+    :param detection_target_list: The list of detection targets.
+    :return: A flattened array of feature values.
+    """
+
+    # Only get the person with the highest detection confidence.
+    keypoints = keypoints_list[0]
+    kas_one_person = []
+
+    # From keypoints list, get angle-score vector.
+    for target in detection_target_list:
+        angle_value, angle_score = calc_keypoint_angle(keypoints, keypoint_indexes, target[0], target[1])
+        kas_one_person.append(angle_value)
+        kas_one_person.append(angle_score)
+
+    # Shape=(2m)
+    return kas_one_person
+
+
+def processMultipleImages(img_dir: str,
+                          bbox_detector_model,
+                          pose_estimator_model,
+                          estim_results_visualizer=None,
+                          show_interval=0,
+                          detection_target_list=None)->np.ndarray:
     """
     Batch annotate multiple images within a directory.
     :param img_dir:
@@ -209,69 +180,51 @@ def process_multiple_images(img_dir: str,
     :return:
     """
 
-    # Shape: (num_file=num_people, num_targets, 1+1),
-    # Not: (num_file, num_people_per_file, num_targets, 1+1),
-    # where 1+1 means angle_value and angle_score.
+    # Shape: (num_file=num_people, num_features)
+    # num_features = num_angles + num_scores = 2 * num_angles = 2 * num_scores
     kas_multiple_images = []
 
     for root, dirs, files in os.walk(img_dir):
         # For multiple images, do:
         for file in files:
-            if not file.endswith(".png"):
+            if not file.endswith(".jpg"):
                 continue
             file_path = os.path.join(root, file)
 
             # Single Image, may be multiple person
-            keypoints_list, xyxy_list = process_one_image(
+            keypoints_list, xyxy_list = processOneImage(
                 file_path,
                 bbox_detector_model,
                 pose_estimator_model,
                 estim_results_visualizer)
 
-            # For all the person in the image, do:
-            kas_one_image = []      # For an image, shape=(num_people_in_frame, target_num, 2)
-            for idx, (keypoints, xyxy) in enumerate(zip(keypoints_list, xyxy_list)):
-                # For a single person, get key angles and scores (target_num, 2)
-                kas_one_person = []
-                for target in detection_target_list:
-                    angle_value, angle_score = calc_keypoint_angle(keypoints, target[0], target[1])
-                    kas_one_person.append([angle_value, angle_score])
-                kas_one_image.append(kas_one_person)
+            # A flattened angle-score vector of a single person.
+            one_row = getOneFeatureRow(keypoints_list, detection_target_list)
 
-            kas_multiple_images.append(kas_one_image[0])
-
-    return kas_multiple_images
-
-
-def post_process_feature(key_angle_and_score_multiple_images: List[List[list]],
-                         save_path=None) -> np.ndarray:
-    """
-    Re-formalize the key_angles_and_scores for each person. Flatten each person into a single-layered vector, in the
-    form of [angle, score, angle, score, ...].
-    :param key_angle_and_score_multiple_images: A feature matrix of shape (num_people, num_targets, 2) from
-           process_multiple_images.
-    :param save_path: Path to save the .npy file. This function won't save the matrix if the path is not specified.
-    :return: The formalized numpy feature matrix with shape (num_people, 2*num_targets).
-    """
-    features = []
-    for kas_one_people in key_angle_and_score_multiple_images:
-        vector_one_people = []
-        for angle_and_score in kas_one_people:
-            [vector_one_people.append(num) for num in angle_and_score]
-        features.append(vector_one_people)
+            # Collect this person.
+            kas_multiple_images.append(one_row)
 
     # Shape: (num_people, num_features)
-    feature_matrix = np.array(features)
-
-    if save_path is not None:
-        np.save(save_path, feature_matrix)
+    feature_matrix = np.array(kas_multiple_images)
 
     return feature_matrix
 
 
-def video_demo(bbox_detector_model,
-               pose_estimator_model,
-               estim_results_visualizer):
+def saveFeatureMatToNPY(mat: np.ndarray, save_path: str):
+    """
+    Save the feature matrix into a npy file, under the given path.
+    :param mat:
+    :param save_path:
+    :return:
+    """
+    # Shape: (num_people, num_features)
+    feature_matrix = np.array(mat)
+    np.save(save_path, feature_matrix)
+
+
+def videoDemo(bbox_detector_model,
+              pose_estimator_model,
+              estim_results_visualizer):
 
     # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
     cap = cv2.VideoCapture(1)
@@ -282,11 +235,11 @@ def video_demo(bbox_detector_model,
         if not ret or cv2.waitKey(5) & 0xFF == 27:
             break
 
-        process_one_image(frame,
-                          bbox_detector_model,
-                          pose_estimator_model,
-                          estim_results_visualizer,
-                          bbox_threshold=cfg.bbox_thr)
+        processOneImage(frame,
+                        bbox_detector_model,
+                        pose_estimator_model,
+                        estim_results_visualizer,
+                        bbox_threshold=cfg.bbox_thr)
 
     cap.release()
     pass
@@ -296,15 +249,15 @@ if __name__ == "__main__":
     """
     1. Build bbox detector
     """
-    detector = init_detector(cfg.det_config, cfg.det_checkpoint, device=cfg.device)
+    detector = init_detector(cfg.det_config_train, cfg.det_checkpoint_train, device=cfg.device)
     detector.cfg = adapt_mmdet_pipeline(detector.cfg)
 
     """
     2. Build pose estimator
     """
     pose_estimator = init_pose_estimator(
-        cfg.pose_config,
-        cfg.pose_checkpoint,
+        cfg.pose_config_train,
+        cfg.pose_checkpoint_train,
         device=cfg.device,
         cfg_options=dict(
             model=dict(
@@ -353,25 +306,23 @@ if __name__ == "__main__":
     if input_type == 'image':
 
         # Shape=(num_people, num_targets, 2)
-        kas_multiple_images_using = process_multiple_images(
-            "../data/train/img/using/",
+        kas_multiple_images_using = processMultipleImages(
+            "../data/train/img_from_video/using",
             bbox_detector_model=detector,
             pose_estimator_model=pose_estimator,
             estim_results_visualizer=visualizer,
             detection_target_list=target_list)
 
-        kas_multiple_images_not_using = process_multiple_images(
-            "../data/train/img/not_using/",
+        kas_multiple_images_not_using = processMultipleImages(
+            "../data/train/img_from_video/not_using",
             bbox_detector_model=detector,
             pose_estimator_model=pose_estimator,
             estim_results_visualizer=visualizer,
             detection_target_list=target_list)
 
         # Shape: (num_people, num_features)
-        feature_matrix_using = post_process_feature(kas_multiple_images_using,
-                                                    save_path="../data/train/using.npy")
-        feature_matrix_not_using = post_process_feature(kas_multiple_images_using,
-                                                        save_path="../data/train/not_using.npy")
+        saveFeatureMatToNPY(kas_multiple_images_using, save_path="../data/train/using.npy")
+        saveFeatureMatToNPY(kas_multiple_images_not_using, save_path="../data/train/not_using.npy")
 
     elif input_type == 'video':
-        video_demo(detector, pose_estimator, visualizer)
+        videoDemo(detector, pose_estimator, visualizer)

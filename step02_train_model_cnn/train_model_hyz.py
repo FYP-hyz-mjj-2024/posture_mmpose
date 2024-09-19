@@ -28,7 +28,7 @@ class MLP(nn.Module):
         x = self.relu(x)
 
         x = self.fc4(x)
-        return x
+        return torch.sigmoid(x)
 
 
 if __name__ == '__main__':
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     """
     input_size = X_train.shape[1]
     hidden_size = 100
-    learning_rate = 0.01
+    learning_rate = 0.001
     num_epochs = 100
 
     model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2)
