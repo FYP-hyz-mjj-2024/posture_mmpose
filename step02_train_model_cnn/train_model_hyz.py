@@ -72,11 +72,11 @@ if __name__ == '__main__':
     """
     input_size = X_train.shape[1]
     hidden_size = 100
-    learning_rate = 0.0001
+    learning_rate = 0.001
     num_epochs = 100
 
-    model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=1)
-    criterion = nn.BCELoss()    # Binary cross entropy loss
+    model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2)
+    criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
 
     report_loss = []
@@ -84,8 +84,8 @@ if __name__ == '__main__':
         model.train()
 
         # Forward pass
-        output = model(X_train_tensor)      # Shape=(num_people, 2), where 2 is the two probs of "using" & "not using"
-        loss = criterion(output, y_train_tensor)
+        logits = model(X_train_tensor)      # Shape=(num_people, 2), where 2 is the two probs of "using" & "not using"
+        loss = criterion(logits, y_train_tensor)
 
         # Backward pass, optimizer
         optimizer.zero_grad()
@@ -119,3 +119,5 @@ if __name__ == '__main__':
 
     print(f"Train Accuracy: {train_accuracy:.4f}")
     print(f"Test Accuracy: {test_accuracy:.4f}")
+
+
