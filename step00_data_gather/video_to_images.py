@@ -42,18 +42,16 @@ def disassembleMultipleVideos(video_dir: str, images_dir: str, max_frames_each=N
         for file in files:
             if not file.endswith(".mp4"):
                 continue
+
             disassembleOneVideo(video_path=os.path.join(root, file),
                                 images_dir=images_dir,
                                 max_frames=max_frames_each)
 
 
 if __name__ == '__main__':
-    disassembleOneVideo(video_path="../data/blob/videos/using/240916_1616_mjj.mp4",
-                        images_dir="../data/train/img_from_video/using",
-                        max_frames=1000)
-    disassembleOneVideo(video_path="../data/blob/videos/using/240918_1436_hyz.mp4",
-                        images_dir="../data/train/img_from_video/using",
-                        max_frames=1000)
-    disassembleOneVideo(video_path="../data/blob/videos/not_using/240918_1524_mjj.mp4",
-                        images_dir="../data/train/img_from_video/not_using",
-                        max_frames=1000)
+    disassembleOneVideo(video_path="../data/blob/videos/using/20240919_1517_xyl_U_A.mp4",
+                        images_dir="../data/train/img_from_video/using")
+    disassembleOneVideo(video_path="../data/blob/videos/using/20240919_1523_xyl_U_A.mp4",
+                        images_dir="../data/train/img_from_video/using")
+    disassembleOneVideo(video_path="../data/blob/videos/not_using/20240919_1527_xyl_N_A.mp4",
+                        images_dir="../data/train/img_from_video/not_using")

@@ -249,15 +249,15 @@ if __name__ == "__main__":
     """
     1. Build bbox detector
     """
-    detector = init_detector(cfg.det_config, cfg.det_checkpoint, device=cfg.device)
+    detector = init_detector(cfg.det_config_train, cfg.det_checkpoint_train, device=cfg.device)
     detector.cfg = adapt_mmdet_pipeline(detector.cfg)
 
     """
     2. Build pose estimator
     """
     pose_estimator = init_pose_estimator(
-        cfg.pose_config,
-        cfg.pose_checkpoint,
+        cfg.pose_config_train,
+        cfg.pose_checkpoint_train,
         device=cfg.device,
         cfg_options=dict(
             model=dict(

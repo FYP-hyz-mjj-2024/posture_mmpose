@@ -72,3 +72,4 @@ data/blob/videos/*
 
 # MacOS
 .DS_Store
+model_config/configs/rtmpose-m_8xb256-420e_coco-256x192.py
