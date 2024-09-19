@@ -20,6 +20,26 @@ the posture of a person is clearly given in the picture.
 decided to use ourselves as the dataset source. We capture videos that surrounds
 us for a cycle, and crop each frame as a data source.
 
+&emsp; To better manage training data and trail its source, we proposed a naming
+paradigm to name videos.
+
+- Date
+  - Date of capture
+- Time
+  - Time of capture
+- Name of Model
+- Label
+  - U: Using
+  - N: Not Using
+- Variants
+  - L: Left Hand holding phone
+  - R: Right Hand holding phone
+  - B: Both Hand holding phone
+  - A: All of the above appeared in the video.
+
+An example name is `20240919_1517_xyl_U_A.mp4`.
+
+
 ### 0.0.2 Variables
 &emsp; There are a few variables that needs to be covered to ensure variety:
 - Left/Right arm
