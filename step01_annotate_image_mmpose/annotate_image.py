@@ -1,17 +1,18 @@
-import numpy as np
-import math
-import cv2
-import json_tricks as json
-import mmcv
-from typing import List
 
-import config as cfg
+import math
+import json_tricks as json
 import mmengine
 import logging
 import mimetypes
-import os
 import time
 from argparse import ArgumentParser
+import cv2
+import os
+import re
+import numpy as np
+
+import mmcv
+from typing import List
 from mmpose.apis import (
     inference_topdown,
     init_model as init_pose_estimator)
@@ -27,10 +28,42 @@ except (ImportError, ModuleNotFoundError):
     has_mmdet = False
 
 # Local
+import config as cfg
 from keypoint_info import keypoint_indexes, keypoint_names
 from utils.calculations import calc_keypoint_angle
 
 register_all_modules()
+
+
+def parseFileName(video_file_name: str, extension: str):
+    """
+    Parse file name to get the information about the file.
+    Information:
+
+    - capture_date: Date of capture.
+    - capture_time: Time of capture.
+    - human_model_name: Name of the human model.
+    - label: Label of the video. For example: "UN-Horiz-L" means "using phone horizontally with left hand".
+    - extensions: Extending postures. For example: "TC-Face-L" means "touching face with left hand".
+    - weight: The "Label" for regression, i.e. the confidence that the person is using a cellphone.
+
+    :param video_file_name: Name of the video file.
+    :return: An information dictionary of the video.
+    """
+    parsed = re.split(r'_', video_file_name.replace(extension, ""))
+    if len(parsed) != 7:
+        raise Exception("Video name is not valid.")
+
+    info = {
+        'capture_date': int(parsed[0]),
+        'capture_time': int(parsed[1]),
+        'human_model_name': str(parsed[2]),
+        'label': str(parsed[3]),
+        'extensions': str(parsed[4]),
+        'weight': float(parsed[5][:1] + "." + parsed[5][1:]),
+        'frame_number': int(parsed[6])
+    }
+    return info
 
 
 def processOneImage(img,
@@ -97,6 +130,7 @@ def processOneImage(img,
     _keypoints_scores_coords = np.concatenate(  # Shape: (num_people, 133, 3)
         (_keypoints_coords, _keypoints_scores),
         axis=-1)
+
     # keypoints_list = _keypoints_scores_coords[:, list(range(0, 91)), :]  # Shape: (num_people, 91, 3)
     keypoints_list = _keypoints_scores_coords   # Shape: (num_people, 17, 3)
 
@@ -168,16 +202,18 @@ def processMultipleImages(img_dir: str,
                           pose_estimator_model,
                           estim_results_visualizer=None,
                           show_interval=0,
-                          detection_target_list=None)->np.ndarray:
+                          detection_target_list=None,
+                          use_weight=False) -> np.ndarray:
     """
     Batch annotate multiple images within a directory.
-    :param img_dir:
-    :param bbox_detector_model:
-    :param pose_estimator_model:
-    :param estim_results_visualizer:
-    :param show_interval:
-    :param detection_target_list:
-    :return:
+    :param img_dir: Directory where multiple images are stored.
+    :param bbox_detector_model: MMPose boundary box detection model.
+    :param pose_estimator_model: MMPose estimator model.
+    :param estim_results_visualizer: MMPose estimation results visualizer.
+    :param show_interval: Interval among each image.
+    :param detection_target_list: List of detection target.
+    :param use_weight: Whether to use manual-given weight as label.
+    :return: Feature Matrix.
     """
 
     # Shape: (num_file=num_people, num_features)
@@ -200,6 +236,13 @@ def processMultipleImages(img_dir: str,
 
             # A flattened angle-score vector of a single person.
             one_row = getOneFeatureRow(keypoints_list, detection_target_list)
+
+            # Information of the image
+            img_info = parseFileName(file, ".jpg")
+            if use_weight:
+                if 'weight' not in img_info:
+                    raise Exception("You need to specify weight in the file name!")
+                one_row.append(img_info['weight'])
 
             # Collect this person.
             kas_multiple_images.append(one_row)
