@@ -10,6 +10,7 @@ import cv2
 import os
 import re
 import numpy as np
+import torch
 
 import mmcv
 from typing import List
@@ -32,6 +33,7 @@ import config as cfg
 from keypoint_info import keypoint_indexes, keypoint_names
 from utils.calculations import calc_keypoint_angle
 from utils.opencv_utils import render_detection_rectangle
+from step02_train_model_cnn.train_model_hyz import MLP
 
 register_all_modules()
 
@@ -268,10 +270,10 @@ def saveFeatureMatToNPY(mat: np.ndarray, save_path: str):
 
 def videoDemo(bbox_detector_model,
               pose_estimator_model,
-              estim_results_visualizer):
+              classifier_model=None):
 
     # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -287,6 +289,7 @@ def videoDemo(bbox_detector_model,
         # TODO: Model Prediction
 
         [render_detection_rectangle(frame, "label", xyxy, is_ok=True) for xyxy in xyxy_list]
+        cv2.imshow("Demo", frame)
 
     cap.release()
     pass
@@ -372,4 +375,7 @@ if __name__ == "__main__":
         saveFeatureMatToNPY(kas_multiple_images_not_using, save_path="../data/train/not_using.npy")
 
     elif input_type == 'video':
-        videoDemo(detector, pose_estimator, visualizer)
+        # nn_model = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
+        # nn_model.load_state_dict(torch.load(""))
+        # nn_model.eval()
+        videoDemo(detector, pose_estimator)
