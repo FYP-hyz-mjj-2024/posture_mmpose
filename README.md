@@ -88,13 +88,20 @@ similar errors, please don't hesitate to propose an issue.
 #### 2.3 Checkpoint & Configuration Files
 &emsp; Checkpoint files are essential to this project, yet they are too big to upload to github. 
 There are two kinds of files: Checkpoint files and config files for both boundary detection and pose estimation.
+
 Please download all of them by clicking these links:
+
+> You no longer need to manually download config `.py` files, since they have been re-included into the GitHub repo.
 
 - config files (`.py`):
   - det config (boundary detection): https://github.com/open-mmlab/mmpose/blob/dev-1.x/projects/rtmpose/rtmdet/person/rtmdet_nano_320-8xb32_coco-person.py
   - pose config (pose estimation): https://github.com/open-mmlab/mmpose/blob/dev-1.x/projects/rtmpose/rtmpose/body_2d_keypoint/rtmpose-t_8xb256-420e_coco-256x192.py
 After downloading from the browser, please move them into `model_config/configs/`. You may need to create this
 folder first.
+
+> The following downloading method is too slow in efficiency. We have put all the available configurations in our google drive.
+> Google Drive Link: https://drive.google.com/drive/folders/1Jsjhnrq4tJselSn-zU-yulNmpRycgSu2?usp=sharing.
+> Please put them in `model_config/checkpoints/`, where the contents in this folder are ignored.
 
 - checkpoint files (`.pth`):
   - det checkpoint: https://download.openmmlab.com/mmpose/v1/projects/rtmpose/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth
