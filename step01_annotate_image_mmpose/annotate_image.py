@@ -31,6 +31,7 @@ except (ImportError, ModuleNotFoundError):
 import config as cfg
 from keypoint_info import keypoint_indexes, keypoint_names
 from utils.calculations import calc_keypoint_angle
+from utils.opencv_utils import render_detection_rectangle
 
 register_all_modules()
 
@@ -278,11 +279,14 @@ def videoDemo(bbox_detector_model,
         if not ret or cv2.waitKey(5) & 0xFF == 27:
             break
 
-        processOneImage(frame,
-                        bbox_detector_model,
-                        pose_estimator_model,
-                        estim_results_visualizer,
-                        bbox_threshold=cfg.bbox_thr)
+        keypoints_list, xyxy_list = processOneImage(frame,
+                                                    bbox_detector_model,
+                                                    pose_estimator_model,
+                                                    estim_results_visualizer=None,
+                                                    bbox_threshold=cfg.bbox_thr)
+        # TODO: Model Prediction
+
+        [render_detection_rectangle(frame, "label", xyxy, is_ok=True) for xyxy in xyxy_list]
 
     cap.release()
     pass
