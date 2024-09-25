@@ -32,7 +32,7 @@ except (ImportError, ModuleNotFoundError):
 import config as cfg
 from keypoint_info import keypoint_indexes, keypoint_names
 from utils.calculations import calc_keypoint_angle
-from utils.opencv_utils import render_detection_rectangle
+from utils.opencv_utils import init_websocket, render_detection_rectangle, yield_video_feed
 from step02_train_model_cnn.train_model_hyz import MLP
 
 register_all_modules()
@@ -271,7 +271,8 @@ def saveFeatureMatToNPY(mat: np.ndarray, save_path: str):
 def videoDemo(bbox_detector_model,
               pose_estimator_model,
               estim_results_visualizer=None,
-              classifier_model=None):
+              classifier_model=None,
+              ws=None):
 
     # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
     cap = cv2.VideoCapture(0)
@@ -293,7 +294,8 @@ def videoDemo(bbox_detector_model,
         if estim_results_visualizer is not None:
             continue
         [render_detection_rectangle(frame, "label", xyxy, is_ok=True) for xyxy in xyxy_list]
-        cv2.imshow("Demo", frame)
+
+        yield_video_feed(frame, mode='remote', title="Smart Device Usage Detection", ws=ws)
 
     cap.release()
     pass
@@ -355,7 +357,7 @@ if __name__ == "__main__":
     """
     5. Image Processing
     """
-    input_type = 'image'    # Alter this between 'image' and 'video'
+    input_type = 'video'    # Alter this between 'image' and 'video'
 
     if input_type == 'image':
 
@@ -382,7 +384,9 @@ if __name__ == "__main__":
         # nn_model = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
         # nn_model.load_state_dict(torch.load(""))
         # nn_model.eval()
+        ws = init_websocket(server_url="ws://localhost:8080")
         videoDemo(bbox_detector_model=detector,
                   pose_estimator_model=pose_estimator,
-                  estim_results_visualizer=visualizer,
-                  classifier_model=None)
+                  # estim_results_visualizer=visualizer,
+                  classifier_model=None,
+                  ws=ws)

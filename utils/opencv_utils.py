@@ -3,6 +3,7 @@ import base64
 import json
 import websocket
 from typing import Union
+import time
 
 
 def render_detection_rectangle(frame, text, xyxy, is_ok=True):
@@ -51,7 +52,7 @@ def yield_video_feed(frame_to_yield, mode='local', title="", ws=None) -> None:
         jpeg_base64 = base64.b64encode(jpeg_bytes).decode('utf-8')
 
         # Send request
-        ws.send(json.dumps({'message':jpeg_base64}))
+        ws.send(json.dumps({'frameBase64': jpeg_base64, 'timestamp': str("{:.3f}".format(float(time.time())))}))
     else:
         raise ValueError("Video yielding mode should be either 'local' or 'remote'.")
 
