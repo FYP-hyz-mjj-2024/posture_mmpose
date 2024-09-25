@@ -270,6 +270,7 @@ def saveFeatureMatToNPY(mat: np.ndarray, save_path: str):
 
 def videoDemo(bbox_detector_model,
               pose_estimator_model,
+              estim_results_visualizer=None,
               classifier_model=None):
 
     # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
@@ -284,10 +285,13 @@ def videoDemo(bbox_detector_model,
         keypoints_list, xyxy_list = processOneImage(frame,
                                                     bbox_detector_model,
                                                     pose_estimator_model,
-                                                    estim_results_visualizer=None,
+                                                    estim_results_visualizer=estim_results_visualizer,
                                                     bbox_threshold=cfg.bbox_thr)
         # TODO: Model Prediction
 
+        # Render using opencv instead of the built-in renderer of mmpose.
+        if estim_results_visualizer is not None:
+            continue
         [render_detection_rectangle(frame, "label", xyxy, is_ok=True) for xyxy in xyxy_list]
         cv2.imshow("Demo", frame)
 
@@ -351,7 +355,7 @@ if __name__ == "__main__":
     """
     5. Image Processing
     """
-    input_type = 'image'
+    input_type = 'image'    # Alter this between 'image' and 'video'
 
     if input_type == 'image':
 
@@ -378,4 +382,7 @@ if __name__ == "__main__":
         # nn_model = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
         # nn_model.load_state_dict(torch.load(""))
         # nn_model.eval()
-        videoDemo(detector, pose_estimator)
+        videoDemo(bbox_detector_model=detector,
+                  pose_estimator_model=pose_estimator,
+                  estim_results_visualizer=visualizer,
+                  classifier_model=None)
