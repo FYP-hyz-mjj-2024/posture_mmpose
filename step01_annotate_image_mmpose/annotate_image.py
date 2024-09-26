@@ -384,7 +384,7 @@ if __name__ == "__main__":
         # nn_model = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
         # nn_model.load_state_dict(torch.load(""))
         # nn_model.eval()
-        ws = init_websocket(server_url="ws://localhost:8080")
+        ws = init_websocket(server_url="ws://152.42.198.96:8976")
         videoDemo(bbox_detector_model=detector,
                   pose_estimator_model=pose_estimator,
                   # estim_results_visualizer=visualizer,
