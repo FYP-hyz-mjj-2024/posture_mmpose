@@ -51,11 +51,5 @@ def disassembleMultipleVideos(video_dir: str, images_dir: str, max_frames_each=N
 
 
 if __name__ == '__main__':
-    # disassembleOneVideo(video_path="../data/blob/videos/using/20240919_1517_xyl_U_A.mp4",
-    #                     output_images_dir="../data/train/img_from_video/using")
-    # disassembleOneVideo(video_path="../data/blob/videos/using/20240919_1523_xyl_U_A.mp4",
-    #                     output_images_dir="../data/train/img_from_video/using")
-    # disassembleOneVideo(video_path="../data/blob/videos/not_using/20240919_1527_xyl_N_A.mp4",
-    #                     output_images_dir="../data/train/img_from_video/not_using")
-    disassembleOneVideo(video_path="../data/blob/videos/_test/20240926_1534_mjj_UN-Vert_WN-FoldArms_100.mp4",
-                        output_images_dir="../data/train/img_from_video/using")
+    disassembleMultipleVideos(video_dir="../data/blob/videos/using",
+                              images_dir="../data/train/img_from_video/using")
