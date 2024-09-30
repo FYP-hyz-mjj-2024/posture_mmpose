@@ -297,6 +297,8 @@ def videoDemo(bbox_detector_model,
 
         yield_video_feed(frame, mode='remote', title="Smart Device Usage Detection", ws=ws)
 
+        time.sleep(0.085)
+
     cap.release()
     pass
 
@@ -385,6 +387,7 @@ if __name__ == "__main__":
         # nn_model.load_state_dict(torch.load(""))
         # nn_model.eval()
         ws = init_websocket(server_url="ws://152.42.198.96:8976")
+        # ws = init_websocket(server_url="ws://localhost:8976")
         videoDemo(bbox_detector_model=detector,
                   pose_estimator_model=pose_estimator,
                   # estim_results_visualizer=visualizer,
