@@ -359,28 +359,27 @@ if __name__ == "__main__":
     """
     5. Image Processing
     """
-    input_type = 'video'    # Alter this between 'image' and 'video'
+    input_type = 'image'    # Alter this between 'image' and 'video'
+    overwrite = False
 
     if input_type == 'image':
 
-        # Shape=(num_people, num_targets, 2)
-        kas_multiple_images_using = processMultipleImages(
-            "../data/train/img_from_video/using",
-            bbox_detector_model=detector,
-            pose_estimator_model=pose_estimator,
-            estim_results_visualizer=visualizer,
-            detection_target_list=target_list)
+        for root, dirs, files in os.walk("../data/train/img_from_video"):
+            for sub_dir in dirs:
+                print(f"Processing Images in: {sub_dir}...", end=" ")
+                if not overwrite and os.path.exists(f"../data/train/{sub_dir}.npy"):
+                    print(".npy file exists, deported.")
+                    continue
+                print("Saved.")
 
-        kas_multiple_images_not_using = processMultipleImages(
-            "../data/train/img_from_video/not_using",
-            bbox_detector_model=detector,
-            pose_estimator_model=pose_estimator,
-            estim_results_visualizer=visualizer,
-            detection_target_list=target_list)
-
-        # Shape: (num_people, num_features)
-        saveFeatureMatToNPY(kas_multiple_images_using, save_path="../data/train/using.npy")
-        saveFeatureMatToNPY(kas_multiple_images_not_using, save_path="../data/train/not_using.npy")
+                kas_multiple_images = processMultipleImages(
+                    img_dir=os.path.join(root, sub_dir),
+                    bbox_detector_model=detector,
+                    pose_estimator_model=pose_estimator,
+                    estim_results_visualizer=visualizer,
+                    detection_target_list=target_list
+                )
+                saveFeatureMatToNPY(kas_multiple_images, save_path=f"../data/train/{sub_dir}.npy")
 
     elif input_type == 'video':
         # nn_model = MLP(input_size=len(target_list), hidden_size=100, output_size=2)

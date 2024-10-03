@@ -59,5 +59,7 @@ if __name__ == '__main__':
     # disassembleOneVideo(video_path="../data/blob/videos/using/20240926_1509_mjj_UN-Vert_WN-Wiggle_100.mp4",
     #                     output_images_dir="../data/train/img_from_video",
     #                     max_frames=100)
-    disassembleMultipleVideos(video_dir="../data/blob/videos/using",
+    # disassembleMultipleVideos(video_dir="../data/blob/videos/using",
+    #                           images_dir="../data/train/img_from_video")
+    disassembleMultipleVideos(video_dir="../data/blob/videos/not_using",
                               images_dir="../data/train/img_from_video")
