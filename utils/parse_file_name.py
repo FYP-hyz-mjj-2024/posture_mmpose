@@ -27,6 +27,6 @@ def parseFileName(video_file_name: str, extension: str):
         'label': str(parsed[3]),
         'extensions': str(parsed[4]),
         'weight': float(parsed[5][:1] + "." + parsed[5][1:]),
-        'frame_number': int(parsed[6])
+        'frame_number': int(parsed[6]) if len(parsed) > 6 else None
     }
     return info
