@@ -11,19 +11,27 @@ def disassembleOneVideo(video_path: str, output_images_dir: str, max_frames: int
     :param max_frames: Maximum amount of frames allowed to store.
     :return:
     """
-    cap = cv2.VideoCapture(video_path)
-    frame_idx = 0
 
+    cap = cv2.VideoCapture(video_path)
+    video_name = os.path.basename(video_path).replace(".mp4", "")
+
+    dedicated_dir = os.path.join(output_images_dir, video_name)
+    if not os.path.exists(dedicated_dir):
+        os.makedirs(dedicated_dir)
+
+    frame_idx = 0
     while cap.isOpened() and (max_frames is None or frame_idx < max_frames):
         ret, frame = cap.read()
         if not ret or cv2.waitKey(1) == 27:
             break
 
-        video_name = os.path.basename(video_path).replace(".mp4", "")
-
-        file_path = os.path.join(output_images_dir, video_name) + "_" + str(frame_idx) + ".jpg"
-        cv2.imwrite(file_path, frame)
         frame_idx += 1
+
+        if frame_idx % 10 != 0:
+            continue
+
+        file_path = os.path.join(dedicated_dir, video_name) + "_" + str(frame_idx) + ".jpg"
+        cv2.imwrite(file_path, frame)
 
         cv2.imshow(f"Disassembling Video:{video_name}", frame)
 
@@ -48,9 +56,10 @@ def disassembleMultipleVideos(video_dir: str, images_dir: str, max_frames_each=N
 
 
 if __name__ == '__main__':
-    disassembleOneVideo(video_path="../data/blob/videos/using/20240919_1517_xyl_U_A.mp4",
-                        output_images_dir="../data/train/img_from_video/using")
-    disassembleOneVideo(video_path="../data/blob/videos/using/20240919_1523_xyl_U_A.mp4",
-                        output_images_dir="../data/train/img_from_video/using")
-    disassembleOneVideo(video_path="../data/blob/videos/not_using/20240919_1527_xyl_N_A.mp4",
-                        output_images_dir="../data/train/img_from_video/not_using")
+    # disassembleOneVideo(video_path="../data/blob/videos/using/20240926_1509_mjj_UN-Vert_WN-Wiggle_100.mp4",
+    #                     output_images_dir="../data/train/img_from_video",
+    #                     max_frames=100)
+    # disassembleMultipleVideos(video_dir="../data/blob/videos/using",
+    #                           images_dir="../data/train/img_from_video")
+    disassembleMultipleVideos(video_dir="../data/blob/videos/not_using",
+                              images_dir="../data/train/img_from_video")

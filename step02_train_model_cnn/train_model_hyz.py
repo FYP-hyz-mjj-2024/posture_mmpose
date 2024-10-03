@@ -1,12 +1,35 @@
+# Essentials
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from sklearn.model_selection import train_test_split
 
+# Utilities
+import os
+
 # Local
+from utils.parse_file_name import parseFileName
 from utils.plot_report import plot_report
 
+def getNPY(npy_dir):
+    npy_using = None
+    npy_not_using = None
+
+    for root, dirs, files in os.walk(npy_dir):
+        for file in files:
+            if not file.endswith('.npy'):
+                continue
+            npy_info = parseFileName(file, '.npy')
+            this_npy = np.load(os.path.join(root,file))
+            if npy_info['label'].startswith('U'):
+                npy_using = this_npy if npy_using is None else np.vstack((npy_using,this_npy))
+            elif npy_info['label'].startswith('N'):
+                npy_not_using = this_npy if npy_not_using is None else np.vstack((npy_not_using,this_npy))
+            else:
+                raise Exception("Wrong label retrieved.")
+
+    return npy_using, npy_not_using
 
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -36,8 +59,7 @@ if __name__ == '__main__':
     Prepare data
     """
     # Training data points
-    using = np.load("../data/train/using.npy")    # num_people x num_targets = 71 x 18
-    not_using = np.load("../data/train/not_using.npy")
+    using, not_using = getNPY("../data/train")
 
     # Normalize Data
     # Using Z-score normalization: mean(mu)=0, std_dev(sigma)=1
@@ -80,6 +102,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
 
     report_loss = []
+    print(f"Start Training...\nSize of Using: {len(using)}, Size of Not Using: {len(not_using)}")
     for epoch in range(num_epochs):
         model.train()
 

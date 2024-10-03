@@ -11,6 +11,7 @@ import os
 import re
 import numpy as np
 import torch
+from tqdm import tqdm
 
 import mmcv
 from typing import List
@@ -33,41 +34,10 @@ import config as cfg
 from keypoint_info import keypoint_indexes, keypoint_names
 from utils.calculations import calc_keypoint_angle
 from utils.opencv_utils import init_websocket, render_detection_rectangle, yield_video_feed
+from utils.parse_file_name import parseFileName
 from step02_train_model_cnn.train_model_hyz import MLP
 
 register_all_modules()
-
-
-def parseFileName(video_file_name: str, extension: str):
-    """
-    Parse file name to get the information about the file.
-    Information:
-
-    - capture_date: Date of capture.
-    - capture_time: Time of capture.
-    - human_model_name: Name of the human model.
-    - label: Label of the video. For example: "UN-Horiz-L" means "using phone horizontally with left hand".
-    - extensions: Extending postures. For example: "TC-Face-L" means "touching face with left hand".
-    - weight: The "Label" for regression, i.e. the confidence that the person is using a cellphone.
-
-    :param video_file_name: Name of the video file.
-    :return: An information dictionary of the video.
-    """
-    parsed = re.split(r'_', video_file_name.replace(extension, ""))
-    if len(parsed) != 7:
-        raise Exception("Video name is not valid.")
-
-    info = {
-        'capture_date': int(parsed[0]),
-        'capture_time': int(parsed[1]),
-        'human_model_name': str(parsed[2]),
-        'label': str(parsed[3]),
-        'extensions': str(parsed[4]),
-        'weight': float(parsed[5][:1] + "." + parsed[5][1:]),
-        'frame_number': int(parsed[6])
-    }
-    return info
-
 
 def processOneImage(img,
                     bbox_detector_model,
@@ -297,6 +267,8 @@ def videoDemo(bbox_detector_model,
 
         yield_video_feed(frame, mode='remote', title="Smart Device Usage Detection", ws=ws)
 
+        time.sleep(0.085)
+
     cap.release()
     pass
 
@@ -357,36 +329,87 @@ if __name__ == "__main__":
     """
     5. Image Processing
     """
-    input_type = 'video'    # Alter this between 'image' and 'video'
+    input_type = 'video2npy'    # Alter this between 'image' and 'video'
+    overwrite = False
 
     if input_type == 'image':
 
-        # Shape=(num_people, num_targets, 2)
-        kas_multiple_images_using = processMultipleImages(
-            "../data/train/img_from_video/using",
-            bbox_detector_model=detector,
-            pose_estimator_model=pose_estimator,
-            estim_results_visualizer=visualizer,
-            detection_target_list=target_list)
+        for root, dirs, files in os.walk("../data/train/img_from_video"):
+            for sub_dir in dirs:
+                print(f"Processing Images in: {sub_dir}...", end=" ")
+                if not overwrite and os.path.exists(f"../data/train/{sub_dir}.npy"):
+                    print(".npy file exists, deported.")
+                    continue
+                print("Saved.")
 
-        kas_multiple_images_not_using = processMultipleImages(
-            "../data/train/img_from_video/not_using",
-            bbox_detector_model=detector,
-            pose_estimator_model=pose_estimator,
-            estim_results_visualizer=visualizer,
-            detection_target_list=target_list)
-
-        # Shape: (num_people, num_features)
-        saveFeatureMatToNPY(kas_multiple_images_using, save_path="../data/train/using.npy")
-        saveFeatureMatToNPY(kas_multiple_images_not_using, save_path="../data/train/not_using.npy")
+                kas_multiple_images = processMultipleImages(
+                    img_dir=os.path.join(root, sub_dir),
+                    bbox_detector_model=detector,
+                    pose_estimator_model=pose_estimator,
+                    estim_results_visualizer=visualizer,
+                    detection_target_list=target_list
+                )
+                saveFeatureMatToNPY(kas_multiple_images, save_path=f"../data/train/{sub_dir}.npy")
 
     elif input_type == 'video':
         # nn_model = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
         # nn_model.load_state_dict(torch.load(""))
         # nn_model.eval()
         ws = init_websocket(server_url="ws://152.42.198.96:8976")
+        # ws = init_websocket(server_url="ws://localhost:8976")
         videoDemo(bbox_detector_model=detector,
                   pose_estimator_model=pose_estimator,
                   # estim_results_visualizer=visualizer,
                   classifier_model=None,
                   ws=ws)
+    elif input_type == 'video2npy':
+
+        # video_folder = "/Users/maijiajun/Desktop/pose/Processed_videos"
+        video_folder = "../data/blob/videos"
+
+        for video_file in os.listdir(video_folder):
+            if video_file.endswith('.mp4'):
+                kas_multiple_images = []
+                video_path = os.path.join(video_folder, video_file)
+                cap = cv2.VideoCapture(video_path)
+
+                file_name_with_extension = os.path.basename(video_path)
+                file_name_without_extension = os.path.splitext(file_name_with_extension)[0]
+
+                if not cap.isOpened():
+                    print(f"Cannot find {video_file}")
+                    continue
+
+                frame_count = 0
+                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+                with tqdm(total=total_frames, desc=f"Processing {video_file}") as pbar:
+                    while True:
+                        ret, frame = cap.read()
+
+                        if not ret:
+                            break
+
+                        frame_count += 1
+                        pbar.update(1)
+                        if frame_count % 10 != 0:
+                            continue
+
+                        landmarks, _ = processOneImage(frame, detector, pose_estimator)
+                        one_row = getOneFeatureRow(landmarks, target_list)
+
+                        img_info = parseFileName(file_name_without_extension + f"_{frame_count}", ".mp4")
+                        if 'weight' not in img_info:
+                            raise Exception("You need to specify weight in the file name!")
+                        one_row.append(img_info['weight'])
+
+                        kas_multiple_images.append(one_row)
+
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            break
+
+                cap.release()
+
+                feature_matrix = np.array(kas_multiple_images)
+
+                saveFeatureMatToNPY(feature_matrix, save_path="../data/train/" + file_name_without_extension + ".npy")
