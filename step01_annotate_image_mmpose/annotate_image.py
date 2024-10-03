@@ -11,6 +11,7 @@ import os
 import re
 import numpy as np
 import torch
+from tqdm import tqdm
 
 import mmcv
 from typing import List
@@ -361,3 +362,57 @@ if __name__ == "__main__":
                   # estim_results_visualizer=visualizer,
                   classifier_model=None,
                   ws=ws)
+    elif input_type == 'video2npy':
+
+        # video_folder = "/Users/maijiajun/Desktop/pose/Processed_videos"
+        video_folder = "../data/blob/videos"
+
+        for video_file in os.listdir(video_folder):
+            if video_file.endswith('.mp4'):
+                kas_multiple_images = []
+                video_path = os.path.join(video_folder, video_file)
+                cap = cv2.VideoCapture(video_path)
+
+                file_name_with_extension = os.path.basename(video_path)
+                file_name_without_extension = os.path.splitext(file_name_with_extension)[0]
+
+                if not cap.isOpened():
+                    print(f"Cannot find {video_file}")
+                    continue
+
+                frame_count = 0
+                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+                with tqdm(total=total_frames, desc=f"Processing {video_file}") as pbar:
+                    while True:
+                        ret, frame = cap.read()
+
+                        if not ret:
+                            break
+
+                        if frame_count % 10 != 0:
+                            frame_count += 1
+                            pbar.update(1)
+                            continue
+
+                        frame_count += 1
+                        pbar.update(1)
+
+                        landmarks, _ = processOneImage(frame, detector, pose_estimator)
+                        one_row = getOneFeatureRow(landmarks, target_list)
+
+                        img_info = parseFileName(file_name_without_extension + "_0", ".mp4")
+                        if 'weight' not in img_info:
+                            raise Exception("You need to specify weight in the file name!")
+                        one_row.append(img_info['weight'])
+
+                        kas_multiple_images.append(one_row)
+
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            break
+
+                cap.release()
+
+                feature_matrix = np.array(kas_multiple_images)
+
+                saveFeatureMatToNPY(feature_matrix, save_path="../data/train/" + file_name_without_extension + ".npy")
