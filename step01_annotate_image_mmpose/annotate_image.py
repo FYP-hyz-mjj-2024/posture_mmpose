@@ -329,7 +329,7 @@ if __name__ == "__main__":
     """
     5. Image Processing
     """
-    input_type = 'image'    # Alter this between 'image' and 'video'
+    input_type = 'video2npy'    # Alter this between 'image' and 'video'
     overwrite = False
 
     if input_type == 'image':
@@ -390,18 +390,15 @@ if __name__ == "__main__":
                         if not ret:
                             break
 
-                        if frame_count % 10 != 0:
-                            frame_count += 1
-                            pbar.update(1)
-                            continue
-
                         frame_count += 1
                         pbar.update(1)
+                        if frame_count % 10 != 0:
+                            continue
 
                         landmarks, _ = processOneImage(frame, detector, pose_estimator)
                         one_row = getOneFeatureRow(landmarks, target_list)
 
-                        img_info = parseFileName(file_name_without_extension + "_0", ".mp4")
+                        img_info = parseFileName(file_name_without_extension + f"_{frame_count}", ".mp4")
                         if 'weight' not in img_info:
                             raise Exception("You need to specify weight in the file name!")
                         one_row.append(img_info['weight'])
