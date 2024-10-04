@@ -143,4 +143,8 @@ if __name__ == '__main__':
     print(f"Train Accuracy: {train_accuracy:.4f}")
     print(f"Test Accuracy: {test_accuracy:.4f}")
 
+    torch.save(model.state_dict(), "../data/models/posture_mmpose_nn.pth")
+    print(f"Model saved to ../data/models/posture_mmpose_nn.pth")
+
+
 
