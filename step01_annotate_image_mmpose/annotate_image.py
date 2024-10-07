@@ -253,6 +253,65 @@ def processImagesInDir(img_dir: str,
     return feature_matrix
 
 
+def processVideosInDir(video_dir: str,
+                       bbox_detector_model,
+                       pose_estimator_model,
+                       detection_target_list) -> List:
+
+    named_feature_matrices = []
+
+    for video_file in os.listdir(video_dir):
+        if not video_file.endswith('.mp4'):
+            continue
+
+        kas_video = []
+        video_path = os.path.join(video_dir, video_file)
+        cap = cv2.VideoCapture(video_path)
+
+        file_name_with_extension = os.path.basename(video_path)
+        file_name_without_extension = os.path.splitext(file_name_with_extension)[0]
+
+        if not cap.isOpened():
+            print(f"Cannot find {video_file}")
+            continue
+
+        frame_count = 0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        with tqdm(total=total_frames, desc=f"Processing {video_file}") as pbar:
+            while True:
+                ret, frame = cap.read()
+
+                if not ret:
+                    break
+
+                frame_count += 1
+                pbar.update(1)
+                if frame_count % 10 != 0:
+                    continue
+
+                landmarks, _ = processOneImage(frame, bbox_detector_model, pose_estimator_model)
+                one_row = getOneFeatureRow(landmarks, detection_target_list)
+
+                img_info = parseFileName(file_name_without_extension + f"_{frame_count}", ".mp4")
+                if 'weight' not in img_info:
+                    raise Exception("You need to specify weight in the file name!")
+                one_row.append(img_info['weight'])
+
+                kas_video.append(one_row)
+
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
+            cap.release()
+            feature_matrix = np.array(kas_video)
+            named_feature_matrices.append({"name": file_name_without_extension,
+                                           "feature_matrix": feature_matrix})
+
+            # saveFeatureMatToNPY(feature_matrix, save_path="../data/train/" + file_name_without_extension + ".npy")
+    return named_feature_matrices
+
+
 def saveFeatureMatToNPY(mat: np.ndarray, save_path: str):
     """
     Save the feature matrix into a npy file, under the given path.
@@ -311,7 +370,7 @@ if __name__ == "__main__":
     """
     5. Image Processing
     """
-    input_type = 'video'    # Alter this between 'image' and 'video'
+    input_type = 'video2npy'    # Alter this between 'image' and 'video'
     overwrite = False
 
     if input_type == 'image':
@@ -332,7 +391,19 @@ if __name__ == "__main__":
                     detection_target_list=target_list
                 )
                 saveFeatureMatToNPY(kas_multiple_images, save_path=f"../data/train/{sub_dir}.npy")
+    elif input_type == 'video2npy':
 
+        video_folder = "../data/blob/videos"
+        named_feature_mats = processVideosInDir(video_dir=video_folder,
+                                                bbox_detector_model=detector,
+                                                pose_estimator_model=pose_estimator,
+                                                detection_target_list=target_list)
+
+        [
+            saveFeatureMatToNPY(named_feature_mat['feature_matrix'],
+                                save_path="../data/train/" + named_feature_mat['name'] + ".npy")
+            for named_feature_mat in named_feature_mats
+        ]
     elif input_type == 'video':
         # nn_model = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
         # nn_model.load_state_dict(torch.load(""))
@@ -344,53 +415,3 @@ if __name__ == "__main__":
                   # estim_results_visualizer=visualizer,
                   classifier_model=None,
                   ws=ws)
-    elif input_type == 'video2npy':
-
-        video_folder = "../data/blob/videos"
-
-        for video_file in os.listdir(video_folder):
-            if not video_file.endswith('.mp4'):
-                continue
-
-            kas_multiple_images = []
-            video_path = os.path.join(video_folder, video_file)
-            cap = cv2.VideoCapture(video_path)
-
-            file_name_with_extension = os.path.basename(video_path)
-            file_name_without_extension = os.path.splitext(file_name_with_extension)[0]
-
-            if not cap.isOpened():
-                print(f"Cannot find {video_file}")
-                continue
-
-            frame_count = 0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-            with tqdm(total=total_frames, desc=f"Processing {video_file}") as pbar:
-                while True:
-                    ret, frame = cap.read()
-
-                    if not ret:
-                        break
-
-                    frame_count += 1
-                    pbar.update(1)
-                    if frame_count % 10 != 0:
-                        continue
-
-                    landmarks, _ = processOneImage(frame, detector, pose_estimator)
-                    one_row = getOneFeatureRow(landmarks, target_list)
-
-                    img_info = parseFileName(file_name_without_extension + f"_{frame_count}", ".mp4")
-                    if 'weight' not in img_info:
-                        raise Exception("You need to specify weight in the file name!")
-                    one_row.append(img_info['weight'])
-
-                    kas_multiple_images.append(one_row)
-
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-
-                cap.release()
-                feature_matrix = np.array(kas_multiple_images)
-                saveFeatureMatToNPY(feature_matrix, save_path="../data/train/" + file_name_without_extension + ".npy")
