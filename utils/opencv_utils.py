@@ -32,6 +32,16 @@ def render_detection_rectangle(frame, text, xyxy, is_ok=True):
     )
 
 
+def getUserConsoleConfig(max_required_num=3):
+
+    # Video Source Selection
+    video_source = input(f"Which camera would you like to use? > ")
+
+    # Remote stream pushing / Local running
+    is_remote = input("Push video frame to remote? [y/n] > ") == 'y'
+
+    return is_remote, video_source
+
 def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:
     """
     Yield the video frame. Either using local mode, which will invoke an
