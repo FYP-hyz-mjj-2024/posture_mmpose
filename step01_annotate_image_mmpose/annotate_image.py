@@ -1,16 +1,7 @@
-
-import math
-import json_tricks as json
-import mmengine
-import logging
-import mimetypes
 import time
-from argparse import ArgumentParser
 import cv2
 import os
-import re
 import numpy as np
-import torch
 from tqdm import tqdm
 
 import mmcv
@@ -20,7 +11,7 @@ from mmpose.apis import (
     init_model as init_pose_estimator)
 from mmpose.evaluation.functional import nms
 from mmpose.registry import VISUALIZERS
-from mmpose.structures import merge_data_samples, split_instances
+from mmpose.structures import merge_data_samples
 from mmpose.utils import adapt_mmdet_pipeline, register_all_modules
 
 try:
@@ -30,20 +21,60 @@ except (ImportError, ModuleNotFoundError):
     has_mmdet = False
 
 # Local
-import config as cfg
-from keypoint_info import keypoint_indexes, keypoint_names
+from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from utils.calculations import calc_keypoint_angle
 from utils.opencv_utils import init_websocket, render_detection_rectangle, yield_video_feed
 from utils.parse_file_name import parseFileName
-from step02_train_model_cnn.train_model_hyz import MLP
 
 register_all_modules()
+
+
+def getMMPoseEssentials():
+    """
+    Get essential detectors and visualizers of MMPose.getMMPose.
+
+    - bbox_detector: Detector that gives xyxy of the boundary boxes.
+
+    - pose_estimator: Estimator that gives the landmarks of a person.
+
+    - visualizer: MMPose's built-in visualizer to visualize the bbox and pose skeleton.
+
+    :return: bbox_detector, pose_estimator, visualizer
+
+    """
+
+    # 1. Boundary Box detector
+    bbox_detector = init_detector(mcfg.det_config_train, mcfg.det_checkpoint_train, device=mcfg.device)
+    bbox_detector.cfg = adapt_mmdet_pipeline(bbox_detector.cfg)
+
+    # 2. Pose estimator
+    pose_estimator = init_pose_estimator(
+        mcfg.pose_config_train,
+        mcfg.pose_checkpoint_train,
+        device=mcfg.device,
+        cfg_options=dict(
+            model=dict(
+                test_cfg=dict(output_heatmaps=mcfg.draw_heatmap)))
+    )
+
+    # 3. Visualizer
+    pose_estimator.cfg.visualizer.radius = mcfg.radius
+    pose_estimator.cfg.visualizer.alpha = mcfg.alpha
+    pose_estimator.cfg.visualizer.line_width = mcfg.thickness
+    visualizer = VISUALIZERS.build(pose_estimator.cfg.visualizer)
+
+    # the dataset_meta is loaded from the checkpoint and
+    # then pass to the model in init_pose_estimator
+    visualizer.set_dataset_meta(pose_estimator.dataset_meta, skeleton_style=mcfg.skeleton_style)
+
+    return bbox_detector, pose_estimator, visualizer
+
 
 def processOneImage(img,
                     bbox_detector_model,
                     pose_estimator_model,
                     estim_results_visualizer=None,
-                    bbox_threshold = cfg.bbox_thr_single,
+                    bbox_threshold = mcfg.bbox_thr_single,
                     show_interval=0.001):
     """
     Given an image, first use bbox detection model to retrieve object boundary boxes.
@@ -64,9 +95,9 @@ def processOneImage(img,
     det_result = inference_detector(bbox_detector_model, img)
     pred_instance = det_result.pred_instances.cpu().numpy()
     bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
-    bboxes = bboxes[np.logical_and(pred_instance.labels == cfg.det_cat_id,
+    bboxes = bboxes[np.logical_and(pred_instance.labels == mcfg.det_cat_id,
                                    pred_instance.scores > bbox_threshold)]    # Single box detection
-    bboxes = bboxes[nms(bboxes, cfg.nms_thr), :4]
+    bboxes = bboxes[nms(bboxes, mcfg.nms_thr), :4]
 
     # Get key points
     pose_results = inference_topdown(pose_estimator_model, img, bboxes)
@@ -83,13 +114,13 @@ def processOneImage(img,
             img,
             data_sample=data_samples,
             draw_gt=False,
-            draw_heatmap=cfg.draw_heatmap,
-            draw_bbox=cfg.draw_bbox,
-            show_kpt_idx=cfg.show_kpt_idx,
-            skeleton_style=cfg.skeleton_style,
-            show=cfg.show,
+            draw_heatmap=mcfg.draw_heatmap,
+            draw_bbox=mcfg.draw_bbox,
+            show_kpt_idx=mcfg.show_kpt_idx,
+            skeleton_style=mcfg.skeleton_style,
+            show=mcfg.show,
             wait_time=show_interval,
-            kpt_thr=cfg.kpt_thr)
+            kpt_thr=mcfg.kpt_thr)
 
     # if there is no instance detected, return None
     # return data_samples.get('pred_instances', None)
@@ -162,7 +193,7 @@ def getOneFeatureRow(keypoints_list: np.ndarray,
 
     # From keypoints list, get angle-score vector.
     for target in detection_target_list:
-        angle_value, angle_score = calc_keypoint_angle(keypoints, keypoint_indexes, target[0], target[1])
+        angle_value, angle_score = calc_keypoint_angle(keypoints, kcfg.keypoint_indexes, target[0], target[1])
         kas_one_person.append(angle_value)
         kas_one_person.append(angle_score)
 
@@ -257,7 +288,7 @@ def videoDemo(bbox_detector_model,
                                                     bbox_detector_model,
                                                     pose_estimator_model,
                                                     estim_results_visualizer=estim_results_visualizer,
-                                                    bbox_threshold=cfg.bbox_thr)
+                                                    bbox_threshold=mcfg.bbox_thr)
         # TODO: Model Prediction
 
         # Render using opencv instead of the built-in renderer of mmpose.
@@ -265,7 +296,7 @@ def videoDemo(bbox_detector_model,
             continue
         [render_detection_rectangle(frame, "label", xyxy, is_ok=True) for xyxy in xyxy_list]
 
-        yield_video_feed(frame, mode='remote', title="Smart Device Usage Detection", ws=ws)
+        yield_video_feed(frame, mode='local', title="Smart Device Usage Detection", ws=ws)
 
         time.sleep(0.085)
 
@@ -274,62 +305,17 @@ def videoDemo(bbox_detector_model,
 
 
 if __name__ == "__main__":
-    """
-    1. Build bbox detector
-    """
-    detector = init_detector(cfg.det_config_train, cfg.det_checkpoint_train, device=cfg.device)
-    detector.cfg = adapt_mmdet_pipeline(detector.cfg)
 
-    """
-    2. Build pose estimator
-    """
-    pose_estimator = init_pose_estimator(
-        cfg.pose_config_train,
-        cfg.pose_checkpoint_train,
-        device=cfg.device,
-        cfg_options=dict(
-            model=dict(
-                test_cfg=dict(output_heatmaps=cfg.draw_heatmap)))
-    )
+    # Initialize MMPose essentials
+    detector, pose_estimator, visualizer = getMMPoseEssentials()
 
-    """
-    3. Build Visualizer
-    """
-    pose_estimator.cfg.visualizer.radius = cfg.radius
-    pose_estimator.cfg.visualizer.alpha = cfg.alpha
-    pose_estimator.cfg.visualizer.line_width = cfg.thickness
-    visualizer = VISUALIZERS.build(pose_estimator.cfg.visualizer)
-
-    # the dataset_meta is loaded from the checkpoint and
-    # then pass to the model in init_pose_estimator
-    visualizer.set_dataset_meta(pose_estimator.dataset_meta, skeleton_style=cfg.skeleton_style)
-
-    """
-    4. Initialize Detection Targets
-    """
-    target_list = [
-        # Body Posture
-        [("Body-Left_shoulder", "Body-Left_wrist"), "Body-Left_elbow"],
-        [("Body-Right_shoulder", "Body-Right_wrist"), "Body-Right_elbow"],
-        [("Body-Left_hip", "Body-Left_elbow"), "Body-Left_shoulder"],
-        [("Body-Right_hip", "Body-Right_elbow"), "Body-Right_shoulder"],
-
-        # For 3-D Variables
-        [("Body-Left_shoulder", "Body-Right_shoulder"), "Body-Chin"],
-
-        # Head directions
-        [("Body-Chin", "Body-Right_ear"), "Body-Right_eye"],
-        [("Body-Chin", "Body-Left_ear"), "Body-Left_eye"],
-
-        # Lower Parts of body
-        [("Body-Left_wrist", "Body-Right_hip"), "Body-Left_hip"],
-        [("Body-Right_wrist", "Body-Left_hip"), "Body-Right_hip"],
-    ]
+    # List of detection targets
+    target_list = kcfg.target_list
 
     """
     5. Image Processing
     """
-    input_type = 'video2npy'    # Alter this between 'image' and 'video'
+    input_type = 'video'    # Alter this between 'image' and 'video'
     overwrite = False
 
     if input_type == 'image':
