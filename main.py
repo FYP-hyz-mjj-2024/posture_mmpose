@@ -4,7 +4,7 @@ import time
 from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step01_annotate_image_mmpose.annotate_image import processOneImage
-from utils.opencv_utils import render_detection_rectangle, yield_video_feed
+from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed
 
 
 def videoDemo(bbox_detector_model,
@@ -34,9 +34,9 @@ def videoDemo(bbox_detector_model,
             continue
         [render_detection_rectangle(frame, "label", xyxy, is_ok=True) for xyxy in xyxy_list]
 
-        yield_video_feed(frame, mode='local', title="Smart Device Usage Detection", ws=ws)
+        yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=ws)
 
-        time.sleep(0.085)
+        time.sleep(0.085) if (ws is not None) else None
 
     cap.release()
 
@@ -56,4 +56,5 @@ if __name__ == '__main__':
     videoDemo(bbox_detector_model=detector,
               pose_estimator_model=pose_estimator,
               # estim_results_visualizer=visualizer,
-              classifier_model=None)
+              classifier_model=None,
+              ws=None)

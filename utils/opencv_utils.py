@@ -32,20 +32,17 @@ def render_detection_rectangle(frame, text, xyxy, is_ok=True):
     )
 
 
-def yield_video_feed(frame_to_yield, mode='local', title="", ws=None) -> None:
+def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:
     """
     Yield the video frame. Either using local mode, which will invoke an
     opencv imshow window, or use the HTTP Streaming to the server.
     :param frame_to_yield: The video frame.
-    :param mode: Yielding mode, either be 'local' or 'remote'.
     :param title: The title of the local window.
     :param ws: The websocket object initialized with server_url.
     """
-    if mode == 'local':
+    if ws is None:
         cv2.imshow(title, frame_to_yield)
-    elif mode == 'remote':
-        if ws is None:
-            raise ValueError("WebSocket object is not initialized.")
+    else:
         # JPEG encode, convert to bytes
         _, jpeg_encoded = cv2.imencode('.jpg', frame_to_yield)
         jpeg_bytes = jpeg_encoded.tobytes()
@@ -53,8 +50,6 @@ def yield_video_feed(frame_to_yield, mode='local', title="", ws=None) -> None:
 
         # Send request
         ws.send(json.dumps({'frameBase64': jpeg_base64, 'timestamp': str("{:.3f}".format(float(time.time())))}))
-    else:
-        raise ValueError("Video yielding mode should be either 'local' or 'remote'.")
 
 
 def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
