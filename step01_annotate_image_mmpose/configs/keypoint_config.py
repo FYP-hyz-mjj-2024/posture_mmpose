@@ -185,3 +185,22 @@ keypoint_indexes = {
     'Face-Lips_l3_mid': 89,
     'Face-Lips_l3_right': 90
 }
+
+target_list = [
+    # Body Posture
+    [("Body-Left_shoulder", "Body-Left_wrist"), "Body-Left_elbow"],
+    [("Body-Right_shoulder", "Body-Right_wrist"), "Body-Right_elbow"],
+    [("Body-Left_hip", "Body-Left_elbow"), "Body-Left_shoulder"],
+    [("Body-Right_hip", "Body-Right_elbow"), "Body-Right_shoulder"],
+
+    # For 3-D Variables
+    [("Body-Left_shoulder", "Body-Right_shoulder"), "Body-Chin"],
+
+    # Head directions
+    [("Body-Chin", "Body-Right_ear"), "Body-Right_eye"],
+    [("Body-Chin", "Body-Left_ear"), "Body-Left_eye"],
+
+    # Lower Parts of body
+    [("Body-Left_wrist", "Body-Right_hip"), "Body-Left_hip"],
+    [("Body-Right_wrist", "Body-Left_hip"), "Body-Right_hip"],
+]
