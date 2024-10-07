@@ -95,7 +95,7 @@ if __name__ == '__main__':
     input_size = X_train.shape[1]
     hidden_size = 100
     learning_rate = 0.001
-    num_epochs = 100
+    num_epochs = 250
 
     model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2)
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
