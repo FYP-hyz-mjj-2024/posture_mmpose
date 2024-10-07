@@ -7,7 +7,7 @@ import numpy as np
 from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, getOneFeatureRow
 from step01_annotate_image_mmpose.calculations import calc_keypoint_angle
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
-from step01_annotate_image_mmpose.annotate_image import processOneImage
+from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults
 from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed
 
 
@@ -18,7 +18,6 @@ def videoDemo(bbox_detector_model,
               classifier_model=None,
               classifier_func=None,
               ws=None):
-
     cap = cv2.VideoCapture(0)
 
     while cap.isOpened():
@@ -27,11 +26,10 @@ def videoDemo(bbox_detector_model,
         if not ret or cv2.waitKey(5) & 0xFF == 27:
             break
 
-        keypoints_list, xyxy_list = processOneImage(frame,
-                                                    bbox_detector_model,
-                                                    pose_estimator_model,
-                                                    estim_results_visualizer=estim_results_visualizer,
-                                                    bbox_threshold=mcfg.bbox_thr)
+        keypoints_list, xyxy_list, data_samples = processOneImage(frame,
+                                                                  bbox_detector_model,
+                                                                  pose_estimator_model)
+        renderTheResults(frame, data_samples, estim_results_visualizer, show_interval=.001)
 
         [processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func)
          for keypoints, xyxy in zip(keypoints_list, xyxy_list)]
@@ -43,7 +41,7 @@ def videoDemo(bbox_detector_model,
     cap.release()
 
 
-def processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func,):
+def processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func, ):
     kas_one_person = getOneKeyAngleScore(keypoints, detection_target_list)
     classifier_result_str = classifier_func(classifier_model, kas_one_person)
     render_detection_rectangle(frame, classifier_result_str, xyxy, is_ok=True)
