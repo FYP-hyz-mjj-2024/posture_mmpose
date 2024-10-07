@@ -7,10 +7,10 @@ det_cat_id = 0              # Detection category ID
 
 # Model Configurations: Bbox detection + Pose estimation
 # Real-time - Tiny
-det_checkpoint = '../model_config/checkpoints/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth'
-det_config = '../model_config/configs/rtmdet_nano_320-8xb32_coco-person.py'
-pose_checkpoint = '../model_config/checkpoints/rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192-cfc8f33d_20230126.pth'
-pose_config = '../model_config/configs/rtmpose-t_8xb256-420e_coco-256x192.py'
+det_checkpoint = './model_config/checkpoints/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth'
+det_config = './model_config/configs/rtmdet_nano_320-8xb32_coco-person.py'
+pose_checkpoint = './model_config/checkpoints/rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192-cfc8f33d_20230126.pth'
+pose_config = './model_config/configs/rtmpose-t_8xb256-420e_coco-256x192.py'
 # Training - Medium
 det_checkpoint_train = '../model_config/checkpoints/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth'
 det_config_train = '../model_config/configs/rtmdet_nano_320-8xb32_coco-person.py'
