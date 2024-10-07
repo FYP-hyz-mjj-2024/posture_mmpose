@@ -54,6 +54,7 @@ def calc_keypoint_angle(
     sm = keypoints_one_person[keypoint_indexes[nm]][2]
 
     # Angle Score: Geometric Mean
-    angle_score = math.exp((1/3) * (math.log(s1) + math.log(s2) + math.log(sm)))
+    # angle_score = math.exp((1/3) * (math.log(s1) + math.log(s2) + math.log(sm)))  # Don't use, potential domain error.
+    angle_score = np.cbrt(s1 * s2 * sm)
 
     return _calc_angle([coord1, coord2], coordm), angle_score
