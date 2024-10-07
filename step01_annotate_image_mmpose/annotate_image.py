@@ -301,9 +301,9 @@ def processVideosInDir(video_dir: str,
                 one_row = getOneFeatureRow(landmarks, detection_target_list)
 
                 img_info = parseFileName(file_name_without_extension + f"_{frame_count}", ".mp4")
-                if 'weight' not in img_info:
-                    raise Exception("You need to specify weight in the file name!")
-                one_row.append(img_info['weight'])
+                # if 'weight' not in img_info:
+                #     raise Exception("You need to specify weight in the file name!")
+                # one_row.append(img_info['weight'])
 
                 kas_video.append(one_row)
 
