@@ -1,11 +1,15 @@
-import time
-import cv2
+# Built-in
 import os
+import time
+from typing import List, Union
+
+# Packages
+import cv2
 import numpy as np
 from tqdm import tqdm
 
+# MMPose
 import mmcv
-from typing import List, Union
 from mmpose.apis import (
     inference_topdown,
     init_model as init_pose_estimator)
@@ -13,7 +17,6 @@ from mmpose.evaluation.functional import nms
 from mmpose.registry import VISUALIZERS
 from mmpose.structures import merge_data_samples
 from mmpose.utils import adapt_mmdet_pipeline, register_all_modules
-
 try:
     from mmdet.apis import inference_detector, init_detector
     has_mmdet = True
@@ -22,14 +25,13 @@ except (ImportError, ModuleNotFoundError):
 
 # Local
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
-from utils.calculations import calc_keypoint_angle
-from utils.opencv_utils import init_websocket, render_detection_rectangle, yield_video_feed
+from step01_annotate_image_mmpose.calculations import calc_keypoint_angle
 from utils.parse_file_name import parseFileName
 
 register_all_modules()
 
 
-def getMMPoseEssentials():
+def getMMPoseEssentials(det_config, det_chkpt, pose_config, pose_chkpt):
     """
     Get essential detectors and visualizers of MMPose.getMMPose.
 
@@ -44,13 +46,13 @@ def getMMPoseEssentials():
     """
 
     # 1. Boundary Box detector
-    bbox_detector = init_detector(mcfg.det_config_train, mcfg.det_checkpoint_train, device=mcfg.device)
+    bbox_detector = init_detector(det_config, det_chkpt, device=mcfg.device)
     bbox_detector.cfg = adapt_mmdet_pipeline(bbox_detector.cfg)
 
     # 2. Pose estimator
     pose_estimator = init_pose_estimator(
-        mcfg.pose_config_train,
-        mcfg.pose_checkpoint_train,
+        pose_config,
+        pose_chkpt,
         device=mcfg.device,
         cfg_options=dict(
             model=dict(
@@ -324,45 +326,15 @@ def saveFeatureMatToNPY(mat: np.ndarray, save_path: str):
     np.save(save_path, feature_matrix)
 
 
-def videoDemo(bbox_detector_model,
-              pose_estimator_model,
-              estim_results_visualizer=None,
-              classifier_model=None,
-              ws=None):
-
-    # cap = cv2.VideoCapture("../data/demo/demo_video.mp4")
-    cap = cv2.VideoCapture(0)
-
-    while cap.isOpened():
-        ret, frame = cap.read()
-
-        if not ret or cv2.waitKey(5) & 0xFF == 27:
-            break
-
-        keypoints_list, xyxy_list = processOneImage(frame,
-                                                    bbox_detector_model,
-                                                    pose_estimator_model,
-                                                    estim_results_visualizer=estim_results_visualizer,
-                                                    bbox_threshold=mcfg.bbox_thr)
-        # TODO: Model Prediction
-
-        # Render using opencv instead of the built-in renderer of mmpose.
-        if estim_results_visualizer is not None:
-            continue
-        [render_detection_rectangle(frame, "label", xyxy, is_ok=True) for xyxy in xyxy_list]
-
-        yield_video_feed(frame, mode='local', title="Smart Device Usage Detection", ws=ws)
-
-        time.sleep(0.085)
-
-    cap.release()
-    pass
-
-
 if __name__ == "__main__":
 
     # Initialize MMPose essentials
-    detector, pose_estimator, visualizer = getMMPoseEssentials()
+    detector, pose_estimator, visualizer = getMMPoseEssentials(
+        det_config=mcfg.det_config_train,
+        det_chkpt=mcfg.det_checkpoint_train,
+        pose_config=mcfg.pose_config_train,
+        pose_chkpt=mcfg.pose_checkpoint_train
+    )
 
     # List of detection targets
     target_list = kcfg.target_list
@@ -404,14 +376,3 @@ if __name__ == "__main__":
                                 save_path="../data/train/" + named_feature_mat['name'] + ".npy")
             for named_feature_mat in named_feature_mats
         ]
-    elif input_type == 'video':
-        # nn_model = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
-        # nn_model.load_state_dict(torch.load(""))
-        # nn_model.eval()
-        ws = init_websocket(server_url="ws://152.42.198.96:8976")
-        # ws = init_websocket(server_url="ws://localhost:8976")
-        videoDemo(bbox_detector_model=detector,
-                  pose_estimator_model=pose_estimator,
-                  # estim_results_visualizer=visualizer,
-                  classifier_model=None,
-                  ws=ws)
