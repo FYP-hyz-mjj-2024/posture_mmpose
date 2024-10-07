@@ -17,8 +17,10 @@ from mmpose.evaluation.functional import nms
 from mmpose.registry import VISUALIZERS
 from mmpose.structures import merge_data_samples
 from mmpose.utils import adapt_mmdet_pipeline, register_all_modules
+
 try:
     from mmdet.apis import inference_detector, init_detector
+
     has_mmdet = True
 except (ImportError, ModuleNotFoundError):
     has_mmdet = False
@@ -72,12 +74,35 @@ def getMMPoseEssentials(det_config, det_chkpt, pose_config, pose_chkpt):
     return bbox_detector, pose_estimator, visualizer
 
 
+def renderTheResults(img: Union[str, np.ndarray],
+                     data_samples,
+                     estim_results_visualizer=None,
+                     show_interval=0.001):
+    # Render the results
+    if isinstance(img, str):
+        img = mmcv.imread(img, channel_order='rgb')
+    elif isinstance(img, np.ndarray):
+        img = mmcv.bgr2rgb(img)
+
+    if estim_results_visualizer is not None:
+        estim_results_visualizer.add_datasample(
+            'result',
+            img,
+            data_sample=data_samples,
+            draw_gt=False,
+            draw_heatmap=mcfg.draw_heatmap,
+            draw_bbox=mcfg.draw_bbox,
+            show_kpt_idx=mcfg.show_kpt_idx,
+            skeleton_style=mcfg.skeleton_style,
+            show=mcfg.show,
+            wait_time=show_interval,
+            kpt_thr=mcfg.kpt_thr)
+
+
 def processOneImage(img: Union[str, np.ndarray],
                     bbox_detector_model,
                     pose_estimator_model,
-                    estim_results_visualizer=None,
-                    bbox_threshold=mcfg.bbox_thr_single,
-                    show_interval=0.001):
+                    bbox_threshold=mcfg.bbox_thr_single):
     """
     Given an image, first use bbox detection model to retrieve object boundary boxes.
     Then, feed the sub images defined by the bbox into the pose estimation model to get key points.
@@ -110,37 +135,16 @@ def processOneImage(img: Union[str, np.ndarray],
     raw_predictions = data_samples.get('pred_instances', None)
 
     # Keypoint coordinates --> (num_people, 17, 3)
-    _keypoints_coords = raw_predictions.keypoints                                               # (num_people, 17, 2)
-    _keypoints_scores = np.expand_dims(raw_predictions.keypoint_scores, axis=-1)                # (num_people, 17, 1)
-    keypoints_list = np.concatenate((_keypoints_coords, _keypoints_scores), axis=-1)     # (num_people, 17, 3)
+    _keypoints_coords = raw_predictions.keypoints  # (num_people, 17, 2)
+    _keypoints_scores = np.expand_dims(raw_predictions.keypoint_scores, axis=-1)  # (num_people, 17, 1)
+    keypoints_list = np.concatenate((_keypoints_coords, _keypoints_scores), axis=-1)  # (num_people, 17, 3)
 
     # Boundary Boxes coordinates --> (num_people, 4)
     xyxy_list = raw_predictions.bboxes
 
-    # Render the results
-    if isinstance(img, str):
-        img = mmcv.imread(img, channel_order='rgb')
-    elif isinstance(img, np.ndarray):
-        img = mmcv.bgr2rgb(img)
-
-    if estim_results_visualizer is not None:
-        estim_results_visualizer.add_datasample(
-            'result',
-            img,
-            data_sample=data_samples,
-            draw_gt=False,
-            draw_heatmap=mcfg.draw_heatmap,
-            draw_bbox=mcfg.draw_bbox,
-            show_kpt_idx=mcfg.show_kpt_idx,
-            skeleton_style=mcfg.skeleton_style,
-            show=mcfg.show,
-            wait_time=show_interval,
-            kpt_thr=mcfg.kpt_thr)
-
-
     """Example formats of returned objects.
        1. keypoints_list: keypoints coordinates of landmarks and boundary.
-           - Shape: (num_people, 91, 3) => (num_people, num_targets, (x,y,score))
+           - Shape: (num_people, 17, 3) => (num_people, num_targets, (x,y,score))
 
            - Format:
            [
@@ -170,7 +174,7 @@ def processOneImage(img: Union[str, np.ndarray],
            ]
        """
 
-    return keypoints_list, xyxy_list
+    return keypoints_list, xyxy_list, data_samples
 
 
 def getOneFeatureRow(keypoints_list: np.ndarray,
@@ -230,11 +234,12 @@ def processImagesInDir(img_dir: str,
             file_path = os.path.join(root, file)
 
             # Single Image, may be multiple person
-            keypoints_list, xyxy_list = processOneImage(
+            keypoints_list, xyxy_list, data_samples = processOneImage(
                 file_path,
                 bbox_detector_model,
-                pose_estimator_model,
-                estim_results_visualizer)
+                pose_estimator_model)
+
+            renderTheResults(file_path, data_samples, estim_results_visualizer, 0.001)
 
             # A flattened angle-score vector of a single person.
             one_row = getOneFeatureRow(keypoints_list, detection_target_list)
@@ -259,7 +264,6 @@ def processVideosInDir(video_dir: str,
                        bbox_detector_model,
                        pose_estimator_model,
                        detection_target_list) -> List:
-
     named_feature_matrices = []
 
     for video_file in os.listdir(video_dir):
@@ -292,7 +296,8 @@ def processVideosInDir(video_dir: str,
                 if frame_count % 10 != 0:
                     continue
 
-                landmarks, _ = processOneImage(frame, bbox_detector_model, pose_estimator_model)
+                landmarks, _, data_samples = processOneImage(frame, bbox_detector_model, pose_estimator_model)
+                # renderTheResults(frame, data_samples, estim_results_visualizer=visualizer, show_interval=.001)
                 one_row = getOneFeatureRow(landmarks, detection_target_list)
 
                 img_info = parseFileName(file_name_without_extension + f"_{frame_count}", ".mp4")
@@ -342,7 +347,7 @@ if __name__ == "__main__":
     """
     5. Image Processing
     """
-    input_type = 'video2npy'    # Alter this between 'image' and 'video'
+    input_type = 'video2npy'  # Alter this between 'image' and 'video'
     overwrite = False
 
     if input_type == 'image':
