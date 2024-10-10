@@ -48,33 +48,9 @@ def videoDemo(src: Union[str, int],
 
 
 def processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func, ):
-    kas_one_person = getOneKeyAngleScore(keypoints, detection_target_list)
+    kas_one_person = getOneFeatureRow(keypoints, detection_target_list)
     classifier_result_str, classify_is_ok = classifier_func(classifier_model, kas_one_person)
     render_detection_rectangle(frame, classifier_result_str, xyxy, is_ok=classify_is_ok)
-
-
-def getOneKeyAngleScore(keypoints: List,
-                        detection_target_list: List) -> List:
-    """
-    Post process the raw features received from process_one_image.
-    From the keypoints list, extract the most confident person in the image. Then, convert the
-    keypoints list of this person into a flattened feature vector.
-
-    :param keypoints: A list of keypoints set of multiple people, gathered from the image.
-    :param detection_target_list: The list of detection targets.
-    :return: A flattened array of feature values.
-    """
-    # Only get the person with the highest detection confidence.
-    kas_one_person = []
-
-    # From keypoints list, get angle-score vector.
-    for target in detection_target_list:
-        angle_value, angle_score = calc_keypoint_angle(keypoints, kcfg.keypoint_indexes, target[0], target[1])
-        kas_one_person.append(angle_value)
-        kas_one_person.append(angle_score)
-
-    # Shape=(2m)
-    return kas_one_person
 
 
 def classify(classifier_model, numeric_data):
@@ -115,7 +91,7 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.target_list
 
 # Classifier Model
-classifier = MLP(input_size=18, hidden_size=100, output_size=2)
+classifier = MLP(input_size=9, hidden_size=100, output_size=2)
 classifier.load_state_dict(torch.load("./data/models/posture_mmpose_nn.pth"))
 classifier.eval()
 
