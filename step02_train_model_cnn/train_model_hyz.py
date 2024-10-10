@@ -12,6 +12,7 @@ import os
 from utils.parse_file_name import parseFileName
 from utils.plot_report import plot_report
 
+
 def getNPY(npy_dir):
     npy_using = None
     npy_not_using = None
@@ -31,16 +32,37 @@ def getNPY(npy_dir):
 
     return npy_using, npy_not_using
 
+
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(MLP, self).__init__()
         self.relu = nn.ReLU()
-        self.fc1 = nn.Linear(input_size, hidden_size)
+
+        # Convolutional Layers
+        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=16, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+
+        # Fully-connected Layers
+        self.fc1 = nn.Linear(64, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, hidden_size)
         self.fc4 = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
+        #
+        x = x.unsqueeze(2)
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.relu(x)
+        x = self.conv3(x)
+        x = self.relu(x)
+
+        # Expand
+        x = x.view(x.size(0), -1)
+
+        # Forward through fc layers
         x = self.fc1(x)
         x = self.relu(x)
 
@@ -79,7 +101,7 @@ if __name__ == '__main__':
     np.random.shuffle(X_y)
 
     # Train-test split
-    X_y_train, X_y_test = train_test_split(X_y, test_size=0.25, random_state=114514)
+    X_y_train, X_y_test = train_test_split(X_y, test_size=0.35, random_state=114514)
     X_train, y_train = X_y_train[:, :-1], X_y_train[:, -1]
     X_test, y_test = X_y_test[:, :-1], X_y_test[:, -1]
 
@@ -94,7 +116,7 @@ if __name__ == '__main__':
     """
     input_size = X_train.shape[1]
     hidden_size = 100
-    learning_rate = 0.001
+    learning_rate = 0.0001
     num_epochs = 500
 
     model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2)
