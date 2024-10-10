@@ -177,7 +177,7 @@ def processOneImage(img: Union[str, np.ndarray],
     return keypoints_list, xyxy_list, data_samples
 
 
-def getOneFeatureRow(keypoints_list: np.ndarray,
+def getOneFeatureRow(keypoints_list: List,
                      detection_target_list: List) -> List:
     """
     Post process the raw features received from process_one_image.
@@ -190,14 +190,14 @@ def getOneFeatureRow(keypoints_list: np.ndarray,
     """
 
     # Only get the person with the highest detection confidence.
-    keypoints = keypoints_list[0]
+    keypoints = keypoints_list
     kas_one_person = []
 
     # From keypoints list, get angle-score vector.
     for target in detection_target_list:
         angle_value, angle_score = calc_keypoint_angle(keypoints, kcfg.keypoint_indexes, target[0], target[1])
         kas_one_person.append(angle_value)
-        kas_one_person.append(angle_score)
+        # kas_one_person.append(angle_score)
 
     # Shape=(2m)
     return kas_one_person
@@ -242,7 +242,7 @@ def processImagesInDir(img_dir: str,
             renderTheResults(file_path, data_samples, estim_results_visualizer, 0.001)
 
             # A flattened angle-score vector of a single person.
-            one_row = getOneFeatureRow(keypoints_list, detection_target_list)
+            one_row = getOneFeatureRow(keypoints_list[0], detection_target_list)
 
             # Information of the image
             img_info = parseFileName(file, ".jpg")
@@ -298,7 +298,7 @@ def processVideosInDir(video_dir: str,
 
                 landmarks, _, data_samples = processOneImage(frame, bbox_detector_model, pose_estimator_model)
                 # renderTheResults(frame, data_samples, estim_results_visualizer=visualizer, show_interval=.001)
-                one_row = getOneFeatureRow(landmarks, detection_target_list)
+                one_row = getOneFeatureRow(landmarks[0], detection_target_list)
 
                 img_info = parseFileName(file_name_without_extension + f"_{frame_count}", ".mp4")
                 # if 'weight' not in img_info:
