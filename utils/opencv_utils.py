@@ -42,6 +42,7 @@ def getUserConsoleConfig(max_required_num=3):
 
     return is_remote, video_source
 
+
 def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:
     """
     Yield the video frame. Either using local mode, which will invoke an
