@@ -37,10 +37,25 @@ def videoDemo(src: Union[str, int],
                                                                   bbox_threshold=mcfg.bbox_thr)
         renderTheResults(frame, data_samples, estim_results_visualizer, show_interval=.001)
 
-        [processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func)
-         for keypoints, xyxy in zip(keypoints_list, xyxy_list)]
-
-        yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
+        if estim_results_visualizer is not None:
+            # MMPose Logic
+            estim_results_visualizer.add_datasample(
+                'result',
+                frame,
+                data_sample=data_samples,
+                draw_gt=False,
+                draw_heatmap=mcfg.draw_heatmap,
+                draw_bbox=mcfg.draw_bbox,
+                show_kpt_idx=mcfg.show_kpt_idx,
+                skeleton_style=mcfg.skeleton_style,
+                show=mcfg.show,
+                wait_time=0.01,
+                kpt_thr=mcfg.kpt_thr)
+        else:
+            # Classification Model Logic
+            [processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func)
+             for keypoints, xyxy in zip(keypoints_list, xyxy_list)]
+            yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
 
         time.sleep(0.085) if (websocket_obj is not None) else None
 
@@ -75,9 +90,9 @@ def classify(classifier_model, numeric_data):
 
 if __name__ == '__main__':
     # Configuration
-    is_remote, video_source = getUserConsoleConfig(max_required_num=3)
+    is_remote, video_source, use_mmpose_visualizer = getUserConsoleConfig(max_required_num=3)
 else:
-    is_remote, video_source = False, 0
+    is_remote, video_source, use_mmpose_visualizer = False, 0, False
 
 # Initialize MMPose essentials
 detector, pose_estimator, visualizer = getMMPoseEssentials(
@@ -102,7 +117,7 @@ videoDemo(src=int(video_source) if video_source is not None else 0,
           bbox_detector_model=detector,
           pose_estimator_model=pose_estimator,
           detection_target_list=target_list,
-          # estim_results_visualizer=visualizer,
+          estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
           classifier_model=classifier,
           classifier_func=classify,
           websocket_obj=ws)

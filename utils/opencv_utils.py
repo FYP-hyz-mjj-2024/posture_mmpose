@@ -40,7 +40,10 @@ def getUserConsoleConfig(max_required_num=3):
     # Remote stream pushing / Local running
     is_remote = input("Push video frame to remote? [y/n] > ") == 'y'
 
-    return is_remote, video_source
+    # Use mmpose visualizer
+    use_mmpose_visualizer = input("Use MMPose visualizer? [y/n] > ") == 'y'
+
+    return is_remote, video_source, use_mmpose_visualizer
 
 
 def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:
