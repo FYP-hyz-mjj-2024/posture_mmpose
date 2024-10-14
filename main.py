@@ -103,10 +103,10 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 )
 
 # List of detection targets
-target_list = kcfg.target_list
+target_list = kcfg.get_target_list()
 
 # Classifier Model
-classifier = MLP(input_size=9, hidden_size=100, output_size=2)
+classifier = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
 classifier.load_state_dict(torch.load("./data/models/posture_mmpose_nn.pth"))
 classifier.eval()
 

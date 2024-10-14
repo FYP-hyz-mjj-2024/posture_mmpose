@@ -197,7 +197,7 @@ def getOneFeatureRow(keypoints_list: List,
     for target in detection_target_list:
         angle_value, angle_score = calc_keypoint_angle(keypoints, kcfg.keypoint_indexes, target[0], target[1])
         kas_one_person.append(angle_value)
-        # kas_one_person.append(angle_score)
+        kas_one_person.append(angle_score)
 
     # Shape=(2m)
     return kas_one_person
@@ -342,7 +342,7 @@ if __name__ == "__main__":
     )
 
     # List of detection targets
-    target_list = kcfg.target_list
+    target_list = kcfg.get_target_list()
 
     """
     5. Image Processing
