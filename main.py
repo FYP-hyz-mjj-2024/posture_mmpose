@@ -85,7 +85,10 @@ def classify(classifier_model, numeric_data):
 
     # for i in range(0, 9999):
     #     continue
-    return ("Using" if prediction == 1 else "Not Using"), (prediction != 1)
+    out0 = 100 * outputs[0][0]/(outputs[0][0]+outputs[0][1])
+    out1 = 100 * outputs[0][1]/(outputs[0][0]+outputs[0][1])
+
+    return (f"Using {out1:.2f}" if prediction == 1 else f"Not Using {out0:.2f}"), (prediction != 1)
 
 
 if __name__ == '__main__':
@@ -106,7 +109,7 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_target_list()
 
 # Classifier Model
-classifier = MLP(input_size=len(target_list), hidden_size=100, output_size=2)
+classifier = MLP(input_size=2*len(target_list), hidden_size=100, output_size=2)
 classifier.load_state_dict(torch.load("./data/models/posture_mmpose_nn.pth"))
 classifier.eval()
 
