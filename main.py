@@ -70,17 +70,18 @@ def processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_m
 
 def classify(classifier_model, numeric_data):
     # TODO: This is an interface maintained to further inject model usage.
+    model, params = classifier_model
 
     # Normalize Data
     input_data = np.array(numeric_data).reshape(1, -1)
-    input_data[:, ::2] /= 180  # 角度字段归一化到 [0, 1]
-    mean_X = np.mean(input_data)
-    std_dev_X = np.std(input_data)
+    input_data[:, ::2] /= 180
+    mean_X = params['mean_X']
+    std_dev_X = params['std_dev_X']
     input_data = (input_data - mean_X) / std_dev_X
     input_tensor = torch.tensor(input_data, dtype=torch.float32)
 
     with torch.no_grad():
-        outputs = classifier_model(input_tensor)
+        outputs = model(input_tensor)
         prediction = torch.argmax(outputs, dim=1).item()
 
     # for i in range(0, 9999):
@@ -109,9 +110,16 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_target_list()
 
 # Classifier Model
+model_state = torch.load("./data/models/posture_mmpose_nn.pth")
 classifier = MLP(input_size=2*len(target_list), hidden_size=100, output_size=2)
-classifier.load_state_dict(torch.load("./data/models/posture_mmpose_nn.pth"))
+classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
+
+classifier_params = {
+    'mean_X': model_state['mean_X'].item(),
+    'std_dev_X': model_state['std_dev_X'].item()
+}
+
 
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
@@ -121,6 +129,6 @@ videoDemo(src=int(video_source) if video_source is not None else 0,
           pose_estimator_model=pose_estimator,
           detection_target_list=target_list,
           estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
-          classifier_model=classifier,
+          classifier_model=[classifier, classifier_params],
           classifier_func=classify,
           websocket_obj=ws)

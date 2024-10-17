@@ -88,7 +88,7 @@ if __name__ == '__main__':
     X = np.vstack((using, not_using))
     X[:, ::2] /= 180    # Make domain of angle fields into [0, 1]
     mean_X = np.mean(X)
-    std_dev_X = np.std(X)
+    std_dev_X = np.std(X, ddof=1)
     X = (X - mean_X) / std_dev_X
 
     # Result Labels
@@ -165,7 +165,13 @@ if __name__ == '__main__':
     print(f"Train Accuracy: {train_accuracy:.4f}")
     print(f"Test Accuracy: {test_accuracy:.4f}")
 
-    torch.save(model.state_dict(), "../data/models/posture_mmpose_nn.pth")
+    model_state = {
+        'model_state_dict': model.state_dict(),
+        'mean_X': torch.tensor(mean_X, dtype=torch.float32),
+        'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
+    }
+
+    torch.save(model_state, "../data/models/posture_mmpose_nn.pth")
     print(f"Model saved to ../data/models/posture_mmpose_nn.pth")
 
 

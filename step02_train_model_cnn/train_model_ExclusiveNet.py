@@ -16,7 +16,6 @@ import time
 from utils.parse_file_name import parseFileName
 from utils.plot_report import plot_report
 
-
 def getNPY(npy_dir):
     labeled_data = {}
 
@@ -27,8 +26,8 @@ def getNPY(npy_dir):
 
             npy_info = parseFileName(file, '.npy')
 
-            if not npy_info['label'].startswith('U'):
-                continue
+            # if not npy_info['label'].startswith('U'):
+            #     continue
 
             this_npy = np.load(os.path.join(root, file))
             class_name = f"{npy_info['label']}_{npy_info['extensions']}"
@@ -60,6 +59,7 @@ def train(model, train_loader, loss_fn, optimizer, num_epochs=20):
 
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss/len(train_loader)}")
 
+
     return losses
 
 
@@ -71,11 +71,24 @@ def evaluate(model, test_loader):
     with torch.no_grad():
         for inputs, labels in test_loader:
             outputs = model(inputs)
-            _, predicted = torch.max(outputs, dim=1)
+            confidence, predicted = torch.max(outputs, dim=1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
+            print("Batch")
+            for conf, pred in zip(confidence, predicted):
+                print(f"    Confidence: {conf}, Prediction: {pred}")
+
     print(f"Accuracy: {100 * correct / total:.2f}%")
+
+
+def classifyUnknown(model, input_data, thr=0.8, T=1):
+    model.eval()
+    with torch.no_grad():
+        probs = model(input_data, T=T)
+        # prediction = torch.argmax(probs, dim=1).item()
+        max_prob = probs.max().item()
+        return max_prob > thr  # False = Unknown
 
 
 class ExclusiveNet(nn.Module):
@@ -101,18 +114,25 @@ if __name__ == '__main__':
     #     print(f"{key}\n{item}\n")
 
     # Extract Features and Labels
-    X = []
-    y = []
+    _X = []
+    _y = []
 
     for label, data_matrix in data.items():
-        X.append(data_matrix)
-        y += [label] * len(data_matrix)
+        _X.append(data_matrix)
+        _y += [label] * len(data_matrix)
 
-    X = np.vstack(X)
-    y = np.array(y)
+    X = np.vstack(_X)
+    X[:, ::-2] /= 180
+    mean_X = np.mean(X)
+    std_dev_X = np.std(X, ddof=1)
+    X = (X - mean_X) / std_dev_X
+
+    y = np.array(_y)
 
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
+
+    # a = np.hstack((X, np.reshape(y_encoded, (len(y_encoded), 1))))
 
     # Train-Test Split
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2,
@@ -136,8 +156,8 @@ if __name__ == '__main__':
     hidden_dim = 128
     output_dim = len(le.classes_)
 
-    learning_rate = 0.001
-    num_epochs = 200
+    learning_rate = 0.00005
+    num_epochs = 350
 
     # Initialize Model
     model = ExclusiveNet(input_dim, hidden_dim, output_dim)
@@ -145,6 +165,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     # Train Model
+    print(f"Training ...")
     report_loss = train(model, train_loader, loss_fn, optimizer, num_epochs=num_epochs)
     plot_report([report_loss],
                 ["Loss"],
@@ -154,5 +175,34 @@ if __name__ == '__main__':
                     "y_name": "Loss"
                 })
 
+    print(f"Evaluating ...")
     evaluate(model, test_loader)
+
+    model_state = {
+        'model_state_dict': model.state_dict(),
+        'mean_X': torch.tensor(mean_X, dtype=torch.float32),
+        'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
+    }
+
+    torch.save(model.state_dict(), "../data/models/exclusive_nn.pth")
+    print(f"Model saved to ../data/models/exclusive_nn.pth")
+
+    # """Test Unknown"""
+    #
+    # X_unknown = np.load("../data/train/20241003_1540_mjj_N_WN-Wiggle_000.npy")
+    # X_unknown[:, ::-2] /= 180
+    # X_unknown = (X_unknown - mean_X) / std_dev_x
+    #
+    # classifier = ExclusiveNet(input_dim=X_unknown.shape[1], hidden_dim=128, output_dim=len(le.classes_))
+    # classifier.load_state_dict(torch.load("../data/models/exclusive_nn.pth"))
+    # classifier.eval()
+    #
+    # # X_unknown = torch.tensor(X_unknown, dtype=torch.float32)
+    #
+    # test_unknown = []
+    # for row in X_unknown:
+    #     input_tensor = torch.tensor(row, dtype=torch.float32)
+    #     know = classifyUnknown(classifier, input_tensor, thr=0.99, T=100)
+    #     test_unknown.append(know)
+    # print(test_unknown.count(False)/len(test_unknown))
 
