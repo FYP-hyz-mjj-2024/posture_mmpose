@@ -30,7 +30,8 @@ def getNPY(npy_dir):
             #     continue
 
             this_npy = np.load(os.path.join(root, file))
-            class_name = f"{npy_info['label']}_{npy_info['extensions']}"
+            # class_name = f"{npy_info['label']}_{npy_info['extensions']}"
+            class_name = npy_info['label']
             if class_name not in labeled_data.keys():
                 labeled_data[class_name] = this_npy
             else:
@@ -156,8 +157,8 @@ if __name__ == '__main__':
     hidden_dim = 128
     output_dim = len(le.classes_)
 
-    learning_rate = 0.00005
-    num_epochs = 350
+    learning_rate = 0.00001
+    num_epochs = 500
 
     # Initialize Model
     model = ExclusiveNet(input_dim, hidden_dim, output_dim)
