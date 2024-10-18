@@ -16,6 +16,11 @@ import time
 from utils.parse_file_name import parseFileName
 from utils.plot_report import plot_report
 
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+
 def getNPY(npy_dir):
     labeled_data = {}
 
@@ -47,6 +52,7 @@ def train(model, train_loader, loss_fn, optimizer, num_epochs=20):
         running_loss = 0.0
 
         for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
 
             outputs = model(inputs)
@@ -71,6 +77,7 @@ def evaluate(model, test_loader):
 
     with torch.no_grad():
         for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             confidence, predicted = torch.max(outputs, dim=1)
             total += labels.size(0)
@@ -161,7 +168,7 @@ if __name__ == '__main__':
     num_epochs = 500
 
     # Initialize Model
-    model = ExclusiveNet(input_dim, hidden_dim, output_dim)
+    model = ExclusiveNet(input_dim, hidden_dim, output_dim).to(device)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -194,7 +201,7 @@ if __name__ == '__main__':
     X_unknown[:, ::-2] /= 180
     X_unknown = (X_unknown - mean_X) / std_dev_X
 
-    classifier = ExclusiveNet(input_dim=X_unknown.shape[1], hidden_dim=128, output_dim=len(le.classes_))
+    classifier = ExclusiveNet(input_dim=X_unknown.shape[1], hidden_dim=128, output_dim=len(le.classes_)).to(device)
     classifier.load_state_dict(torch.load("../data/models/exclusive_nn.pth"))
     classifier.eval()
 
@@ -202,7 +209,7 @@ if __name__ == '__main__':
 
     test_unknown = []
     for row in X_unknown:
-        input_tensor = torch.tensor(row, dtype=torch.float32)
+        input_tensor = torch.tensor(row, dtype=torch.float32).to(device)
         know = classifyUnknown(classifier, input_tensor, thr=0.99, T=100)
         test_unknown.append(know)
     # print(test_unknown.count(False)/len(test_unknown))
