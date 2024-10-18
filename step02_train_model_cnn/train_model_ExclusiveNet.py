@@ -26,12 +26,12 @@ def getNPY(npy_dir):
 
             npy_info = parseFileName(file, '.npy')
 
-            # if not npy_info['label'].startswith('U'):
-            #     continue
+            if not npy_info['label'].startswith('U'):
+                continue
 
             this_npy = np.load(os.path.join(root, file))
-            # class_name = f"{npy_info['label']}_{npy_info['extensions']}"
-            class_name = npy_info['label']
+            class_name = f"{npy_info['label']}_{npy_info['extensions']}"
+            # class_name = npy_info['label']
             if class_name not in labeled_data.keys():
                 labeled_data[class_name] = this_npy
             else:
@@ -188,22 +188,22 @@ if __name__ == '__main__':
     torch.save(model.state_dict(), "../data/models/exclusive_nn.pth")
     print(f"Model saved to ../data/models/exclusive_nn.pth")
 
-    # """Test Unknown"""
-    #
-    # X_unknown = np.load("../data/train/20241003_1540_mjj_N_WN-Wiggle_000.npy")
-    # X_unknown[:, ::-2] /= 180
-    # X_unknown = (X_unknown - mean_X) / std_dev_x
-    #
-    # classifier = ExclusiveNet(input_dim=X_unknown.shape[1], hidden_dim=128, output_dim=len(le.classes_))
-    # classifier.load_state_dict(torch.load("../data/models/exclusive_nn.pth"))
-    # classifier.eval()
-    #
-    # # X_unknown = torch.tensor(X_unknown, dtype=torch.float32)
-    #
-    # test_unknown = []
-    # for row in X_unknown:
-    #     input_tensor = torch.tensor(row, dtype=torch.float32)
-    #     know = classifyUnknown(classifier, input_tensor, thr=0.99, T=100)
-    #     test_unknown.append(know)
-    # print(test_unknown.count(False)/len(test_unknown))
+    """Test Unknown"""
 
+    X_unknown = np.load("../data/train/20240926_1509_mjj_UN-Vert_WN-Wiggle_100.npy")
+    X_unknown[:, ::-2] /= 180
+    X_unknown = (X_unknown - mean_X) / std_dev_X
+
+    classifier = ExclusiveNet(input_dim=X_unknown.shape[1], hidden_dim=128, output_dim=len(le.classes_))
+    classifier.load_state_dict(torch.load("../data/models/exclusive_nn.pth"))
+    classifier.eval()
+
+    # X_unknown = torch.tensor(X_unknown, dtype=torch.float32)
+
+    test_unknown = []
+    for row in X_unknown:
+        input_tensor = torch.tensor(row, dtype=torch.float32)
+        know = classifyUnknown(classifier, input_tensor, thr=0.99, T=100)
+        test_unknown.append(know)
+    # print(test_unknown.count(False)/len(test_unknown))
+    print(test_unknown)
