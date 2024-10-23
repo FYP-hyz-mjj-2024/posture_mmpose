@@ -196,37 +196,37 @@ if __name__ == '__main__':
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
     ''' Train Model '''
-    # # Hyper Parameters
-    # input_dim = X_train.shape[1]
-    # hidden_dim = 128
-    # output_dim = len(le.classes_)
-    #
-    # learning_rate = 0.001
-    # num_epochs = 100
-    #
-    # # Initialize Model
-    # model = ExclusiveNet(input_dim, hidden_dim, output_dim).to(device)
-    # loss_fn = nn.CrossEntropyLoss()
-    # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    #
-    # # Train and Evaluate Model
-    # train_losses, test_losses = train_and_evaluate(model, train_loader, test_loader, loss_fn, optimizer, num_epochs)
-    # plot_report([train_losses, test_losses],
-    #             ["Train Loss", "Test Loss"],
-    #             {
-    #                 "title": "Training Loss",
-    #                 "x_name": "Epoch",
-    #                 "y_name": "Loss"
-    #             })
-    #
-    # model_state = {
-    #     'model_state_dict': model.state_dict(),
-    #     'mean_X': torch.tensor(mean_X, dtype=torch.float32),
-    #     'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
-    # }
-    #
-    # torch.save(model.state_dict(), "../data/models/exclusive_nn.pth")
-    # print(f"Model saved to ../data/models/exclusive_nn.pth")
+    # Hyper Parameters
+    input_dim = X_train.shape[1]
+    hidden_dim = 128
+    output_dim = len(le.classes_)
+
+    learning_rate = 0.001
+    num_epochs = 100
+
+    # Initialize Model
+    model = ExclusiveNet(input_dim, hidden_dim, output_dim).to(device)
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    # Train and Evaluate Model
+    train_losses, test_losses = train_and_evaluate(model, train_loader, test_loader, loss_fn, optimizer, num_epochs)
+    plot_report([train_losses, test_losses],
+                ["Train Loss", "Test Loss"],
+                {
+                    "title": "Training Loss",
+                    "x_name": "Epoch",
+                    "y_name": "Loss"
+                })
+
+    model_state = {
+        'model_state_dict': model.state_dict(),
+        'mean_X': torch.tensor(mean_X, dtype=torch.float32),
+        'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
+    }
+
+    torch.save(model.state_dict(), "../data/models/exclusive_nn.pth")
+    print(f"Model saved to ../data/models/exclusive_nn.pth")
 
     """Test Unknown"""
 
