@@ -263,7 +263,8 @@ def processImagesInDir(img_dir: str,
 def processVideosInDir(video_dir: str,
                        bbox_detector_model,
                        pose_estimator_model,
-                       detection_target_list) -> List:
+                       detection_target_list,
+                       skip_interval=10) -> List:
     named_feature_matrices = []
 
     for video_file in os.listdir(video_dir):
@@ -304,9 +305,6 @@ def processVideosInDir(video_dir: str,
                 # if 'weight' not in img_info:
                 #     raise Exception("You need to specify weight in the file name!")
                 # one_row.append(img_info['weight'])
-
-                if one_row[271] > 1:
-                    a = 1
 
                 kas_video.append(one_row)
 
@@ -377,7 +375,8 @@ if __name__ == "__main__":
         named_feature_mats = processVideosInDir(video_dir=video_folder,
                                                 bbox_detector_model=detector,
                                                 pose_estimator_model=pose_estimator,
-                                                detection_target_list=target_list)
+                                                detection_target_list=target_list,
+                                                skip_interval=5)
 
         [
             saveFeatureMatToNPY(named_feature_mat['feature_matrix'],
