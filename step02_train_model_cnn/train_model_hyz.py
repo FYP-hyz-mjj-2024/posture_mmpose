@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader, TensorDataset
 import numpy as np
 from sklearn.model_selection import train_test_split
 
@@ -11,6 +12,8 @@ import os
 # Local
 from utils.parse_file_name import parseFileName
 from utils.plot_report import plot_report
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def getNPY(npy_dir):
@@ -33,15 +36,52 @@ def getNPY(npy_dir):
     return npy_using, npy_not_using
 
 
+def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, num_epochs=100):
+    # Record Losses
+    train_losses = []
+    test_losses = []
+
+    for epoch in range(num_epochs):
+
+        # Train on Epoch
+        model.train()
+        running_loss = 0.0
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item() * len(inputs)
+        train_losses.append(running_loss/len(train_loader))
+
+        # Evaluate one Epoch
+        model.eval()
+        test_loss = 0.0
+        with torch.no_grad():
+            for inputs, labels in test_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                test_loss += loss.item() * len(inputs)
+        test_losses.append(test_loss/len(test_loader))
+        print(f"Epoch[{epoch+1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}")
+
+    return train_losses, test_losses
+
+
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(MLP, self).__init__()
-        self.relu = nn.ReLU()
+        self.relu = nn.ELU()
 
         # Convolutional Layers
-        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=16, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=256, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv1d(in_channels=256, out_channels=128, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv1d(in_channels=128, out_channels=64, kernel_size=3, padding=1)
 
         # Fully-connected Layers
         self.fc1 = nn.Linear(64, hidden_size)
@@ -88,7 +128,7 @@ if __name__ == '__main__':
     X = np.vstack((using, not_using))
     X[:, ::2] /= 180    # Make domain of angle fields into [0, 1]
     mean_X = np.mean(X)
-    std_dev_X = np.std(X)
+    std_dev_X = np.std(X, ddof=1)
     X = (X - mean_X) / std_dev_X
 
     # Result Labels
@@ -111,61 +151,46 @@ if __name__ == '__main__':
     X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
 
+    # Tensor Datasets
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
+
+    # Data Loaders
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
     """
     Model 
     """
     input_size = X_train.shape[1]
     hidden_size = 100
-    learning_rate = 0.0001
-    num_epochs = 500
+    learning_rate = 1e-6
+    num_epochs = 650
 
-    model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2)
+    model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2).to(device)
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
 
     report_loss = []
     print(f"Start Training...\nSize of Using: {len(using)}, Size of Not Using: {len(not_using)}")
-    for epoch in range(num_epochs):
-        model.train()
 
-        # Forward pass
-        logits = model(X_train_tensor)      # Shape=(num_people, 2), where 2 is the two probs of "using" & "not using"
-        loss = criterion(logits, y_train_tensor)
+    train_losses, test_losses = train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, num_epochs)
 
-        # Backward pass, optimizer
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    plot_report([train_losses, test_losses],
+                ["Train Loss", "Test Loss"],
+                {
+                    "title": "Training Loss",
+                    "x_name": "Epoch",
+                    "y_name": "Loss"
+                })
 
-        # Report
-        report_loss.append(loss.item())
-        if (epoch + 1) % 10 == 0:
-            print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}")
+    model_state = {
+        'model_state_dict': model.state_dict(),
+        'mean_X': torch.tensor(mean_X, dtype=torch.float32),
+        'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
+    }
 
-    plot_report(
-        [report_loss],
-        ['Loss'],
-        {
-            'title': 'Training Loss',
-            'x_name': 'Epoch',
-            'y_name': 'Loss'
-        })
-
-    # Evaluate the model
-    model.eval()
-    with torch.no_grad():
-        train_outputs = model(X_train_tensor)
-        train_predicted = torch.argmax(train_outputs, dim=1)
-        train_accuracy = (train_predicted == y_train_tensor).float().mean()
-
-        test_outputs = model(X_test_tensor)
-        test_predicted = torch.argmax(test_outputs, dim=1)
-        test_accuracy = (test_predicted == y_test_tensor).float().mean()
-
-    print(f"Train Accuracy: {train_accuracy:.4f}")
-    print(f"Test Accuracy: {test_accuracy:.4f}")
-
-    torch.save(model.state_dict(), "../data/models/posture_mmpose_nn.pth")
+    torch.save(model_state, "../data/models/posture_mmpose_nn.pth")
     print(f"Model saved to ../data/models/posture_mmpose_nn.pth")
 
 

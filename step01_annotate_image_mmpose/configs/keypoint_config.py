@@ -1,3 +1,5 @@
+import itertools
+
 keypoint_names = {
     0: 'Body-Chin',
     1: 'Body-Left_eye',
@@ -204,3 +206,23 @@ target_list = [
     [("Body-Left_wrist", "Body-Right_hip"), "Body-Left_hip"],
     [("Body-Right_wrist", "Body-Left_hip"), "Body-Right_hip"],
 ]
+
+
+def get_target_list():
+    target_list = get_full_angles()
+    return target_list
+
+
+def get_full_angles():
+    keys = list(keypoint_indexes.keys())[:13]
+
+    combinations = [[(tuple[0], tuple[1]), tuple[2]] for tuple in list(itertools.combinations(keys, 3))]
+
+    return combinations
+
+
+if __name__ == "__main__":
+    angles = get_full_angles()
+    print(len(angles))
+    for angle in angles:
+        print(angle)
