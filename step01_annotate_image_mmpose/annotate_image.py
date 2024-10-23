@@ -305,6 +305,9 @@ def processVideosInDir(video_dir: str,
                 #     raise Exception("You need to specify weight in the file name!")
                 # one_row.append(img_info['weight'])
 
+                if one_row[271] > 1:
+                    a = 1
+
                 kas_video.append(one_row)
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
