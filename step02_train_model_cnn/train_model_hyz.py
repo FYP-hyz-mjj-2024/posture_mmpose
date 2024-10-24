@@ -69,8 +69,12 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
                 loss = criterion(outputs, labels)
                 test_loss += loss.item() * len(inputs)
         test_losses.append(test_loss/len(test_loader))
-        overfit_factor = np.tanh((test_losses[-1]-train_losses[-1])/test_losses[-1])
-        overfit_factors.append(overfit_factor)
+
+        test_loss_last_step = np.mean(test_losses[-10:]) if epoch > 10 else 1
+
+        overfit_factor = np.tanh(test_losses[-1]-test_loss_last_step)
+        if epoch > 10:
+            overfit_factors.append(overfit_factor)
         print(f"Epoch[{epoch+1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}, "
               f"OFF:{overfit_factor:.4f}")
 
@@ -164,8 +168,8 @@ if __name__ == '__main__':
     """
     input_size = X_train.shape[1]
     hidden_size = 100
-    learning_rate = 1e-6
-    num_epochs = 650
+    learning_rate = 5e-6
+    num_epochs = 950
 
     model = MLP(input_channel_num=2, output_class_num=2).to(device)
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss

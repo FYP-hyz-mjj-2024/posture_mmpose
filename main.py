@@ -109,7 +109,7 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_target_list()
 
 # Classifier Model
-model_state = torch.load("./data/models/posture_mmpose_vgg.pth")
+model_state = torch.load("./data/models/20241024_1817_posture_mmpose_vgg.pth")
 classifier = MLP(input_channel_num=2, output_class_num=2)
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
