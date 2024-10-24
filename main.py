@@ -79,17 +79,16 @@ def classify(classifier_model, numeric_data):
     std_dev_X = params['std_dev_X']
     input_data = (input_data - mean_X) / std_dev_X
     input_tensor = torch.tensor(input_data, dtype=torch.float32)
+    input_tensor = input_tensor.view(input_data.shape[0], 2, -1)
 
     with torch.no_grad():
         outputs = model(input_tensor)
-        prediction = torch.argmax(outputs, dim=1).item()
+        sg = torch.sigmoid(outputs[0])
+        prediction = torch.argmax(sg, dim=0).item()
 
-    # for i in range(0, 9999):
-    #     continue
-    out0 = 100 * outputs[0][0]/(outputs[0][0]+outputs[0][1])
-    out1 = 100 * outputs[0][1]/(outputs[0][0]+outputs[0][1])
+    out0, out1 = sg
 
-    return (f"Using {out1:.2f}" if prediction == 1 else f"Not Using {out0:.2f}"), (prediction != 1)
+    return (f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"), (prediction != 1)
 
 
 if __name__ == '__main__':
@@ -110,8 +109,8 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_target_list()
 
 # Classifier Model
-model_state = torch.load("./data/models/posture_mmpose_nn.pth")
-classifier = MLP(input_size=2*len(target_list), hidden_size=100, output_size=2)
+model_state = torch.load("./data/models/posture_mmpose_vgg.pth")
+classifier = MLP(input_channel_num=2, output_class_num=2)
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
 

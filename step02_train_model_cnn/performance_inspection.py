@@ -23,7 +23,7 @@ def get_predictions(model_path, extra_loader, input_size, hidden_size, output_si
         model_state = model_path
     else:
         model_state = torch.load(model_path)
-    model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=output_size).to(device)
+    model = MLP(input_channel_num=input_size, hidden_size=hidden_size, output_class_num=output_size).to(device)
     model.load_state_dict(model_state)
 
     model.to(device)

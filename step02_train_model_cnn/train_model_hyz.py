@@ -74,12 +74,14 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_channel_num, output_class_num):
         super(MLP, self).__init__()
         self.relu = nn.ELU()
+        # self.input_size = input_size
+        # self.output_size = output_size
 
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=2, out_channels=8, kernel_size=3, padding=1),  # 32, 2, 268 -> 32, 8, 268
+            nn.Conv1d(in_channels=input_channel_num, out_channels=8, kernel_size=3, padding=1),  # 32, 2, 268 -> 32, 8, 268
             nn.ELU(),
             nn.Conv1d(in_channels=8, out_channels=16, kernel_size=3, padding=1),  # 32, 8, 268 -> 32, 16, 268
             nn.ELU(),
@@ -95,7 +97,7 @@ class MLP(nn.Module):
         self.fc_layers = nn.Sequential(
             nn.Linear(in_features=32 * 71, out_features=256),
             nn.ELU(),
-            nn.Linear(in_features=256, out_features=2)
+            nn.Linear(in_features=256, out_features=output_class_num)
         )
 
     def forward(self, x):
@@ -161,7 +163,7 @@ if __name__ == '__main__':
     learning_rate = 1e-6
     num_epochs = 650
 
-    model = MLP(input_size=2, hidden_size=hidden_size, output_size=2).to(device)
+    model = MLP(input_channel_num=2, hidden_size=hidden_size, output_class_num=2).to(device)
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
 
