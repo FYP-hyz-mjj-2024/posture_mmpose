@@ -40,6 +40,7 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
     # Record Losses
     train_losses = []
     test_losses = []
+    overfit_factors = []
 
     for epoch in range(num_epochs):
 
@@ -68,10 +69,12 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
                 loss = criterion(outputs, labels)
                 test_loss += loss.item() * len(inputs)
         test_losses.append(test_loss/len(test_loader))
+        overfit_factor = np.tanh((test_losses[-1]-train_losses[-1])/test_losses[-1])
+        overfit_factors.append(overfit_factor)
         print(f"Epoch[{epoch+1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}, "
-              f"OFF:{np.tanh((test_losses[-1]-train_losses[-1])/test_losses[-1]):.4f}")
+              f"OFF:{overfit_factor:.4f}")
 
-    return train_losses, test_losses
+    return train_losses, test_losses, overfit_factors
 
 
 class MLP(nn.Module):
@@ -171,14 +174,29 @@ if __name__ == '__main__':
     report_loss = []
     print(f"Start Training...\nSize of Using: {len(using)}, Size of Not Using: {len(not_using)}")
 
-    train_losses, test_losses = train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, num_epochs)
+    train_losses, test_losses, overfit_factors = train_and_evaluate(model,
+                                                                    train_loader,
+                                                                    test_loader,
+                                                                    criterion,
+                                                                    optimizer,
+                                                                    num_epochs)
 
+    # Losses
     plot_report([train_losses, test_losses],
                 ["Train Loss", "Test Loss"],
                 {
-                    "title": "Training Loss",
+                    "title": "Training-Testing Loss",
                     "x_name": "Epoch",
                     "y_name": "Loss"
+                })
+
+    # Overfit Factors
+    plot_report([overfit_factors],
+                ["Overfit Factors"],
+                {
+                    "title": "Training Loss",
+                    "x_name": "Epoch",
+                    "y_name": "Overfit Factor"
                 })
 
     model_state = {
