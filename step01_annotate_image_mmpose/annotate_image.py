@@ -294,7 +294,7 @@ def processVideosInDir(video_dir: str,
 
                 frame_count += 1
                 pbar.update(1)
-                if frame_count % 10 != 0:
+                if frame_count % skip_interval != 0:
                     continue
 
                 landmarks, _, data_samples = processOneImage(frame, bbox_detector_model, pose_estimator_model)
@@ -376,7 +376,7 @@ if __name__ == "__main__":
                                                 bbox_detector_model=detector,
                                                 pose_estimator_model=pose_estimator,
                                                 detection_target_list=target_list,
-                                                skip_interval=5)
+                                                skip_interval=10)
 
         [
             saveFeatureMatToNPY(named_feature_mat['feature_matrix'],

@@ -23,7 +23,7 @@ def get_predictions(model_path, extra_loader, input_size, hidden_size, output_si
         model_state = model_path
     else:
         model_state = torch.load(model_path)
-    model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=output_size).to(device)
+    model = MLP(input_channel_num=input_size, output_class_num=output_size).to(device)
     model.load_state_dict(model_state)
 
     model.to(device)
@@ -98,7 +98,7 @@ def plot_roc_auc(true_labels, pred_scores):
 if __name__ == "__main__":
     using, not_using = getNPY("../data/train")
 
-    model_essentials = torch.load("../data/models/posture_mmpose_nn.pth")
+    model_essentials = torch.load("../data/models/posture_mmpose_vgg.pth")
     model = model_essentials["model_state_dict"]
     mean = model_essentials["mean_X"].cpu().item()
     std = model_essentials["std_dev_X"].cpu().item()
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     X = X_y[:, :-1]
     y = X_y[:, -1]
 
-    X_tensor = torch.tensor(X, dtype=torch.float32)
+    X_tensor = torch.tensor(X, dtype=torch.float32).view(X.shape[0], 2, -1)
     y_tensor = torch.tensor(y, dtype=torch.long)
 
     # Tensor Datasets
@@ -130,7 +130,11 @@ if __name__ == "__main__":
     # Data Loaders
     all_loader = DataLoader(all_dataset, batch_size=32, shuffle=True)
 
-    pred_scores, true_labels, pred_labels = get_predictions(model, input_size=X.shape[1],extra_loader=all_loader, hidden_size=100, output_size=2)
+    pred_scores, true_labels, pred_labels = get_predictions(model,
+                                                            input_size=2,
+                                                            extra_loader=all_loader,
+                                                            hidden_size=100,
+                                                            output_size=2)
     # print(pred_scores)
 
     plot_cm(true_labels, pred_labels)

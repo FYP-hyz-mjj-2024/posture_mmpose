@@ -40,6 +40,7 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
     # Record Losses
     train_losses = []
     test_losses = []
+    overfit_factors = []
 
     for epoch in range(num_epochs):
 
@@ -68,52 +69,48 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
                 loss = criterion(outputs, labels)
                 test_loss += loss.item() * len(inputs)
         test_losses.append(test_loss/len(test_loader))
-        print(f"Epoch[{epoch+1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}")
+        overfit_factor = np.tanh((test_losses[-1]-train_losses[-1])/test_losses[-1])
+        overfit_factors.append(overfit_factor)
+        print(f"Epoch[{epoch+1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}, "
+              f"OFF:{overfit_factor:.4f}")
 
-    return train_losses, test_losses
+    return train_losses, test_losses, overfit_factors
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_channel_num, output_class_num):
         super(MLP, self).__init__()
         self.relu = nn.ELU()
+        # self.input_size = input_size
+        # self.output_size = output_size
 
-        # Convolutional Layers
-        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=256, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv1d(in_channels=256, out_channels=128, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv1d(in_channels=128, out_channels=64, kernel_size=3, padding=1)
+        self.conv_layers = nn.Sequential(
+            nn.Conv1d(in_channels=input_channel_num, out_channels=8, kernel_size=3, padding=1),  # 32, 2, 268 -> 32, 8, 268
+            nn.ELU(),
+            nn.Conv1d(in_channels=8, out_channels=16, kernel_size=3, padding=1),  # 32, 8, 268 -> 32, 16, 268
+            nn.ELU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),   # 32, 16, 268 -> 32, 16, 143
 
-        # Fully-connected Layers
-        self.fc1 = nn.Linear(64, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, hidden_size)
-        self.fc4 = nn.Linear(hidden_size, output_size)
+            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1),  # 32, 16, 143 -> 32, 32, 143
+            nn.ELU(),
+            nn.Conv1d(in_channels=32, out_channels=32, kernel_size=3, padding=1),  # 32, 32, 143 -> 32, 32, 143
+            nn.ELU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),  # 32, 32, 143 -> 32, 32, 71
+        )
+
+        self.fc_layers = nn.Sequential(
+            nn.Linear(in_features=32 * 71, out_features=256),
+            nn.ELU(),
+            nn.Linear(in_features=256, out_features=output_class_num)
+        )
 
     def forward(self, x):
-        #
-        x = x.unsqueeze(2)
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = self.relu(x)
-        x = self.conv3(x)
-        x = self.relu(x)
 
-        # Expand
+        x = self.conv_layers(x)
         x = x.view(x.size(0), -1)
+        x = self.fc_layers(x)
 
-        # Forward through fc layers
-        x = self.fc1(x)
-        x = self.relu(x)
-
-        x = self.fc2(x)
-        x = self.relu(x)
-
-        x = self.fc3(x)
-        x = self.relu(x)
-
-        x = self.fc4(x)
-        return torch.sigmoid(x)
+        return x
 
 
 if __name__ == '__main__':
@@ -146,9 +143,12 @@ if __name__ == '__main__':
     X_test, y_test = X_y_test[:, :-1], X_y_test[:, -1]
 
     # Put into torch tensor
-    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32).unsqueeze(1)
+    X_train_tensor = X_train_tensor.view(X_train.shape[0], 2, -1)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+
+    X_test_tensor = torch.tensor(X_test, dtype=torch.float32).unsqueeze(1)
+    X_test_tensor = X_test_tensor.view(X_test.shape[0], 2, -1)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
 
     # Tensor Datasets
@@ -167,21 +167,36 @@ if __name__ == '__main__':
     learning_rate = 1e-6
     num_epochs = 650
 
-    model = MLP(input_size=input_size, hidden_size=hidden_size, output_size=2).to(device)
+    model = MLP(input_channel_num=2, output_class_num=2).to(device)
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
 
     report_loss = []
     print(f"Start Training...\nSize of Using: {len(using)}, Size of Not Using: {len(not_using)}")
 
-    train_losses, test_losses = train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, num_epochs)
+    train_losses, test_losses, overfit_factors = train_and_evaluate(model,
+                                                                    train_loader,
+                                                                    test_loader,
+                                                                    criterion,
+                                                                    optimizer,
+                                                                    num_epochs)
 
+    # Losses
     plot_report([train_losses, test_losses],
                 ["Train Loss", "Test Loss"],
                 {
-                    "title": "Training Loss",
+                    "title": "Training-Testing Loss",
                     "x_name": "Epoch",
                     "y_name": "Loss"
+                })
+
+    # Overfit Factors
+    plot_report([overfit_factors],
+                ["Overfit Factors"],
+                {
+                    "title": "Training Loss",
+                    "x_name": "Epoch",
+                    "y_name": "Overfit Factor"
                 })
 
     model_state = {
@@ -190,8 +205,8 @@ if __name__ == '__main__':
         'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
     }
 
-    torch.save(model_state, "../data/models/posture_mmpose_nn.pth")
-    print(f"Model saved to ../data/models/posture_mmpose_nn.pth")
+    torch.save(model_state, "../data/models/posture_mmpose_vgg.pth")
+    print(f"Model saved to ../data/models/posture_mmpose_vgg.pth")
 
 
 
