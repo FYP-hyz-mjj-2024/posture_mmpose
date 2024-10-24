@@ -68,7 +68,8 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
                 loss = criterion(outputs, labels)
                 test_loss += loss.item() * len(inputs)
         test_losses.append(test_loss/len(test_loader))
-        print(f"Epoch[{epoch+1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}")
+        print(f"Epoch[{epoch+1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}, "
+              f"OFF:{np.tanh((test_losses[-1]-train_losses[-1])/test_losses[-1]):.4f}")
 
     return train_losses, test_losses
 
@@ -163,7 +164,7 @@ if __name__ == '__main__':
     learning_rate = 1e-6
     num_epochs = 650
 
-    model = MLP(input_channel_num=2, hidden_size=hidden_size, output_class_num=2).to(device)
+    model = MLP(input_channel_num=2, output_class_num=2).to(device)
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
 
