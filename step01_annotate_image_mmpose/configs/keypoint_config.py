@@ -218,6 +218,8 @@ def get_full_angles():
 
     combinations = [[(tuple[0], tuple[1]), tuple[2]] for tuple in list(itertools.combinations(keys, 3))]
 
+    # combinations_2 = [[(tuple[0], tuple[2]), tuple[1]] for tuple in list(itertools.combinations(keys, 3))]
+
     return combinations
 
 

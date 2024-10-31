@@ -13,6 +13,7 @@ from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_
 
 from step02_train_model_cnn.train_model_hyz import MLP
 
+import winsound
 
 def videoDemo(src: Union[str, int],
               bbox_detector_model,
@@ -84,7 +85,8 @@ def classify(classifier_model, numeric_data):
     with torch.no_grad():
         outputs = model(input_tensor)
         sg = torch.sigmoid(outputs[0])
-        prediction = torch.argmax(sg, dim=0).item()
+        prediction = int(sg[0] < sg[1] or sg[1] > 0.48)
+        # prediction = torch.argmax(sg, dim=0).item()
 
     out0, out1 = sg
 
@@ -109,7 +111,7 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_target_list()
 
 # Classifier Model
-model_state = torch.load("./data/models/20241024_1817_posture_mmpose_vgg.pth")
+model_state = torch.load("./data/models/20241031_1652_posture_mmpose_vgg.pth")
 classifier = MLP(input_channel_num=2, output_class_num=2)
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()

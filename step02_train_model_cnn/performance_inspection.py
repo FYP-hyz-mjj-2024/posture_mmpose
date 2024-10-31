@@ -98,7 +98,7 @@ def plot_roc_auc(true_labels, pred_scores):
 if __name__ == "__main__":
     using, not_using = getNPY("../data/train")
 
-    model_essentials = torch.load("../data/models/posture_mmpose_vgg.pth")
+    model_essentials = torch.load("../data/models/20241031_1652_posture_mmpose_vgg.pth")
     model = model_essentials["model_state_dict"]
     mean = model_essentials["mean_X"].cpu().item()
     std = model_essentials["std_dev_X"].cpu().item()
