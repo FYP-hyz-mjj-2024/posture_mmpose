@@ -3,7 +3,7 @@ import os
 import time
 
 
-def disassembleOneVideo(video_path: str, output_images_dir: str, max_frames: int = None) -> None:
+def disassembleOneVideo(video_path: str, output_images_dir: str, max_frames: int=None) -> None:
     """
     Converts a video file into a series of .jpg images.
     :param video_path: Path to the video file.

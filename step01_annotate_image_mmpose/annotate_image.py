@@ -1,11 +1,15 @@
 # Built-in
 import os
 import time
-from typing import List, Union
+from typing import List, Union, Tuple, Dict, Any
 
 # Packages
 import cv2
 import numpy as np
+from mmdet.models import RTMDet
+from mmpose.models import TopdownPoseEstimator
+from mmpose.visualization import PoseLocalVisualizer
+from numpy import ndarray
 from tqdm import tqdm
 
 # MMPose
@@ -33,7 +37,8 @@ from utils.parse_file_name import parseFileName
 register_all_modules()
 
 
-def getMMPoseEssentials(det_config, det_chkpt, pose_config, pose_chkpt):
+def getMMPoseEssentials(det_config: str, det_chkpt: str,
+                        pose_config: str, pose_chkpt: str) -> Tuple[RTMDet, TopdownPoseEstimator, PoseLocalVisualizer]:
     """
     Get essential detectors and visualizers of MMPose.getMMPose.
 
@@ -261,10 +266,10 @@ def processImagesInDir(img_dir: str,
 
 
 def processVideosInDir(video_dir: str,
-                       bbox_detector_model,
-                       pose_estimator_model,
-                       detection_target_list,
-                       skip_interval=10) -> List:
+                       bbox_detector_model: RTMDet,
+                       pose_estimator_model: TopdownPoseEstimator,
+                       detection_target_list: List[List[Union[Tuple[str, str], str]]],
+                       skip_interval: int=10) -> List[Dict[str, Union[str, np.ndarray]]]:
     named_feature_matrices = []
 
     for video_file in os.listdir(video_dir):
@@ -320,7 +325,7 @@ def processVideosInDir(video_dir: str,
     return named_feature_matrices
 
 
-def saveFeatureMatToNPY(mat: np.ndarray, save_path: str):
+def saveFeatureMatToNPY(mat: np.ndarray, save_path: str) -> None:
     """
     Save the feature matrix into a npy file, under the given path.
     :param mat:
