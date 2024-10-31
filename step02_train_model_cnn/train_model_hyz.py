@@ -89,7 +89,7 @@ class MLP(nn.Module):
         # self.output_size = output_size
 
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=input_channel_num, out_channels=8, kernel_size=3, padding=1),  # 32, 2, 268 -> 32, 8, 268
+            nn.Conv1d(in_channels=input_channel_num, out_channels=8, kernel_size=3, padding=1),  # 32, 6, 268 -> 32, 8, 268
             nn.ELU(),
             nn.Conv1d(in_channels=8, out_channels=16, kernel_size=3, padding=1),  # 32, 8, 268 -> 32, 16, 268
             nn.ELU(),
@@ -109,7 +109,6 @@ class MLP(nn.Module):
         )
 
     def forward(self, x):
-
         x = self.conv_layers(x)
         x = x.view(x.size(0), -1)
         x = self.fc_layers(x)
@@ -147,12 +146,14 @@ if __name__ == '__main__':
     X_test, y_test = X_y_test[:, :-1], X_y_test[:, -1]
 
     # Put into torch tensor
+    initial_channel_num = 6
+
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32).unsqueeze(1)
-    X_train_tensor = X_train_tensor.view(X_train.shape[0], 2, -1)
+    X_train_tensor = X_train_tensor.view(X_train.shape[0], initial_channel_num, -1)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
 
     X_test_tensor = torch.tensor(X_test, dtype=torch.float32).unsqueeze(1)
-    X_test_tensor = X_test_tensor.view(X_test.shape[0], 2, -1)
+    X_test_tensor = X_test_tensor.view(X_test.shape[0], initial_channel_num, -1)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
 
     # Tensor Datasets
@@ -169,9 +170,9 @@ if __name__ == '__main__':
     input_size = X_train.shape[1]
     hidden_size = 100
     learning_rate = 5e-6
-    num_epochs = 950
+    num_epochs = 650
 
-    model = MLP(input_channel_num=2, output_class_num=2).to(device)
+    model = MLP(input_channel_num=initial_channel_num, output_class_num=2).to(device)
     criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
 
@@ -189,7 +190,7 @@ if __name__ == '__main__':
     plot_report([train_losses, test_losses],
                 ["Train Loss", "Test Loss"],
                 {
-                    "title": "Training-Testing Loss",
+                    "title": "TR&TE Loss w.r.t. Epoch",
                     "x_name": "Epoch",
                     "y_name": "Loss"
                 })
@@ -198,7 +199,7 @@ if __name__ == '__main__':
     plot_report([overfit_factors],
                 ["Overfit Factors"],
                 {
-                    "title": "Training Loss",
+                    "title": "Overfit Factors w.r.t. Epoch",
                     "x_name": "Epoch",
                     "y_name": "Overfit Factor"
                 })
