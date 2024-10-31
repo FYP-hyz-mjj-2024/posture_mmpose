@@ -215,16 +215,21 @@ def get_target_list():
 
 def get_full_angles():
     keys = list(keypoint_indexes.keys())[:13]
+    corner_points = keys    # C_13^1 = 13
+    edge_combinations = list(itertools.combinations(keys, 2))
 
-    combinations = [[(tuple[0], tuple[1]), tuple[2]] for tuple in list(itertools.combinations(keys, 3))]
+    # All possible combinations
+    feature_angles = list(itertools.product(edge_combinations, corner_points))
 
-    # combinations_2 = [[(tuple[0], tuple[2]), tuple[1]] for tuple in list(itertools.combinations(keys, 3))]
+    # Remove trivial
+    feature_angles = [[angle[0], angle[1]] for angle in feature_angles if (angle[1] not in angle[0])]
 
-    return combinations
+    return feature_angles
 
 
 if __name__ == "__main__":
     angles = get_full_angles()
-    print(len(angles))
     for angle in angles:
         print(angle)
+    print(len(angles))
+

@@ -36,9 +36,9 @@ def videoDemo(src: Union[str, int],
                                                                   bbox_detector_model,
                                                                   pose_estimator_model,
                                                                   bbox_threshold=mcfg.bbox_thr)
-        renderTheResults(frame, data_samples, estim_results_visualizer, show_interval=.001)
 
         if estim_results_visualizer is not None:
+            renderTheResults(frame, data_samples, estim_results_visualizer, show_interval=.001)
             # MMPose Logic
             estim_results_visualizer.add_datasample(
                 'result',
@@ -70,7 +70,6 @@ def processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_m
 
 
 def classify(classifier_model, numeric_data):
-    # TODO: This is an interface maintained to further inject model usage.
     model, params = classifier_model
 
     # Normalize Data
@@ -80,7 +79,7 @@ def classify(classifier_model, numeric_data):
     std_dev_X = params['std_dev_X']
     input_data = (input_data - mean_X) / std_dev_X
     input_tensor = torch.tensor(input_data, dtype=torch.float32)
-    input_tensor = input_tensor.view(input_data.shape[0], 2, -1)
+    input_tensor = input_tensor.view(input_data.shape[0], 6, -1)
 
     with torch.no_grad():
         outputs = model(input_tensor)
@@ -111,8 +110,8 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_target_list()
 
 # Classifier Model
-model_state = torch.load("./data/models/20241031_1652_posture_mmpose_vgg.pth")
-classifier = MLP(input_channel_num=2, output_class_num=2)
+model_state = torch.load("./data/models/posture_mmpose_vgg.pth")
+classifier = MLP(input_channel_num=6, output_class_num=2)
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
 
