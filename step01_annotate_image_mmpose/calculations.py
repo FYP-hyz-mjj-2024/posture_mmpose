@@ -32,7 +32,7 @@ def calc_keypoint_angle(
         edge_keypoints_names: [str, str],
         mid_keypoint_name: str) -> [float, float]:
     """
-    Calculate the angle using the given edge pionts and middle point by their names.
+    Calculate the angle using the given edge points and middle point by their names.
     :param keypoints_one_person: The set of keypoints of a single person. (91, 3)
     :param keypoint_indexes: A mapping dictionary from keypoint names to its indexes.
     :param edge_keypoints_names: A tuple of the names of the two edge keypoints.

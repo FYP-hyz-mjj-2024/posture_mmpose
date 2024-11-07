@@ -13,7 +13,10 @@ from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_
 
 from step02_train_model_cnn.train_model_hyz import MLP
 
-import winsound
+# import winsound
+
+device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+device = torch.device(device_name)
 
 def videoDemo(src: Union[str, int],
               bbox_detector_model,
@@ -110,7 +113,7 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_target_list()
 
 # Classifier Model
-model_state = torch.load("./data/models/posture_mmpose_vgg.pth")
+model_state = torch.load('./data/models/2024_1031_1930_posture_mmpose_vgg.pth', map_location=device)
 classifier = MLP(input_channel_num=6, output_class_num=2)
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()

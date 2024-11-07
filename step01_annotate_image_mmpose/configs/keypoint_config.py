@@ -1,4 +1,7 @@
 import itertools
+from typing import List, Tuple, Union
+
+import numpy as np
 
 keypoint_names = {
     0: 'Body-Chin',
@@ -208,14 +211,14 @@ target_list = [
 ]
 
 
-def get_target_list():
-    target_list = get_full_angles()
-    return target_list
+def get_target_list(mode: str = 'hyz'):
+    _target_list = mode == 'hyz' and get_full_angles() or get_cube_angles()
+    return _target_list
 
 
-def get_full_angles():
+def get_full_angles() -> List[List[Union[Tuple[str, str], str]]]:
     keys = list(keypoint_indexes.keys())[:13]
-    corner_points = keys    # C_13^1 = 13
+    corner_points = keys  # C_13^1 = 13
     edge_combinations = list(itertools.combinations(keys, 2))
 
     # All possible combinations
@@ -227,9 +230,28 @@ def get_full_angles():
     return feature_angles
 
 
+def get_cube_angles() -> List[List[List[Tuple[Tuple[str, str], str]]]]:
+    row = 13
+    col = row
+    depth = (row + 1) // 2
+
+    o_indices = [[[(('', ''), '') for k in range(depth)] for j in range(col - 1)] for i in range(row)]
+
+    for k in range(depth):
+        for i in range(0, row - 1):
+            for j in range(i, col - 1):
+                o_indices[i][j][k] = ((keypoint_names[i], keypoint_names[j + 1]), keypoint_names[2 * k])
+
+        for i in range(1, row):
+            for j in range(0, i):
+                o_indices[i][j][k] = ((keypoint_names[j], keypoint_names[i]),
+                                      keypoint_names[min(2 * k + 1, 2 * depth - 2)])
+
+    return o_indices
+
+
 if __name__ == "__main__":
     angles = get_full_angles()
     for angle in angles:
         print(angle)
     print(len(angles))
-

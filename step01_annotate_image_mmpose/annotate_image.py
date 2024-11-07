@@ -5,6 +5,7 @@ from typing import List, Union, Tuple, Dict, Any
 
 # Packages
 import cv2
+import mmpose.structures
 import numpy as np
 from mmdet.models import RTMDet
 from mmpose.models import TopdownPoseEstimator
@@ -19,7 +20,7 @@ from mmpose.apis import (
     init_model as init_pose_estimator)
 from mmpose.evaluation.functional import nms
 from mmpose.registry import VISUALIZERS
-from mmpose.structures import merge_data_samples
+from mmpose.structures import merge_data_samples, PoseDataSample
 from mmpose.utils import adapt_mmdet_pipeline, register_all_modules
 
 try:
@@ -107,7 +108,7 @@ def renderTheResults(img: Union[str, np.ndarray],
 def processOneImage(img: Union[str, np.ndarray],
                     bbox_detector_model,
                     pose_estimator_model,
-                    bbox_threshold=mcfg.bbox_thr_single):
+                    bbox_threshold=mcfg.bbox_thr_single) -> Tuple[ndarray, ndarray, PoseDataSample]:
     """
     Given an image, first use bbox detection model to retrieve object boundary boxes.
     Then, feed the sub images defined by the bbox into the pose estimation model to get key points.
@@ -182,30 +183,43 @@ def processOneImage(img: Union[str, np.ndarray],
     return keypoints_list, xyxy_list, data_samples
 
 
-def getOneFeatureRow(keypoints_list: List,
-                     detection_target_list: List) -> List:
+def getOneFeatureRow(keypoints_list: ndarray,
+                     detection_targets: Union[List, ndarray],
+                     mode: str = 'hyz') -> Union[List, Tuple[ndarray, ndarray]]:
     """
     Post process the raw features received from process_one_image.
     From the keypoints list, extract the most confident person in the image. Then, convert the
     keypoints list of this person into a flattened feature vector.
 
+    :param mode: What type of data. "hyz" -> angles and scores in lines, "mjj" -> angles and scores in cubes.
     :param keypoints_list: A list of keypoints set of multiple people, gathered from the image.
-    :param detection_target_list: The list of detection targets.
-    :return: A flattened array of feature values.
+    :param detection_targets: The list/cube of detection targets.
+    :return: A flattened array or cube of feature values.
     """
+    if mode == 'hyz':
+        # Only get the person with the highest detection confidence.
+        keypoints = keypoints_list
+        kas_one_person = []
 
-    # Only get the person with the highest detection confidence.
-    keypoints = keypoints_list
-    kas_one_person = []
+        # From keypoints list, get angle-score vector.
+        for target in detection_targets:
+            angle_value, angle_score = calc_keypoint_angle(keypoints, kcfg.keypoint_indexes, target[0], target[1])
+            kas_one_person.append(angle_value)
+            kas_one_person.append(angle_score)
 
-    # From keypoints list, get angle-score vector.
-    for target in detection_target_list:
-        angle_value, angle_score = calc_keypoint_angle(keypoints, kcfg.keypoint_indexes, target[0], target[1])
-        kas_one_person.append(angle_value)
-        kas_one_person.append(angle_score)
-
-    # Shape=(2m)
-    return kas_one_person
+        # Shape=(2m)
+        return kas_one_person
+    elif mode == 'mjj':
+        _shape = detection_targets.shape
+        angles = np.empty(shape=_shape)
+        scores = np.empty(shape=_shape)
+        for k in range(_shape[2]):
+            for i in range(_shape[0]):
+                for j in range(_shape[1]):
+                    angles[i, j, k], scores[i, j, k] = calc_keypoint_angle(keypoints_list[i],
+                                                                           kcfg.keypoint_indexes,
+                                                                           detection_targets[i, j, k, 0],
+                                                                           detection_targets[i, j, k, 1])
 
 
 def processImagesInDir(img_dir: str,
@@ -268,8 +282,9 @@ def processImagesInDir(img_dir: str,
 def processVideosInDir(video_dir: str,
                        bbox_detector_model: RTMDet,
                        pose_estimator_model: TopdownPoseEstimator,
-                       detection_target_list: List[List[Union[Tuple[str, str], str]]],
-                       skip_interval: int=10) -> List[Dict[str, Union[str, np.ndarray]]]:
+                       detection_target_list: Union[List[List[Union[Tuple[str, str], str]]], ndarray],
+                       skip_interval: int = 10,
+                       mode: str = 'hyz') -> List[Dict[str, Union[str, np.ndarray]]]:
     named_feature_matrices = []
 
     for video_file in os.listdir(video_dir):
@@ -287,7 +302,7 @@ def processVideosInDir(video_dir: str,
             print(f"Cannot find {video_file}")
             continue
 
-        frame_count = 0
+        cur_frame = 0
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         with tqdm(total=total_frames, desc=f"Processing {video_file}") as pbar:
@@ -297,16 +312,18 @@ def processVideosInDir(video_dir: str,
                 if not ret:
                     break
 
-                frame_count += 1
+                cur_frame += 1
                 pbar.update(1)
-                if frame_count % skip_interval != 0:
+                if cur_frame % skip_interval != 0:
                     continue
 
                 landmarks, _, data_samples = processOneImage(frame, bbox_detector_model, pose_estimator_model)
                 # renderTheResults(frame, data_samples, estim_results_visualizer=visualizer, show_interval=.001)
-                one_row = getOneFeatureRow(landmarks[0], detection_target_list)
+                one_row = getOneFeatureRow(landmarks[0], detection_target_list) # TODO
 
-                img_info = parseFileName(file_name_without_extension + f"_{frame_count}", ".mp4")
+                angle_cube, score_cube = getOneFeatureRow(landmarks[0], detection_target_list, mode)
+
+                img_info = parseFileName(file_name_without_extension + f"_{cur_frame}", ".mp4")
                 # if 'weight' not in img_info:
                 #     raise Exception("You need to specify weight in the file name!")
                 # one_row.append(img_info['weight'])
@@ -348,12 +365,12 @@ if __name__ == "__main__":
     )
 
     # List of detection targets
-    target_list = kcfg.get_target_list()
 
     """
     5. Image Processing
     """
-    input_type = 'video2npy'  # Alter this between 'image' and 'video'
+    # input_type = 'video2hyz_npy'  # Alter this between 'image' and 'video'
+    input_type = 'video2mjj_npy'  #
     overwrite = False
 
     if input_type == 'image':
@@ -371,16 +388,16 @@ if __name__ == "__main__":
                     bbox_detector_model=detector,
                     pose_estimator_model=pose_estimator,
                     estim_results_visualizer=visualizer,
-                    detection_target_list=target_list
+                    detection_target_list=kcfg.get_target_list('hyz')
                 )
                 saveFeatureMatToNPY(kas_multiple_images, save_path=f"../data/train/{sub_dir}.npy")
-    elif input_type == 'video2npy':
+    elif input_type == 'video2hyz_npy':
 
         video_folder = "../data/blob/videos"
         named_feature_mats = processVideosInDir(video_dir=video_folder,
                                                 bbox_detector_model=detector,
                                                 pose_estimator_model=pose_estimator,
-                                                detection_target_list=target_list,
+                                                detection_target_list=kcfg.get_target_list('hyz'),
                                                 skip_interval=10)
 
         [
@@ -388,3 +405,15 @@ if __name__ == "__main__":
                                 save_path="../data/train/" + named_feature_mat['name'] + ".npy")
             for named_feature_mat in named_feature_mats
         ]
+    elif input_type == 'video2mjj_npy':
+
+        video_folder = "../data/blob/videos"
+        named_feature_mats = processVideosInDir(video_dir=video_folder,
+                                                bbox_detector_model=detector,
+                                                pose_estimator_model=pose_estimator,
+                                                detection_target_list=kcfg.get_target_list('mjj'),
+                                                skip_interval=10)
+
+        for named_feature_mat in named_feature_mats:
+            saveFeatureMatToNPY(named_feature_mat['feature_matrix'],
+                                save_path="../data/train/" + named_feature_mat['name'] + ".npy")
