@@ -1,6 +1,6 @@
 import cv2
 import time
-from typing import List, Union
+from typing import List, Union, Tuple, Dict
 
 import numpy as np
 import torch
@@ -13,10 +13,9 @@ from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_
 
 from step02_train_model_cnn.train_model_hyz import MLP
 
-# import winsound
-
 device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 device = torch.device(device_name)
+
 
 def videoDemo(src: Union[str, int],
               bbox_detector_model,
@@ -26,7 +25,6 @@ def videoDemo(src: Union[str, int],
               classifier_model=None,
               classifier_func=None,
               websocket_obj=None):
-
     cap = cv2.VideoCapture(src)
 
     while cap.isOpened():
@@ -66,13 +64,26 @@ def videoDemo(src: Union[str, int],
     cap.release()
 
 
-def processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func, ):
-    kas_one_person = getOneFeatureRow(keypoints, detection_target_list)
-    classifier_result_str, classify_is_ok = classifier_func(classifier_model, kas_one_person)
-    render_detection_rectangle(frame, classifier_result_str, xyxy, is_ok=classify_is_ok)
+def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
+                     keypoints: np.ndarray,  # shape: (17, 3)
+                     xyxy: np.ndarray,  # shape: (4,)
+                     detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
+                     classifier_model: List[Union[MLP, Dict[str, float]]],
+                     classifier_func, ):
+    r_shoulder_x, l_shoulder_x = keypoints[5][0], keypoints[6][0]
+    r_shoulder_s, l_shoulder_s = keypoints[5][2], keypoints[6][2]
+
+    if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and l_shoulder_x > r_shoulder_x:
+        classifier_result_str = f"Backside {((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0:.2f}"
+        classify_is_ok = -1
+    else:
+        kas_one_person = getOneFeatureRow(keypoints, detection_target_list)  # {list: 1716}
+        classifier_result_str, classify_is_ok = classifier_func(classifier_model, kas_one_person)
+
+    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_is_ok)
 
 
-def classify(classifier_model, numeric_data):
+def classify(classifier_model, numeric_data) -> Tuple[str, int]:
     model, params = classifier_model
 
     # Normalize Data
@@ -92,7 +103,7 @@ def classify(classifier_model, numeric_data):
 
     out0, out1 = sg
 
-    return (f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"), (prediction != 1)
+    return (f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"), 1 if prediction != 1 else 0
 
 
 if __name__ == '__main__':
@@ -113,7 +124,7 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_target_list()
 
 # Classifier Model
-model_state = torch.load('./data/models/2024_1031_1930_posture_mmpose_vgg.pth', map_location=device)
+model_state = torch.load('./data/models/posture_mmpose_vgg.pth', map_location=device)
 classifier = MLP(input_channel_num=6, output_class_num=2)
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
@@ -122,7 +133,6 @@ classifier_params = {
     'mean_X': model_state['mean_X'].item(),
     'std_dev_X': model_state['std_dev_X'].item()
 }
-
 
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
