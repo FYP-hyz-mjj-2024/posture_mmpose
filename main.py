@@ -69,23 +69,25 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      xyxy: np.ndarray,  # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      classifier_model: List[Union[MLP, Dict[str, float]]],
-                     classifier_func, ):
+                     classifier_func, ) -> None:
 
     # If detected backside, don't do inference.
-    r_shoulder_x, l_shoulder_x = keypoints[5][0], keypoints[6][0]
-    r_shoulder_s, l_shoulder_s = keypoints[5][2], keypoints[6][2]
+    l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
+    l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
+    backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
 
-    if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and l_shoulder_x > r_shoulder_x:
+    if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
         classifier_result_str = f"Backside {((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0:.2f}"
-        classify_is_ok = -1
+        classify_signal = -1
     else:
         kas_one_person = getOneFeatureRow(keypoints, detection_target_list)  # {list: 1716}
-        classifier_result_str, classify_is_ok = classifier_func(classifier_model, kas_one_person)
+        classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
 
-    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_is_ok)
+    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
 
-def classify(classifier_model, numeric_data) -> Tuple[str, int]:
+def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
+             numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
     model, params = classifier_model
 
     # Normalize Data
@@ -104,8 +106,10 @@ def classify(classifier_model, numeric_data) -> Tuple[str, int]:
         # prediction = torch.argmax(sg, dim=0).item()
 
     out0, out1 = sg
+    classify_signal = 1 if prediction != 1 else 0
+    classifier_result_str = f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"
 
-    return (f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"), 1 if prediction != 1 else 0
+    return classifier_result_str, classify_signal
 
 
 if __name__ == '__main__':
