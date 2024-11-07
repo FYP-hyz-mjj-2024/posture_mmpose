@@ -70,6 +70,8 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      classifier_model: List[Union[MLP, Dict[str, float]]],
                      classifier_func, ):
+
+    # If detected backside, don't do inference.
     r_shoulder_x, l_shoulder_x = keypoints[5][0], keypoints[6][0]
     r_shoulder_s, l_shoulder_s = keypoints[5][2], keypoints[6][2]
 
