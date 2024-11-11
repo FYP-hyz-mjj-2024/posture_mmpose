@@ -1,5 +1,5 @@
 import itertools
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Any
 
 keypoint_names = {
     0: 'Body-Chin',
@@ -211,7 +211,7 @@ def get_full_angles(use_str: bool = True, num: int = 13) -> List[List[Union[Tupl
     return feature_angles
 
 
-def get_cube_angles(use_str: bool = True, num: int = 13):
+def get_cube_angles(use_str: bool = True, num: int = 13) -> List[List[List[Any]]]:
     ls = keypoint_indexes.keys() if use_str else keypoint_indexes.values()
 
     keys = list(ls)[:num]
@@ -223,10 +223,10 @@ def get_cube_angles(use_str: bool = True, num: int = 13):
     depth = (num + 1) // 2
 
     init = use_str and [('', ''), ''] or [(0, 0), 0]
-    o_indices = [[[init for _ in range(depth)] for _ in range(col)] for _ in range(row)]
+    o_indices: List[List[List[Any]]] = [[[init for _ in range(depth)] for _ in range(col)] for _ in range(row)]
 
     i_j_order = [(i, j) for i in range(row) for j in range(i, col)]  # 右上角
-    i_j_order += [(i, j) for j in range(col) for i in range(j + 1, row)]   # 左下角
+    i_j_order += [(i, j) for j in range(col) for i in range(j + 1, row)]  # 左下角
 
     idx = 0  # idx of sorted_angles
     for k in range(depth):

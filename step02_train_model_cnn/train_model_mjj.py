@@ -25,11 +25,11 @@ def getNPY(npy_dir):
             if not file.endswith('.npy'):
                 continue
             npy_info = parseFileName(file, '.npy')
-            this_npy = np.load(os.path.join(root,file))
+            this_npy = np.load(os.path.join(root, file))
             if npy_info['label'].startswith('U'):
-                npy_using = this_npy if npy_using is None else np.vstack((npy_using,this_npy))
+                npy_using = this_npy if npy_using is None else np.vstack((npy_using, this_npy))
             elif npy_info['label'].startswith('N'):
-                npy_not_using = this_npy if npy_not_using is None else np.vstack((npy_not_using,this_npy))
+                npy_not_using = this_npy if npy_not_using is None else np.vstack((npy_not_using, this_npy))
             else:
                 raise Exception("Wrong label retrieved.")
 
@@ -57,7 +57,7 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
             optimizer.step()
 
             running_loss += loss.item() * len(inputs)
-        train_losses.append(running_loss/len(train_loader))
+        train_losses.append(running_loss / len(train_loader))
 
         # Evaluate one Epoch
         model.eval()
@@ -68,14 +68,14 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
                 test_loss += loss.item() * len(inputs)
-        test_losses.append(test_loss/len(test_loader))
+        test_losses.append(test_loss / len(test_loader))
 
         test_loss_last_step = np.mean(test_losses[-10:]) if epoch > 10 else 1
 
-        overfit_factor = np.tanh(test_losses[-1]-test_loss_last_step)
+        overfit_factor = np.tanh(test_losses[-1] - test_loss_last_step)
         if epoch > 10:
             overfit_factors.append(overfit_factor)
-        print(f"Epoch[{epoch+1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}, "
+        print(f"Epoch[{epoch + 1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}, "
               f"OFF:{overfit_factor:.4f}")
 
     return train_losses, test_losses, overfit_factors
@@ -89,11 +89,12 @@ class MLP(nn.Module):
         # self.output_size = output_size
 
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=input_channel_num, out_channels=8, kernel_size=3, padding=1),  # 32, 6, 268 -> 32, 8, 268
+            nn.Conv1d(in_channels=input_channel_num, out_channels=8, kernel_size=3, padding=1),
+            # 32, 6, 268 -> 32, 8, 268
             nn.ELU(),
             nn.Conv1d(in_channels=8, out_channels=16, kernel_size=3, padding=1),  # 32, 8, 268 -> 32, 16, 268
             nn.ELU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),   # 32, 16, 268 -> 32, 16, 143
+            nn.MaxPool1d(kernel_size=2, stride=2),  # 32, 16, 268 -> 32, 16, 143
 
             nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1),  # 32, 16, 143 -> 32, 32, 143
             nn.ELU(),
@@ -116,7 +117,7 @@ class MLP(nn.Module):
         return x
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     """
     Prepare data
     """
@@ -126,7 +127,7 @@ if __name__ == '__main__':
     # Normalize Data
     # Using Z-score normalization: mean(mu)=0, std_dev(sigma)=1
     X = np.vstack((using, not_using))
-    X[:, ::2] /= 180    # Make domain of angle fields into [0, 1]
+    X[:, ::2] /= 180  # Make domain of angle fields into [0, 1]
     mean_X = np.mean(X)
     std_dev_X = np.std(X, ddof=1)
     X = (X - mean_X) / std_dev_X
@@ -173,8 +174,8 @@ if __name__ == '__main__':
     num_epochs = 650
 
     model = MLP(input_channel_num=initial_channel_num, output_class_num=2).to(device)
-    criterion = nn.CrossEntropyLoss()    # Binary cross entropy loss
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)    # Auto adjust lr prevent o.f.
+    criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Auto adjust lr prevent o.f.
 
     report_loss = []
     print(f"Start Training...\nSize of Using: {len(using)}, Size of Not Using: {len(not_using)}")

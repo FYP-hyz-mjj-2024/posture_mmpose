@@ -1,4 +1,6 @@
 # Built-in
+import copy
+import itertools
 import os
 import time
 from typing import List, Union, Tuple, Dict, Any
@@ -80,14 +82,12 @@ def getMMPoseEssentials(det_config: str, det_chkpt: str,
     return bbox_detector, pose_estimator, visualizer
 
 
-
-
 def processVideosInDir(video_dir: str,
                        bbox_detector_model: RTMDet,
                        pose_estimator_model: TopdownPoseEstimator,
                        detection_target_list: Union[List[List[Union[Tuple[str, str], str]]], ndarray],
                        skip_interval: int = 10,
-                       mode: str = 'hyz') -> List[Dict[str, Union[str, np.ndarray]]]:
+                       mode: str = None) -> List[Dict[str, Union[str, np.ndarray]]]:
     """
     Convert all the videos gathered from a given directory.
     "kas" = key-angle-score
@@ -104,7 +104,7 @@ def processVideosInDir(video_dir: str,
     for file_name in os.listdir(video_dir):
 
         # Settle file sources
-        if not file_name.endswith('.mp4'):     # Skip all non-videos
+        if not file_name.endswith('.mp4'):  # Skip all non-videos
             continue
         video_path = os.path.join(video_dir, file_name)
         file_name_with_extension = os.path.basename(video_path)
@@ -119,17 +119,17 @@ def processVideosInDir(video_dir: str,
                                          skip_interval,
                                          mode)
         named_feature_matrices.append({"name": file_name_without_extension,
-                                           "feature_matrix": feature_matrix})
+                                       "feature_matrix": feature_matrix})
 
     return named_feature_matrices
+
 
 def processOneVideo(video_path: str,
                     bbox_detector_model: RTMDet,
                     pose_estimator_model: TopdownPoseEstimator,
                     detection_targets: Union[List[List[Union[Tuple[str, str], str]]], ndarray],
                     skip_interval: int = 10,
-                    mode: str = 'hyz') -> ndarray:
-
+                    mode: str = None) -> ndarray:
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Cannot find {video_path}")
@@ -138,12 +138,13 @@ def processOneVideo(video_path: str,
     cur_frame = 0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    kas_video = []  # List[List] : (n, 1700)
+    key_angels_scores = []
     with tqdm(total=total_frames, desc=f"Processing {video_path}") as pbar:
         while True:
             ret, frame = cap.read()
 
             if not ret:
+                pbar.update(pbar.total - pbar.n)
                 break
 
             cur_frame += 1
@@ -152,19 +153,25 @@ def processOneVideo(video_path: str,
             pbar.update(skip_interval)
 
             landmarks, _, data_samples = processOneImage(frame, bbox_detector_model, pose_estimator_model)
-            one_row = translateOneLandmarks(landmarks[0], detection_targets)
+            one_person = translateOneLandmarks(detection_targets, landmarks[0], mode)
 
-            # TODO: Cube logic
-            # angle_cube, score_cube = getOneFeatureRow(landmarks[0], detection_target_list, mode)
-
-            kas_video.append(one_row)
+            key_angels_scores.append(one_person)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
         cap.release()
 
-    return np.array(kas_video)
+    key_angels_scores = np.array(key_angels_scores)
+
+    if mode == 'mjj':
+        key_angels_scores = np.transpose(key_angels_scores, (0, 1, 4, 2, 3))
+        # transpose from shape (n_frame, input_channels, height, width, depth)
+
+    # when hyz -> ndarray: (n, 1716) | (n_frame, length)
+    # when mjj -> ndarray: (n, 2, 7, 12, 11) | (n_frame, input_channels, depth, height, width)
+    return key_angels_scores
+
 
 def processOneImage(img: Union[str, np.ndarray],
                     bbox_detector_model,
@@ -247,9 +254,9 @@ def processOneImage(img: Union[str, np.ndarray],
     return keypoints_list, xyxy_list, data_samples
 
 
-def translateOneLandmarks(keypoints_list: ndarray,
-                          detection_targets: Union[List, ndarray],
-                          mode: str = 'hyz') -> Union[List, Tuple[ndarray, ndarray]]:
+def translateOneLandmarks(targets: List,
+                          landmarks: ndarray,
+                          mode: str = None) -> List[Union[float, Any]]:
     """
     This is the 2nd information layer. This function translates the raw landmarks data from the first information layer
     into a composited set of data in the form of an array or a cube.
@@ -258,47 +265,46 @@ def translateOneLandmarks(keypoints_list: ndarray,
     keypoints list of this person into a flattened feature vector.
 
     :param mode: What type of data. "hyz" -> angles and scores in lines, "mjj" -> angles and scores in cubes.
-    :param keypoints_list: A list of keypoints set of multiple people, gathered from the image.
-    :param detection_targets: The list/cube of detection targets.
+    :param landmarks: A list of keypoints set of multiple people, gathered from the image.
+    :param targets: The list/cube of detection targets.
     :return: A flattened array or cube of feature values.
     """
     if mode == 'hyz':
         # Only get the person with the highest detection confidence.
-        keypoints = keypoints_list
         kas_one_person = []
 
         # From keypoints list, get angle-score vector.
-        for target in detection_targets:
-            angle_value, angle_score = calc_keypoint_angle(keypoints, kcfg.keypoint_indexes, target[0], target[1])
+        for target in targets:
+            angle_value, angle_score = calc_keypoint_angle(landmarks, kcfg.keypoint_indexes, target[0], target[1])
             kas_one_person.append(angle_value)
             kas_one_person.append(angle_score)
 
         # Shape=(2m)
         return kas_one_person
 
-    elif mode == 'mjj':  # TODO: Finish the new cube angle logic.
-        _shape = detection_targets.shape
-        angles = np.empty(shape=_shape)
-        scores = np.empty(shape=_shape)
-        for k in range(_shape[2]):  # TODO: Use itertools to reduce nested for-loop.
-            for i in range(_shape[0]):
-                for j in range(_shape[1]):
-                    angles[i, j, k], scores[i, j, k] = calc_keypoint_angle(keypoints_list[i],
-                                                                           kcfg.keypoint_indexes,
-                                                                           detection_targets[i, j, k, 0],
-                                                                           detection_targets[i, j, k, 1])
+    elif mode == 'mjj':
+        angles = copy.deepcopy(targets)
+        scores = copy.deepcopy(targets)
+        for i, j, k in itertools.product(range(len(angles)), range(len(angles[0])), range(len(angles[0][0]))):
+            angles[i][j][k], scores[i][j][k] = calc_keypoint_angle(
+                landmarks,
+                kcfg.keypoint_indexes,
+                targets[i][j][k][0],
+                targets[i][j][k][1],
+            )
+        return [angles, scores]
 
 
-def saveFeatureMatToNPY(mat: np.ndarray, save_path: str) -> None:
-    """
-    Save the feature matrix into a npy file, under the given path.
-    :param mat:
-    :param save_path:
-    :return:
-    """
-    # Shape: (num_people, num_features)
-    feature_matrix = np.array(mat)
-    np.save(save_path, feature_matrix)
+# def saveFeatureMatToNPY(mat: np.ndarray, _save_path: str) -> None:
+#     """
+#     Save the feature matrix into a npy file, under the given path.
+#     :param mat:
+#     :param _save_path:
+#     :return:
+#     """
+#     # Shape: (num_people, num_features)
+#     feature_matrix = np.array(mat)
+#     np.save(_save_path, feature_matrix)
 
 
 def renderTheResults(img: Union[str, np.ndarray],
@@ -335,7 +341,8 @@ def renderTheResults(img: Union[str, np.ndarray],
 
 
 if __name__ == "__main__":
-    solution_mode = 'hyz'  # mjj
+    solution_mode = 'hyz'
+    # solution_mode = 'mjj'
     video_folder = "../data/blob/videos"
 
     # Initialize MMPose essentials
@@ -351,7 +358,8 @@ if __name__ == "__main__":
                                             bbox_detector_model=detector,
                                             pose_estimator_model=pose_estimator,
                                             detection_target_list=kcfg.get_targets(solution_mode),
-                                            skip_interval=10)
+                                            skip_interval=10,
+                                            mode=solution_mode)
 
     for name_mat in named_feature_mats:
         save_path = "../data/train/" + name_mat['name'] + ".npy"
