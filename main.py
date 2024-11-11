@@ -24,7 +24,8 @@ def videoDemo(src: Union[str, int],
               estim_results_visualizer=None,
               classifier_model=None,
               classifier_func=None,
-              websocket_obj=None):
+              websocket_obj=None,
+              mode: str = None) -> None:
     cap = cv2.VideoCapture(src)
 
     while cap.isOpened():
@@ -55,8 +56,15 @@ def videoDemo(src: Union[str, int],
                 kpt_thr=mcfg.kpt_thr)
         else:
             # Classification Model Logic
-            [processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func)
-             for keypoints, xyxy in zip(keypoints_list, xyxy_list)]
+            for keypoints, xyxy in zip(keypoints_list, xyxy_list):
+                processOnePerson(frame,
+                                 keypoints,
+                                 xyxy,
+                                 detection_target_list,
+                                 classifier_model,
+                                 classifier_func,
+                                 mode)
+
             yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
 
         time.sleep(0.085) if (websocket_obj is not None) else None
@@ -69,8 +77,8 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      xyxy: np.ndarray,  # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      classifier_model: List[Union[MLP, Dict[str, float]]],
-                     classifier_func, ) -> None:
-
+                     classifier_func,
+                     mode: str = None) -> None:
     # If detected backside, don't do inference.
     l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
     l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
@@ -80,7 +88,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         classifier_result_str = f"Backside {((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0:.2f}"
         classify_signal = -1
     else:
-        kas_one_person = getOneFeatureRow(keypoints, detection_target_list)  # {list: 1716}
+        kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
         classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
@@ -91,7 +99,7 @@ def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
     model, params = classifier_model
 
     # Normalize Data
-    input_data = np.array(numeric_data).reshape(1, -1)
+    input_data = np.array(numeric_data).reshape(1, -1)  # TODO: compatible with mode 'mjj'
     input_data[:, ::2] /= 180
     mean_X = params['mean_X']
     std_dev_X = params['std_dev_X']
@@ -118,6 +126,10 @@ if __name__ == '__main__':
 else:
     is_remote, video_source, use_mmpose_visualizer = False, 0, False
 
+# Decision on mode
+solution_mode = 'hyz'
+# solution_mode = 'mjj'
+
 # Initialize MMPose essentials
 detector, pose_estimator, visualizer = getMMPoseEssentials(
     det_config=mcfg.det_config,
@@ -127,7 +139,7 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 )
 
 # List of detection targets
-target_list = kcfg.get_target_list()
+target_list = kcfg.get_targets(solution_mode)
 
 # Classifier Model
 model_state = torch.load('./data/models/posture_mmpose_vgg.pth', map_location=device)
@@ -150,4 +162,5 @@ videoDemo(src=int(video_source) if video_source is not None else 0,
           estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
           classifier_model=[classifier, classifier_params],
           classifier_func=classify,
-          websocket_obj=ws)
+          websocket_obj=ws,
+          mode=solution_mode)
