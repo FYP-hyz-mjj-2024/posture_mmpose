@@ -216,8 +216,10 @@ def get_target_list(mode: str = 'hyz'):
     return _target_list
 
 
-def get_full_angles() -> List[List[Union[Tuple[str, str], str]]]:
-    keys = list(keypoint_indexes.keys())[:13]
+def get_full_angles(use_str=True) -> List[List[Union[Tuple[str, str], str]]]:
+    ls = keypoint_indexes.keys() if use_str else keypoint_indexes.values()
+
+    keys = list(ls)[:13]
     corner_points = keys  # C_13^1 = 13
     edge_combinations = list(itertools.combinations(keys, 2))
 
@@ -225,7 +227,7 @@ def get_full_angles() -> List[List[Union[Tuple[str, str], str]]]:
     feature_angles = list(itertools.product(edge_combinations, corner_points))
 
     # Remove trivial
-    feature_angles = [[angle[0], angle[1]] for angle in feature_angles if (angle[1] not in angle[0])]
+    feature_angles = [[fa[0], fa[1]] for fa in feature_angles if (fa[1] not in fa[0])]
 
     return feature_angles
 
@@ -251,7 +253,7 @@ def get_cube_angles() -> List[List[List[Tuple[Tuple[str, str], str]]]]:
 
 
 if __name__ == "__main__":
-    angles = get_full_angles()
+    angles = get_full_angles(use_str=False)
     for angle in angles:
         print(angle)
     print(len(angles))
