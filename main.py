@@ -5,7 +5,7 @@ from typing import List, Union, Tuple, Dict
 import numpy as np
 import torch
 
-from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, getOneFeatureRow
+from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, translateOneLandmarks
 from step01_annotate_image_mmpose.calculations import calc_keypoint_angle
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults
@@ -80,7 +80,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         classifier_result_str = f"Backside {((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0:.2f}"
         classify_signal = -1
     else:
-        kas_one_person = getOneFeatureRow(keypoints, detection_target_list)  # {list: 1716}
+        kas_one_person = translateOneLandmarks(keypoints, detection_target_list)  # {list: 1716}
         classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
@@ -127,7 +127,7 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 )
 
 # List of detection targets
-target_list = kcfg.get_target_list()
+target_list = kcfg.get_targets()
 
 # Classifier Model
 model_state = torch.load('./data/models/posture_mmpose_vgg.pth', map_location=device)
