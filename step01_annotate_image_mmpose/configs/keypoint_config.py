@@ -1,8 +1,6 @@
 import itertools
 from typing import List, Tuple, Union
 
-import numpy as np
-
 keypoint_names = {
     0: 'Body-Chin',
     1: 'Body-Left_eye',
@@ -193,14 +191,14 @@ keypoint_indexes = {
 
 
 def get_targets(mode: str = 'hyz') -> List:
-    _target_list = mode == 'hyz' and get_full_angles() or get_cube_angles()
+    _target_list = mode == 'hyz' and get_full_angles() or get_cube_angles(use_str=True)
     return _target_list
 
 
-def get_full_angles(use_str=True) -> List[List[Union[Tuple[str, str], str]]]:
+def get_full_angles(use_str: bool = True, num: int = 13) -> List[List[Union[Tuple[str, str], str]]]:
     ls = keypoint_indexes.keys() if use_str else keypoint_indexes.values()
 
-    keys = list(ls)[:13]
+    keys = list(ls)[:num]
     corner_points = keys  # C_13^1 = 13
     edge_combinations = list(itertools.combinations(keys, 2))
 
@@ -213,42 +211,42 @@ def get_full_angles(use_str=True) -> List[List[Union[Tuple[str, str], str]]]:
     return feature_angles
 
 
-def get_cube_angles(num: int, full_angles: List) -> List[Tuple[Tuple[int, int], int]]:
+def get_cube_angles(use_str: bool = True, num: int = 13):
+    ls = keypoint_indexes.keys() if use_str else keypoint_indexes.values()
 
-    sorted_angles = sorted(full_angles, key=lambda x: (x[1], x[0][0], x[0][1]))
+    keys = list(ls)[:num]
+    edge_combinations = list(itertools.combinations(keys, 2))
+    sorted_angles = [[edge, corner] for corner in keys for edge in edge_combinations if corner not in edge]
 
     row = num - 1
     col = num - 2
     depth = (num + 1) // 2
 
-    o_indices = [[[((0, 0), 0) for _ in range(depth)] for _ in range(col)] for _ in range(row)]
+    init = use_str and [('', ''), ''] or [(0, 0), 0]
+    o_indices = [[[init for _ in range(depth)] for _ in range(col)] for _ in range(row)]
+
+    i_j_order = [(i, j) for i in range(row) for j in range(i, col)]  # 右上角
+    i_j_order += [(i, j) for j in range(col) for i in range(j + 1, row)]   # 左下角
 
     idx = 0  # idx of sorted_angles
     for k in range(depth):
-        for i in range(row):  # 右上角
-            for j in range(i, col):
-                o_indices[i][j][2 * k] = (sorted_angles[idx][0], sorted_angles[idx][1])
-                idx += 1
-                # o_indices[i][j][k] = ((keypoint_names[i], keypoint_names[j + 1]), keypoint_names[2 * k])
+        for i, j in i_j_order:
+            o_indices[i][j][k] = sorted_angles[idx]
+            idx = (idx + 1) % len(sorted_angles)
 
-        # if 2 * k + 1 == num:
-        #     return o_indices
-
-        for j in range(col):  # 左下角
-            for i in range(j + 1, row):
-                o_indices[i][j][(2 * k + 1) % num] = (sorted_angles[idx][0], sorted_angles[idx][1])
-                idx += 1
-                # o_indices[i][j][k] = ((keypoint_names[j], keypoint_names[i]),
-                #                       keypoint_names[min(2 * k + 1, 2 * depth - 2)])
+        # for i in range(row):
+        #     for j in range(col):
+        #         print(f"{str(o_indices[i][j][k]):<15}", end='')
+        #     print('')
+        # print('')
 
     return o_indices
 
 
 if __name__ == "__main__":
+    angles1 = get_full_angles(use_str=False)
+    angles2 = get_cube_angles(use_str=False)
 
-    # angles = get_full_angles(use_str=False)
-    angles = get_cube_angles(13, get_full_angles(use_str=False))
-
-    for angle in angles:
-        print(angle)
-    print(len(angles))
+    # for angle in angles1:
+    #     print(angle)
+    # print(len(angles1))
