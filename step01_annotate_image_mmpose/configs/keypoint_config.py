@@ -191,6 +191,7 @@ keypoint_indexes = {
     'Face-Lips_l3_right': 90
 }
 
+
 def get_targets(mode: str = 'hyz') -> List:
     _target_list = mode == 'hyz' and get_full_angles() or get_cube_angles()
     return _target_list
@@ -212,28 +213,42 @@ def get_full_angles(use_str=True) -> List[List[Union[Tuple[str, str], str]]]:
     return feature_angles
 
 
-def get_cube_angles() -> List[List[List[Tuple[Tuple[str, str], str]]]]:
-    row = 13
-    col = row
+def get_cube_angles(num: int, sorted_angles: List) -> List[List[List[Tuple[Tuple[str, str], str]]]]:
+    row = num - 1
+    col = num - 2
     depth = (row + 1) // 2
 
-    o_indices = [[[(('', ''), '') for k in range(depth)] for j in range(col - 1)] for i in range(row)]
+    o_indices = [[[(('', ''), '') for _ in range(depth)] for _ in range(col)] for _ in range(row)]
 
+    cnt = 0
     for k in range(depth):
-        for i in range(0, row - 1):
-            for j in range(i, col - 1):
-                o_indices[i][j][k] = ((keypoint_names[i], keypoint_names[j + 1]), keypoint_names[2 * k])
+        for i in range(0, row):
+            for j in range(i, col):
+                o_indices[i][j][k] = (sorted_angles[cnt][0], sorted_angles[cnt][1])
+                cnt += 1
+                # o_indices[i][j][k] = ((keypoint_names[i], keypoint_names[j + 1]), keypoint_names[2 * k])
 
-        for i in range(1, row):
-            for j in range(0, i):
-                o_indices[i][j][k] = ((keypoint_names[j], keypoint_names[i]),
-                                      keypoint_names[min(2 * k + 1, 2 * depth - 2)])
+        for j in range(col):
+            for i in range(j + 1, row):
+                o_indices[i][j][k] = (sorted_angles[cnt][0], sorted_angles[cnt][1])
+                cnt += 1
+                # o_indices[i][j][k] = ((keypoint_names[j], keypoint_names[i]),
+                #                       keypoint_names[min(2 * k + 1, 2 * depth - 2)])
 
+        for i in range(row):
+            for j in range(col):
+                print(o_indices[i][j][k], end='\t')
+            print('')
+        a = 1
     return o_indices
 
 
 if __name__ == "__main__":
+
     angles = get_full_angles(use_str=False)
+    angles = sorted(angles, key=lambda x: (x[1], x[0][0], x[0][1]))
+    angles = get_cube_angles(13, angles)
+
     for angle in angles:
         print(angle)
     print(len(angles))
