@@ -213,41 +213,41 @@ def get_full_angles(use_str=True) -> List[List[Union[Tuple[str, str], str]]]:
     return feature_angles
 
 
-def get_cube_angles(num: int, sorted_angles: List) -> List[List[List[Tuple[Tuple[str, str], str]]]]:
+def get_cube_angles(num: int, full_angles: List) -> List[Tuple[Tuple[int, int], int]]:
+
+    sorted_angles = sorted(full_angles, key=lambda x: (x[1], x[0][0], x[0][1]))
+
     row = num - 1
     col = num - 2
-    depth = (row + 1) // 2
+    depth = (num + 1) // 2
 
-    o_indices = [[[(('', ''), '') for _ in range(depth)] for _ in range(col)] for _ in range(row)]
+    o_indices = [[[((0, 0), 0) for _ in range(depth)] for _ in range(col)] for _ in range(row)]
 
-    cnt = 0
+    idx = 0  # idx of sorted_angles
     for k in range(depth):
-        for i in range(0, row):
+        for i in range(row):  # 右上角
             for j in range(i, col):
-                o_indices[i][j][k] = (sorted_angles[cnt][0], sorted_angles[cnt][1])
-                cnt += 1
+                o_indices[i][j][2 * k] = (sorted_angles[idx][0], sorted_angles[idx][1])
+                idx += 1
                 # o_indices[i][j][k] = ((keypoint_names[i], keypoint_names[j + 1]), keypoint_names[2 * k])
 
-        for j in range(col):
+        # if 2 * k + 1 == num:
+        #     return o_indices
+
+        for j in range(col):  # 左下角
             for i in range(j + 1, row):
-                o_indices[i][j][k] = (sorted_angles[cnt][0], sorted_angles[cnt][1])
-                cnt += 1
+                o_indices[i][j][(2 * k + 1) % num] = (sorted_angles[idx][0], sorted_angles[idx][1])
+                idx += 1
                 # o_indices[i][j][k] = ((keypoint_names[j], keypoint_names[i]),
                 #                       keypoint_names[min(2 * k + 1, 2 * depth - 2)])
 
-        for i in range(row):
-            for j in range(col):
-                print(o_indices[i][j][k], end='\t')
-            print('')
-        a = 1
     return o_indices
 
 
 if __name__ == "__main__":
 
-    angles = get_full_angles(use_str=False)
-    angles = sorted(angles, key=lambda x: (x[1], x[0][0], x[0][1]))
-    angles = get_cube_angles(13, angles)
+    # angles = get_full_angles(use_str=False)
+    angles = get_cube_angles(13, get_full_angles(use_str=False))
 
     for angle in angles:
         print(angle)
