@@ -121,7 +121,7 @@ if __name__ == '__main__':
     Prepare data
     """
     # Training data points
-    using, not_using = getNPY("../data/train")
+    using, not_using = getNPY("../data/train/1dnpy")
 
     # Normalize Data
     # Using Z-score normalization: mean(mu)=0, std_dev(sigma)=1

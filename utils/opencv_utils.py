@@ -6,34 +6,47 @@ from typing import Union
 import time
 
 
-def render_detection_rectangle(frame, text, xyxy, is_ok=True):
+def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
     """
     Render a common YOLO detection rectangle onto a frame with opencv.
+
     :param frame: The video/stream frame to render onto.
     :param text: The description of the detection target.
-    :param xyxy: The coordinates of the rectangle.
+    :param xyxy: The coordinates of the rectangle (x1, y1, x2, y2).
+    :param ok_signal: The integer signal that helps to choose the color of rectangle:
+                      1: green (not_using)
+                      0: red (using)
+                     -1: gray (backside)
     :returns: None.
     """
+    color_dict = {1: (0, 255, 0),  # green: not_using
+                  0: (0, 0, 255),  # red: using
+                  -1: (155, 155, 155),  # gray: backside
+                  }  # BGR form
+    rec_thickness_dict = {1: 2,  # green: not_using
+                          0: 2,  # red: using
+                          -1: 2,  # gray: backside
+                          }
+
     cv2.putText(
         frame,
         text,
         org=(int(xyxy[0]), int(xyxy[1])),
         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
         fontScale=1,
-        color=(0, 255, 0) if is_ok else (0, 0, 255),
+        color=color_dict[ok_signal],
         thickness=2
     )
     cv2.rectangle(
         frame,
         pt1=(int(xyxy[0]), int(xyxy[1])),
         pt2=(int(xyxy[2]), int(xyxy[3])),
-        color=(0, 255, 0) if is_ok else (0, 0, 255),
-        thickness=2
+        color=color_dict[ok_signal],
+        thickness=rec_thickness_dict[ok_signal]
     )
 
 
 def getUserConsoleConfig(max_required_num=3):
-
     # Video Source Selection
     video_source = input(f"Which camera would you like to use? > ")
 

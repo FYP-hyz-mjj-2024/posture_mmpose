@@ -27,14 +27,14 @@ def _calc_angle(
 
 
 def calc_keypoint_angle(
-        keypoints_one_person,
-        keypoint_indexes,
+        landmarks,
+        name2index,
         edge_keypoints_names: [str, str],
         mid_keypoint_name: str) -> [float, float]:
     """
-    Calculate the angle using the given edge pionts and middle point by their names.
-    :param keypoints_one_person: The set of keypoints of a single person. (91, 3)
-    :param keypoint_indexes: A mapping dictionary from keypoint names to its indexes.
+    Calculate the angle using the given edge points and middle point by their names.
+    :param landmarks: The set of keypoints of a single person. (91, 3)
+    :param name2index: A mapping dictionary from keypoint names to its indexes.
     :param edge_keypoints_names: A tuple of the names of the two edge keypoints.
     :param mid_keypoint_name: The name of the middle keypoint.
     :return: The targeted angle.
@@ -44,14 +44,20 @@ def calc_keypoint_angle(
     n1, n2 = edge_keypoints_names
     nm = mid_keypoint_name
 
+    if n1 == '' and n2 == '' and nm == '':
+        return 0.0, 0.0
+
+    arm1, arm2 = name2index[n1], name2index[n2]  # indices
+    corner = name2index[nm]  # index
+
     # Coordinates
-    # Name --> [keypoint_indexes] --> index_number --> [keypoints_one_person] --> (x,y,score) --> [:2] --> (x,y)
-    coord1, coord2 = keypoints_one_person[keypoint_indexes[n1]][:2], keypoints_one_person[keypoint_indexes[n2]][:2]
-    coordm = keypoints_one_person[keypoint_indexes[nm]][:2]
+    # Name --> [keypoint_indexes] --> index_number --> [landmarks] --> (x,y,score) --> [:2] --> (x,y)
+    coord1, coord2 = landmarks[arm1][:2], landmarks[arm2][:2]
+    coordm = landmarks[corner][:2]
 
     # Score of the angle
-    s1, s2 = keypoints_one_person[keypoint_indexes[n1]][2], keypoints_one_person[keypoint_indexes[n2]][2]
-    sm = keypoints_one_person[keypoint_indexes[nm]][2]
+    s1, s2 = landmarks[arm1][2], landmarks[arm2][2]
+    sm = landmarks[corner][2]
 
     # Angle Score: Geometric Mean
     # angle_score = math.exp((1/3) * (math.log(s1) + math.log(s2) + math.log(sm)))  # Don't use, potential domain error.

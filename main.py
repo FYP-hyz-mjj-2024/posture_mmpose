@@ -1,19 +1,22 @@
 import cv2
 import time
-from typing import List, Union
+from typing import List, Union, Tuple, Dict
 
 import numpy as np
 import torch
 
-from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, getOneFeatureRow
+from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, translateOneLandmarks
 from step01_annotate_image_mmpose.calculations import calc_keypoint_angle
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults
 from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_websocket, getUserConsoleConfig
 
 from step02_train_model_cnn.train_model_hyz import MLP
+from step02_train_model_cnn.train_model_mjj import MLP3d
 
-import winsound
+device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+device = torch.device(device_name)
+
 
 def videoDemo(src: Union[str, int],
               bbox_detector_model,
@@ -22,8 +25,8 @@ def videoDemo(src: Union[str, int],
               estim_results_visualizer=None,
               classifier_model=None,
               classifier_func=None,
-              websocket_obj=None):
-
+              websocket_obj=None,
+              mode: str = None) -> None:
     cap = cv2.VideoCapture(src)
 
     while cap.isOpened():
@@ -54,8 +57,15 @@ def videoDemo(src: Union[str, int],
                 kpt_thr=mcfg.kpt_thr)
         else:
             # Classification Model Logic
-            [processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func)
-             for keypoints, xyxy in zip(keypoints_list, xyxy_list)]
+            for keypoints, xyxy in zip(keypoints_list, xyxy_list):
+                processOnePerson(frame,
+                                 keypoints,
+                                 xyxy,
+                                 detection_target_list,
+                                 classifier_model,
+                                 classifier_func,
+                                 mode)
+
             yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
 
         time.sleep(0.085) if (websocket_obj is not None) else None
@@ -63,23 +73,42 @@ def videoDemo(src: Union[str, int],
     cap.release()
 
 
-def processOnePerson(frame, keypoints, xyxy, detection_target_list, classifier_model, classifier_func, ):
-    kas_one_person = getOneFeatureRow(keypoints, detection_target_list)
-    classifier_result_str, classify_is_ok = classifier_func(classifier_model, kas_one_person)
-    render_detection_rectangle(frame, classifier_result_str, xyxy, is_ok=classify_is_ok)
+def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
+                     keypoints: np.ndarray,  # shape: (17, 3)
+                     xyxy: np.ndarray,  # shape: (4,)
+                     detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
+                     classifier_model: List[Union[MLP, Dict[str, float]]],
+                     classifier_func,
+                     mode: str = None) -> None:
+    # If detected backside, don't do inference.
+    l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
+    l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
+    backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
+
+    if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
+        classifier_result_str = f"Backside {((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0:.2f}"
+        classify_signal = -1
+    else:
+        kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
+        classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
+
+    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
 
-def classify(classifier_model, numeric_data):
+def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
+             numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
     model, params = classifier_model
 
     # Normalize Data
-    input_data = np.array(numeric_data).reshape(1, -1)
+    input_data = np.array(numeric_data).reshape(1, -1)  # TODO: compatible with mode 'mjj'
     input_data[:, ::2] /= 180
     mean_X = params['mean_X']
     std_dev_X = params['std_dev_X']
     input_data = (input_data - mean_X) / std_dev_X
     input_tensor = torch.tensor(input_data, dtype=torch.float32)
     input_tensor = input_tensor.view(input_data.shape[0], 6, -1)
+
+    # a = input_data.shape
 
     with torch.no_grad():
         outputs = model(input_tensor)
@@ -88,15 +117,48 @@ def classify(classifier_model, numeric_data):
         # prediction = torch.argmax(sg, dim=0).item()
 
     out0, out1 = sg
+    classify_signal = 1 if prediction != 1 else 0
+    classifier_result_str = f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"
 
-    return (f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"), (prediction != 1)
+    return classifier_result_str, classify_signal
 
+def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
+             numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
+    model, params = classifier_model
+
+    # Normalize
+    input_data = np.array(numeric_data)
+    input_data[0, :, :, :] /= 180
+    mean_X = params['mean_X']
+    std_dev_X = params['std_dev_X']
+    input_data = (input_data - mean_X) / std_dev_X
+
+    # Convert to tensor
+    input_tensor = torch.tensor(input_data, dtype=torch.float32)
+    input_tensor = input_tensor.permute(0, 3, 1, 2)     # Convert from (Cin, H, W, D) to (Cin, D, H, W)
+    input_tensor = input_tensor.unsqueeze(0)                  # Add a "batch" dimension for the model: (N, C, D, H, W)
+
+    with torch.no_grad():
+        outputs = model(input_tensor)
+        sg = torch.sigmoid(outputs[0])
+        prediction = int(sg[0] < sg[1] or sg[1] > 0.32)
+        # prediction = torch.argmax(sg, dim=0).item()
+
+    out0, out1 = sg
+    classify_signal = 1 if prediction != 1 else 0
+    classifier_result_str = f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"
+
+    return classifier_result_str, classify_signal
 
 if __name__ == '__main__':
     # Configuration
     is_remote, video_source, use_mmpose_visualizer = getUserConsoleConfig(max_required_num=3)
 else:
     is_remote, video_source, use_mmpose_visualizer = False, 0, False
+
+# Decision on mode
+solution_mode = 'mjj'
+# solution_mode = 'hyz' | 'mjj'
 
 # Initialize MMPose essentials
 detector, pose_estimator, visualizer = getMMPoseEssentials(
@@ -107,11 +169,16 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 )
 
 # List of detection targets
-target_list = kcfg.get_target_list()
+target_list = kcfg.get_targets(solution_mode)
 
 # Classifier Model
-model_state = torch.load("./data/models/posture_mmpose_vgg.pth")
-classifier = MLP(input_channel_num=6, output_class_num=2)
+if solution_mode == 'hyz':
+    model_state = torch.load('./data/models/posture_mmpose_vgg.pth', map_location=device)
+    classifier = MLP(input_channel_num=6, output_class_num=2)
+else:   # elif solution_mode == 'mjj':
+    model_state = torch.load('./data/models/posture_mmpose_vgg3d.pth', map_location=device)
+    classifier = MLP3d(input_channel_num=2, output_class_num=2)
+
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
 
@@ -120,6 +187,7 @@ classifier_params = {
     'std_dev_X': model_state['std_dev_X'].item()
 }
 
+classifier_func = classify if solution_mode == 'hyz' else classify3D
 
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
@@ -130,5 +198,6 @@ videoDemo(src=int(video_source) if video_source is not None else 0,
           detection_target_list=target_list,
           estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
           classifier_model=[classifier, classifier_params],
-          classifier_func=classify,
-          websocket_obj=ws)
+          classifier_func=classifier_func,
+          websocket_obj=ws,
+          mode=solution_mode)

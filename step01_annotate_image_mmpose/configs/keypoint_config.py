@@ -1,4 +1,5 @@
 import itertools
+from typing import List, Tuple, Union, Any
 
 keypoint_names = {
     0: 'Body-Chin',
@@ -188,48 +189,64 @@ keypoint_indexes = {
     'Face-Lips_l3_right': 90
 }
 
-target_list = [
-    # Body Posture
-    [("Body-Left_shoulder", "Body-Left_wrist"), "Body-Left_elbow"],
-    [("Body-Right_shoulder", "Body-Right_wrist"), "Body-Right_elbow"],
-    [("Body-Left_hip", "Body-Left_elbow"), "Body-Left_shoulder"],
-    [("Body-Right_hip", "Body-Right_elbow"), "Body-Right_shoulder"],
 
-    # For 3-D Variables
-    [("Body-Left_shoulder", "Body-Right_shoulder"), "Body-Chin"],
-
-    # Head directions
-    [("Body-Chin", "Body-Right_ear"), "Body-Right_eye"],
-    [("Body-Chin", "Body-Left_ear"), "Body-Left_eye"],
-
-    # Lower Parts of body
-    [("Body-Left_wrist", "Body-Right_hip"), "Body-Left_hip"],
-    [("Body-Right_wrist", "Body-Left_hip"), "Body-Right_hip"],
-]
+def get_targets(mode: str = 'hyz') -> List:
+    _target_list = mode == 'hyz' and get_full_angles() or get_cube_angles(use_str=True)
+    return _target_list
 
 
-def get_target_list():
-    target_list = get_full_angles()
-    return target_list
+def get_full_angles(use_str: bool = True, num: int = 13) -> List[List[Union[Tuple[str, str], str]]]:
+    ls = keypoint_indexes.keys() if use_str else keypoint_indexes.values()
 
-
-def get_full_angles():
-    keys = list(keypoint_indexes.keys())[:13]
-    corner_points = keys    # C_13^1 = 13
+    keys = list(ls)[:num]
+    corner_points = keys  # C_13^1 = 13
     edge_combinations = list(itertools.combinations(keys, 2))
 
     # All possible combinations
     feature_angles = list(itertools.product(edge_combinations, corner_points))
 
     # Remove trivial
-    feature_angles = [[angle[0], angle[1]] for angle in feature_angles if (angle[1] not in angle[0])]
+    feature_angles = [[fa[0], fa[1]] for fa in feature_angles if (fa[1] not in fa[0])]
 
     return feature_angles
 
 
-if __name__ == "__main__":
-    angles = get_full_angles()
-    for angle in angles:
-        print(angle)
-    print(len(angles))
+def get_cube_angles(use_str: bool = True, num: int = 13) -> List[List[List[Any]]]:
+    ls = keypoint_indexes.keys() if use_str else keypoint_indexes.values()
 
+    keys = list(ls)[:num]
+    edge_combinations = list(itertools.combinations(keys, 2))
+    sorted_angles = [[edge, corner] for corner in keys for edge in edge_combinations if corner not in edge]
+
+    row = num - 1   # i
+    col = num - 2   # j
+    depth = (num + 1) // 2  # k
+
+    init = use_str and [('', ''), ''] or [(0, 0), 0]
+    o_indices: List[List[List[Any]]] = [[[init for _ in range(depth)] for _ in range(col)] for _ in range(row)]
+
+    i_j_order = [(i, j) for i in range(row) for j in range(i, col)]  # 右上角
+    i_j_order += [(i, j) for j in range(col) for i in range(j + 1, row)]  # 左下角
+
+    idx = 0  # idx of sorted_angles
+    for k in range(depth):
+        for i, j in i_j_order:
+            o_indices[i][j][k] = sorted_angles[idx]
+            idx = (idx + 1) % len(sorted_angles)
+
+        # for i in range(row):
+        #     for j in range(col):
+        #         print(f"{str(o_indices[i][j][k]):<15}", end='')
+        #     print('')
+        # print('')
+
+    return o_indices
+
+
+if __name__ == "__main__":
+    angles1 = get_full_angles(use_str=False)
+    angles2 = get_cube_angles(use_str=False)
+
+    # for angle in angles1:
+    #     print(angle)
+    # print(len(angles1))
