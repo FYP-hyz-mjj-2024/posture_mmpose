@@ -12,6 +12,7 @@ from step01_annotate_image_mmpose.annotate_image import processOneImage, renderT
 from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_websocket, getUserConsoleConfig
 
 from step02_train_model_cnn.train_model_hyz import MLP
+from step02_train_model_cnn.train_model_mjj import MLP3d
 
 device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 device = torch.device(device_name)
@@ -107,6 +108,8 @@ def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
     input_tensor = torch.tensor(input_data, dtype=torch.float32)
     input_tensor = input_tensor.view(input_data.shape[0], 6, -1)
 
+    # a = input_data.shape
+
     with torch.no_grad():
         outputs = model(input_tensor)
         sg = torch.sigmoid(outputs[0])
@@ -119,6 +122,33 @@ def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
 
     return classifier_result_str, classify_signal
 
+def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
+             numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
+    model, params = classifier_model
+
+    # Normalize
+    input_data = np.array(numeric_data)
+    input_data[0, :, :, :] /= 180
+    mean_X = params['mean_X']
+    std_dev_X = params['std_dev_X']
+    input_data = (input_data - mean_X) / std_dev_X
+
+    # Convert to tensor
+    input_tensor = torch.tensor(input_data, dtype=torch.float32)
+    input_tensor = input_tensor.permute(0, 3, 1, 2)     # Convert from (Cin, H, W, D) to (Cin, D, H, W)
+    input_tensor = input_tensor.unsqueeze(0)                  # Add a "batch" dimension for the model: (N, C, D, H, W)
+
+    with torch.no_grad():
+        outputs = model(input_tensor)
+        sg = torch.sigmoid(outputs[0])
+        prediction = int(sg[0] < sg[1] or sg[1] > 0.32)
+        # prediction = torch.argmax(sg, dim=0).item()
+
+    out0, out1 = sg
+    classify_signal = 1 if prediction != 1 else 0
+    classifier_result_str = f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"
+
+    return classifier_result_str, classify_signal
 
 if __name__ == '__main__':
     # Configuration
@@ -127,8 +157,8 @@ else:
     is_remote, video_source, use_mmpose_visualizer = False, 0, False
 
 # Decision on mode
-solution_mode = 'hyz'
-# solution_mode = 'mjj'
+solution_mode = 'mjj'
+# solution_mode = 'hyz' | 'mjj'
 
 # Initialize MMPose essentials
 detector, pose_estimator, visualizer = getMMPoseEssentials(
@@ -142,8 +172,13 @@ detector, pose_estimator, visualizer = getMMPoseEssentials(
 target_list = kcfg.get_targets(solution_mode)
 
 # Classifier Model
-model_state = torch.load('./data/models/posture_mmpose_vgg.pth', map_location=device)
-classifier = MLP(input_channel_num=6, output_class_num=2)
+if solution_mode == 'hyz':
+    model_state = torch.load('./data/models/posture_mmpose_vgg.pth', map_location=device)
+    classifier = MLP(input_channel_num=6, output_class_num=2)
+else:   # elif solution_mode == 'mjj':
+    model_state = torch.load('./data/models/posture_mmpose_vgg3d.pth', map_location=device)
+    classifier = MLP3d(input_channel_num=2, output_class_num=2)
+
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
 
@@ -151,6 +186,8 @@ classifier_params = {
     'mean_X': model_state['mean_X'].item(),
     'std_dev_X': model_state['std_dev_X'].item()
 }
+
+classifier_func = classify if solution_mode == 'hyz' else classify3D
 
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
@@ -161,6 +198,6 @@ videoDemo(src=int(video_source) if video_source is not None else 0,
           detection_target_list=target_list,
           estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
           classifier_model=[classifier, classifier_params],
-          classifier_func=classify,
+          classifier_func=classifier_func,
           websocket_obj=ws,
           mode=solution_mode)
