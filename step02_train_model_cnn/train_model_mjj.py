@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 
 # Utilities
 import os
+import copy
 
 # Local
 from utils.parse_file_name import parseFileName
@@ -36,14 +37,20 @@ def getNPY(npy_dir):
     return npy_using, npy_not_using
 
 
-def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, num_epochs=100):
+def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, num_epochs=100, early_stop_params=None):
+    print(f"Training started. ID of the current model:{id(model)}")
+
     # Record Losses
     train_losses = []
     test_losses = []
     overfit_factors = []
 
-    for epoch in range(num_epochs):
+    # Early stopping params
+    current_optimized_model = None
+    current_min_test_loss = np.inf
+    num_overfit_epochs = 0
 
+    for epoch in range(num_epochs):
         # Train on Epoch
         model.train()
         running_loss = 0.0
@@ -76,7 +83,26 @@ def train_and_evaluate(model, train_loader, test_loader, criterion, optimizer, n
         if epoch > 10:
             overfit_factors.append(overfit_factor)
         print(f"Epoch[{epoch + 1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}, "
-              f"OFF:{overfit_factor:.4f}")
+              f"OFF:{overfit_factor:.4f} | Cur Optim: {id(current_optimized_model)}, Min TL: {current_min_test_loss}, "
+              f"Num OF epochs: {num_overfit_epochs}")
+
+        # Early-stopping Mechanism
+        if early_stop_params is None:
+            continue
+
+        # Update early stopping parameters
+        if current_min_test_loss - early_stop_params["min_delta"] > test_losses[-1]:
+            current_min_test_loss = test_losses[-1]
+            current_optimized_model = copy.deepcopy(model)
+            num_overfit_epochs = max(num_overfit_epochs - 1, 0)
+        else:
+            num_overfit_epochs += 1
+
+        # Perform early-stopping
+        if num_overfit_epochs > early_stop_params["patience"]:
+            model = current_optimized_model
+            print(f"Early stopped at epoch {epoch+1}. ID of current model： {id(model)}")
+            break
 
     return train_losses, test_losses, overfit_factors
 
@@ -181,7 +207,11 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
                                                                     test_loader,
                                                                     criterion,
                                                                     optimizer,
-                                                                    num_epochs)
+                                                                    num_epochs,
+                                                                    early_stop_params={
+                                                                        "min_delta": 1e-2,
+                                                                        "patience": 20
+                                                                    })
 
     # Losses
     plot_report([train_losses, test_losses],
@@ -207,5 +237,5 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
         'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
     }
 
-    torch.save(model_state, "../data/models/posture_mmpose_vgg.pth")
-    print(f"Model saved to ../data/models/posture_mmpose_vgg.pth")
+    torch.save(model_state, "../data/models/posture_mmpose_vgg3d.pth")
+    print(f"Model saved to ../data/models/posture_mmpose_vgg3d.pth")
