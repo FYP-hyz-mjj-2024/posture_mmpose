@@ -341,8 +341,8 @@ def renderTheResults(img: Union[str, np.ndarray],
 
 
 if __name__ == "__main__":
-    solution_mode = 'hyz'
-    # solution_mode = 'mjj'
+    # solution_mode = 'hyz'
+    solution_mode = 'mjj'
     video_folder = "../data/blob/videos"
 
     # Initialize MMPose essentials
@@ -362,6 +362,6 @@ if __name__ == "__main__":
                                             mode=solution_mode)
 
     for name_mat in named_feature_mats:
-        save_path = "../data/train/" + name_mat['name'] + ".npy"
+        save_path = "../data/train/3dnpy/" + name_mat['name'] + ".npy"
         matrix = name_mat['feature_matrix']
         np.save(save_path, matrix)
