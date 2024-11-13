@@ -5,7 +5,7 @@ from typing import List, Union, Tuple, Dict
 import numpy as np
 import torch
 
-from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, getOneFeatureRow
+from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, translateOneLandmarks
 from step01_annotate_image_mmpose.calculations import calc_keypoint_angle
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults

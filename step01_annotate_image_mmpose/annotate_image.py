@@ -258,8 +258,8 @@ def translateOneLandmarks(targets: List,
                           landmarks: ndarray,
                           mode: str = None) -> List[Union[float, Any]]:
     """
-    This is the 2nd information layer. This function gets the raw data from the first information layer, and process it
-    into an array or cube.
+    This is the 2nd information layer. This function translates the raw landmarks data from the first information layer
+    into a composited set of data in the form of an array or a cube.
 
     From the keypoints list, extract the most confident person in the image. Then, convert the
     keypoints list of this person into a flattened feature vector.
@@ -338,87 +338,6 @@ def renderTheResults(img: Union[str, np.ndarray],
             show=mcfg.show,
             wait_time=show_interval,
             kpt_thr=mcfg.kpt_thr)
-
-
-def processVideosInDir(video_dir: str,
-                       bbox_detector_model: RTMDet,
-                       pose_estimator_model: TopdownPoseEstimator,
-                       detection_target_list: Union[List[List[Union[Tuple[str, str], str]]], ndarray],
-                       skip_interval: int = 10,
-                       mode: str = 'hyz') -> List[Dict[str, Union[str, np.ndarray]]]:
-    """
-    Convert all the videos gathered from a given directory.
-    "kas" = key-angle-score
-    :param video_dir: Directory to the video.
-    :param bbox_detector_model: MMPose boundary box detector model.
-    :param pose_estimator_model: MMPose pose estimation model.
-    :param detection_target_list: List of detection targets.
-    :param skip_interval: Interval between sampled frames.
-    :param mode: A single result to be an array or a cube.
-    :return:
-    """
-    named_feature_matrices = []
-
-    for file_name in os.listdir(video_dir):
-
-        # Settle file sources
-        if not file_name.endswith('.mp4'):     # Skip all non-videos
-            continue
-        video_path = os.path.join(video_dir, file_name)
-        file_name_with_extension = os.path.basename(video_path)
-        file_name_without_extension = os.path.splitext(file_name_with_extension)[0]
-
-        # Converting Process
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            print(f"Cannot find {file_name}")
-            continue
-
-        cur_frame = 0
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-        kas_video = []
-        with tqdm(total=total_frames, desc=f"Processing {file_name}") as pbar:
-            while True:
-                ret, frame = cap.read()
-
-                if not ret:
-                    break
-
-                cur_frame += 1
-                pbar.update(1)
-                if cur_frame % skip_interval != 0:
-                    continue
-
-                landmarks, _, data_samples = processOneImage(frame, bbox_detector_model, pose_estimator_model)
-                one_row = getOneFeatureRow(landmarks[0], detection_target_list)
-
-                # TODO: Cube logic
-                # angle_cube, score_cube = getOneFeatureRow(landmarks[0], detection_target_list, mode)
-
-                kas_video.append(one_row)
-
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-
-            cap.release()
-            feature_matrix = np.array(kas_video)
-            named_feature_matrices.append({"name": file_name_without_extension,
-                                           "feature_matrix": feature_matrix})
-
-    return named_feature_matrices
-
-
-def saveFeatureMatToNPY(mat: np.ndarray, save_path: str) -> None:
-    """
-    Save the feature matrix into a npy file, under the given path.
-    :param mat:
-    :param save_path:
-    :return:
-    """
-    # Shape: (num_people, num_features)
-    feature_matrix = np.array(mat)
-    np.save(save_path, feature_matrix)
 
 
 if __name__ == "__main__":
