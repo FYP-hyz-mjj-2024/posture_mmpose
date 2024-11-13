@@ -218,9 +218,9 @@ def get_cube_angles(use_str: bool = True, num: int = 13) -> List[List[List[Any]]
     edge_combinations = list(itertools.combinations(keys, 2))
     sorted_angles = [[edge, corner] for corner in keys for edge in edge_combinations if corner not in edge]
 
-    row = num - 1
-    col = num - 2
-    depth = (num + 1) // 2
+    row = num - 1   # i
+    col = num - 2   # j
+    depth = (num + 1) // 2  # k
 
     init = use_str and [('', ''), ''] or [(0, 0), 0]
     o_indices: List[List[List[Any]]] = [[[init for _ in range(depth)] for _ in range(col)] for _ in range(row)]
