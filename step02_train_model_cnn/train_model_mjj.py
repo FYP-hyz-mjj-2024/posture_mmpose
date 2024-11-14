@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 # Utilities
 import os
 import copy
+import time
 
 # Local
 from utils.parse_file_name import parseFileName
@@ -237,5 +238,6 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
         'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
     }
 
-    torch.save(model_state, "../data/models/posture_mmpose_vgg3d.pth")
-    print(f"Model saved to ../data/models/posture_mmpose_vgg3d.pth")
+    time_str = str(time.time()).replace(".", "")
+    torch.save(model_state, f"../data/models/posture_mmpose_vgg3d_{time_str}.pth")
+    print(f"Model saved to ../data/models/posture_mmpose_vgg3d_{time_str}.pth")
