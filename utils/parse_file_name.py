@@ -1,6 +1,7 @@
 import re
 
-def parseFileName(video_file_name: str, extension: str):
+
+def parseFileName(video_file_name: str, extension: str = None):
     """
     Parse file name to get the information about the file.
     Information:
@@ -13,11 +14,15 @@ def parseFileName(video_file_name: str, extension: str):
     - weight: The "Label" for regression, i.e. the confidence that the person is using a cellphone.
 
     :param video_file_name: Name of the video file.
+    :param extension: Extension of the video file.
     :return: An information dictionary of the video.
     """
-    parsed = re.split(r'_', video_file_name.replace(extension, ""))
+    if extension is not None:
+        video_file_name = video_file_name.replace(extension, "")
 
-    if len(parsed) not in range(6,8):
+    parsed = re.split(r'_', video_file_name)
+
+    if len(parsed) not in range(6, 8):
         raise Exception("File name is not valid.")
 
     info = {

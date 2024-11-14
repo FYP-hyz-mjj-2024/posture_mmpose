@@ -111,6 +111,9 @@ def processVideosInDir(video_dir: str,
         file_name_without_extension = os.path.splitext(file_name_with_extension)[0]
 
         # Converting Process
+        file_props = parseFileName(file_name_without_extension)
+        if 'frame_number' in file_props:
+            skip_interval = file_props['frame_number']
 
         feature_matrix = processOneVideo(video_path,
                                          bbox_detector_model,

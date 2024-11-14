@@ -142,7 +142,7 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
     with torch.no_grad():
         outputs = model(input_tensor)
         sg = torch.sigmoid(outputs[0])
-        prediction = int(sg[0] < sg[1] or sg[1] > 0.32)
+        prediction = int(sg[0] < sg[1] or sg[1] > 0.40)
         # prediction = torch.argmax(sg, dim=0).item()
 
     out0, out1 = sg
