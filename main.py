@@ -142,7 +142,7 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
     with torch.no_grad():
         outputs = model(input_tensor)
         sg = torch.sigmoid(outputs[0])
-        prediction = int(sg[0] < sg[1] or sg[1] > 0.40)
+        prediction = int(sg[0] < sg[1] or sg[1] > 0.32)
         # prediction = torch.argmax(sg, dim=0).item()
 
     out0, out1 = sg
@@ -158,7 +158,7 @@ else:
     is_remote, video_source, use_mmpose_visualizer = False, 0, False
 
 # Decision on mode
-solution_mode = 'mjj'
+solution_mode = 'hyz'
 # solution_mode = 'hyz' | 'mjj'
 
 # Initialize MMPose essentials
@@ -174,10 +174,10 @@ target_list = kcfg.get_targets(solution_mode)
 
 # Classifier Model
 if solution_mode == 'hyz':
-    model_state = torch.load('./data/models/posture_mmpose_vgg.pth', map_location=device)
+    model_state = torch.load('./data/models/posture_mmpose_vgg1d_17315770488631685.pth', map_location=device)
     classifier = MLP(input_channel_num=6, output_class_num=2)
 else:   # elif solution_mode == 'mjj':
-    model_state = torch.load('./data/models/posture_mmpose_vgg3d.pth', map_location=device)
+    model_state = torch.load('./data/models/posture_mmpose_vgg3d_1731574752918015.pth', map_location=device)
     classifier = MLP3d(input_channel_num=2, output_class_num=2)
 
 classifier.load_state_dict(model_state['model_state_dict'])
