@@ -122,8 +122,9 @@ def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
 
     return classifier_result_str, classify_signal
 
+
 def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
-             numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
+               numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
     model, params = classifier_model
 
     # Normalize
