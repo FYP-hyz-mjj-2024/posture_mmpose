@@ -91,6 +91,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     else:
         kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
         classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
+        # TODO: Add Object Detection for Cellphone
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
@@ -151,6 +152,7 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
 
     return classifier_result_str, classify_signal
 
+
 if __name__ == '__main__':
     # Configuration
     is_remote, video_source, use_mmpose_visualizer = getUserConsoleConfig(max_required_num=3)
@@ -158,7 +160,7 @@ else:
     is_remote, video_source, use_mmpose_visualizer = False, 0, False
 
 # Decision on mode
-solution_mode = 'hyz'
+solution_mode = 'mjj'
 # solution_mode = 'hyz' | 'mjj'
 
 # Initialize MMPose essentials
