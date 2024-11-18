@@ -80,18 +80,36 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      classifier_model: List[Union[MLP, Dict[str, float]]],
                      classifier_func,
                      mode: str = None) -> None:
-    # If detected backside, don't do inference.
-    l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
-    l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
-    backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
+    # Global variables:
+    _num_value = 0.0
+    classifier_result_str = ""
+    classify_signal = 0
 
-    if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
-        classifier_result_str = f"Backside {((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0:.2f}"
-        classify_signal = -1
-    else:
+    # Tune STATE:
+    classify_state = kcfg.OK_CLASSIFY
+
+    if np.sum(keypoints[:13, 2] < 0.3) >= 5:
+        classify_state |= kcfg.OUT_OF_FRAME
+
+    if classify_state & kcfg.OUT_OF_FRAME is False:
+        l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
+        l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
+        backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
+        if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2: # backside_threshold = -0.2
+            _num_value = ((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0
+            classify_state |= kcfg.BACKSIDE
+
+    # Classify with accordance to STATE:
+    if classify_state == kcfg.OK_CLASSIFY:
         kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
         classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
-        # TODO: Add Object Detection for Cellphone
+    elif classify_state & kcfg.BACKSIDE:
+        classifier_result_str = f"Back {_num_value:.2f}"
+        classify_signal = -1
+    elif classify_state & kcfg.OUT_OF_FRAME:
+        classifier_result_str = f"Out Of Frame"
+        classify_signal = -1
+        # return
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
@@ -152,7 +170,6 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
 
     return classifier_result_str, classify_signal
 
-
 if __name__ == '__main__':
     # Configuration
     is_remote, video_source, use_mmpose_visualizer = getUserConsoleConfig(max_required_num=3)
@@ -160,8 +177,8 @@ else:
     is_remote, video_source, use_mmpose_visualizer = False, 0, False
 
 # Decision on mode
+# solution_mode = 'hyz'
 solution_mode = 'mjj'
-# solution_mode = 'hyz' | 'mjj'
 
 # Initialize MMPose essentials
 detector, pose_estimator, visualizer = getMMPoseEssentials(
