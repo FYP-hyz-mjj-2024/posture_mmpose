@@ -56,8 +56,7 @@ def videoDemo(src: Union[str, int],
                 wait_time=0.01,
                 kpt_thr=mcfg.kpt_thr)
         else:
-            # Classification Model Logic
-            for keypoints, xyxy in zip(keypoints_list, xyxy_list):
+            [
                 processOnePerson(frame,
                                  keypoints,
                                  xyxy,
@@ -65,6 +64,8 @@ def videoDemo(src: Union[str, int],
                                  classifier_model,
                                  classifier_func,
                                  mode)
+                for keypoints, xyxy in zip(keypoints_list, xyxy_list)
+            ]
 
             yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
 
