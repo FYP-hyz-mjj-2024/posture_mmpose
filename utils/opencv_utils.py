@@ -21,11 +21,11 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
     """
     color_dict = {1: (0, 255, 0),  # green: not_using
                   0: (0, 0, 255),  # red: using
-                  -1: (155, 155, 155),  # gray: backside
+                  -1: (155, 155, 155),  # gray: don't classify
                   }  # BGR form
-    rec_thickness_dict = {1: 2,  # green: not_using
-                          0: 2,  # red: using
-                          -1: 2,  # gray: backside
+    rec_thickness_dict = {1: 1,  # green: not_using
+                          0: 1,  # red: using
+                          -1: 1,  # gray: don't classify
                           }
 
     cv2.putText(
@@ -35,7 +35,7 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
         fontScale=0.5,
         color=color_dict[ok_signal],
-        thickness=2
+        thickness=rec_thickness_dict[ok_signal]
     )
     cv2.rectangle(
         frame,

@@ -91,7 +91,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     if np.sum(keypoints[:13, 2] < 0.3) >= 5:
         classify_state |= kcfg.OUT_OF_FRAME
 
-    if classify_state & kcfg.OUT_OF_FRAME is False:
+    if not classify_state & kcfg.OUT_OF_FRAME:
         l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
         l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
         backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
@@ -136,7 +136,7 @@ def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
 
     out0, out1 = sg
     classify_signal = 1 if prediction != 1 else 0
-    classifier_result_str = f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"
+    classifier_result_str = f"+ {out1:.2f}" if (prediction == 1) else f"- {out0:.2f}"
 
     return classifier_result_str, classify_signal
 
@@ -165,7 +165,7 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
 
     out0, out1 = sg
     classify_signal = 1 if prediction != 1 else 0
-    classifier_result_str = f"Using {out1:.2f}" if (prediction == 1) else f"Not Using {out0:.2f}"
+    classifier_result_str = f"+ {out1:.2f}" if (prediction == 1) else f"- {out0:.2f}"
 
     return classifier_result_str, classify_signal
 
