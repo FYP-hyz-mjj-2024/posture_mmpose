@@ -109,7 +109,6 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     elif classify_state & kcfg.OUT_OF_FRAME:
         classifier_result_str = f"Out Of Frame"
         classify_signal = -1
-        # return
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 

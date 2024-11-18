@@ -33,7 +33,7 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
         text,
         org=(int(xyxy[0]), int(xyxy[1])),
         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-        fontScale=1,
+        fontScale=0.5,
         color=color_dict[ok_signal],
         thickness=2
     )
