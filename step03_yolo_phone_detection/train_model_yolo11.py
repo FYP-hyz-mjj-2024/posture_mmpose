@@ -15,22 +15,23 @@ device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is
 preset_group_name = 'low-quality phone detection preset'
 preset = preset_group[preset_group_name]
 
-rf: Roboflow = Roboflow(api_key=API_KEY_mjj)
+if __name__ == '__main__':
+    rf: Roboflow = Roboflow(api_key=API_KEY_mjj)
 
-workspace: Workspace = rf.workspace(preset['workspace'])
-project: Project = workspace.project(preset['project'])
-version: Version = project.version(preset['version'])
-dataset: Dataset = version.download(preset['dataset'])
+    workspace: Workspace = rf.workspace(preset['workspace'])
+    project: Project = workspace.project(preset['project'])
+    version: Version = project.version(preset['version'])
+    dataset: Dataset = version.download(preset['dataset'])
 
-model: YOLO = YOLO('yolo11n.pt')
-results = model.train(
-    data=f"{dataset.location}/data.yaml",
-    epochs=50,
-    imgsz=640,
-    batch=16,
-    device=device,
-)
+    model: YOLO = YOLO('yolo11n.pt')
+    results = model.train(
+        data=f"{dataset.location}/data.yaml",
+        epochs=50,
+        imgsz=640,
+        batch=16,
+        device=device,
+    )
 
-results = model.val()   # Evaluate the model's performance on the validation set
+    results = model.val()   # Evaluate the model's performance on the validation set
 
-success = model.export(format="onnx")   # Export the model to ONNX format
+    success = model.export(format="onnx")   # Export the model to ONNX format
