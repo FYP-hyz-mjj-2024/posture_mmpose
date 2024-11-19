@@ -1,15 +1,36 @@
+from roboflow.core.dataset import Dataset
+from roboflow.core.version import Version
 from ultralytics import YOLO
 import torch
+import os
+import ultralytics
+from PIL import Image
+import requests
 
-from step03_yolo_phone_detection.dvalue import yaml_path, single_test
+from roboflow import Roboflow, Workspace, Project
 
-device = "mps" if torch.backends.mps.is_available() else "cpu"
+from step03_yolo_phone_detection.dvalue import API_KEY_mjj, preset_group
 
-model = YOLO("yolo11n.yaml")    # Create a new YOLO model from scratch
-model = YOLO("yolo11n.pt")  # Load a pretrained YOLO model (recommended for training)
+device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+preset_group_name = 'low-quality phone detection preset'
+preset = preset_group[preset_group_name]
 
-results = model.train(data=yaml_path, epochs=1, device=device)
+rf: Roboflow = Roboflow(api_key=API_KEY_mjj)
+
+workspace: Workspace = rf.workspace(preset['workspace'])
+project: Project = workspace.project(preset['project'])
+version: Version = project.version(preset['version'])
+dataset: Dataset = version.download(preset['dataset'])
+
+model: YOLO = YOLO('yolo11n.pt')
+results = model.train(
+    data=f"{dataset.location}/data.yaml",
+    epochs=50,
+    imgsz=640,
+    batch=16,
+    device=device,
+)
+
 results = model.val()   # Evaluate the model's performance on the validation set
 
-results = model(single_test)
 success = model.export(format="onnx")   # Export the model to ONNX format

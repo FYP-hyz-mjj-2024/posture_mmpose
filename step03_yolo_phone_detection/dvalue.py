@@ -1,3 +1,10 @@
-yaml_path = "/Users/maijiajun/Documents/GitHub/posture_mmpose/data/yolo/low-quality_mobile_phone_dataset.yaml"
+API_KEY_mjj = 'qp8LY3a9g7NdSpYoImC4'
 
-single_test = "/Users/maijiajun/Documents/GitHub/posture_mmpose/data/yolo/test/images/8d234d86-8264-11ed-94f3-0242ac1c000c_jpg.rf.df63473fb1d8ba98aa0ba34d711d73fb.jpg"
+preset_group = {
+    'low-quality phone detection preset':{
+        'workspace': 'victor-workspace-owmoa',
+        'project': 'phone-detection-pllbi',
+        'version': 1,
+        'dataset': 'yolov11'
+    },
+}
