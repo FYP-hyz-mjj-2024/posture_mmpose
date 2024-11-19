@@ -67,7 +67,10 @@ model_config/checkpoints
 
 # Custom files
 step01_annotate_image_mmpose/_disabled/
+step03_yolo_phone_detection/runs/
+step03_yolo_phone_detection/yolo11n.pt
 data/blob/videos/*
+data/yolo/*
 
 # MacOS
 .DS_Store
