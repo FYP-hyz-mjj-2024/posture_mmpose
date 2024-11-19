@@ -26,7 +26,7 @@ if __name__ == '__main__':
     model: YOLO = YOLO('yolo11n.pt')
     results = model.train(
         data=f"{dataset.location}/data.yaml",
-        epochs=50,
+        epochs=100,
         imgsz=640,
         batch=16,
         device=device,
