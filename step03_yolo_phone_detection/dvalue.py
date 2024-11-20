@@ -8,3 +8,5 @@ preset_group = {
         'dataset': 'yolov11'
     },
 }
+
+best_pt_path = "./archived onnx/best.pt"
