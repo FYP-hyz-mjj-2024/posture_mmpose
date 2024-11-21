@@ -131,6 +131,17 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         # Landmark index of left & right hand: 9, 10
         lh_landmark, rh_landmark = keypoints[9][:2], keypoints[10][:2]
 
+        # Landmark of left & right elbow: 7 & 8
+        _l_arm_vect, _r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
+        l_arm_mag, r_arm_mag = np.linalg.norm(_l_arm_vect), np.linalg.norm(_r_arm_vect)
+        l_arm_vect, r_arm_vect = _l_arm_vect // l_arm_mag, _r_arm_vect // r_arm_mag
+
+        offset_len = frame_w // 12
+        l_offset, r_offset = l_arm_vect * offset_len, r_arm_vect * offset_len
+
+        lh_landmark += l_offset
+        rh_landmark += r_offset
+
         lh_frame_xyxy = crop_hand_frame(frame, lh_landmark, hand_hw)
         rh_frame_xyxy = crop_hand_frame(frame, rh_landmark, hand_hw)
 
