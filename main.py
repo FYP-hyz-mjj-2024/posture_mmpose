@@ -107,7 +107,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
         l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
         backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
-        if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2: # backside_threshold = -0.2
+        if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
             _num_value = ((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0
             classify_state |= kcfg.BACKSIDE
 
@@ -125,8 +125,9 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
     if classify_signal == 0:
-        frame_w, frame_h, _ = frame.shape
-        hand_hw = (frame_h // 10, frame_w // 10)
+        bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
+        # frame_w, frame_h, _ = frame.shape
+        hand_hw = (bbox_h // 5, bbox_w // 2)
 
         # Landmark index of left & right hand: 9, 10
         lh_landmark, rh_landmark = keypoints[9][:2], keypoints[10][:2]
@@ -136,7 +137,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         l_arm_mag, r_arm_mag = np.linalg.norm(_l_arm_vect), np.linalg.norm(_r_arm_vect)
         l_arm_vect, r_arm_vect = _l_arm_vect // l_arm_mag, _r_arm_vect // r_arm_mag
 
-        offset_len = frame_w // 12
+        offset_len = bbox_w // 5
         l_offset, r_offset = l_arm_vect * offset_len, r_arm_vect * offset_len
 
         lh_landmark += l_offset
@@ -210,6 +211,7 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
     classifier_result_str = f"+ {out1:.2f}" if (prediction == 1) else f"- {out0:.2f}"
 
     return classifier_result_str, classify_signal
+
 
 if __name__ == '__main__':
     # Configuration
