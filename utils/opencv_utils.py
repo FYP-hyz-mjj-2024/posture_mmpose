@@ -2,7 +2,7 @@ import cv2
 import base64
 import json
 import websocket
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 import time
 import numpy as np
 
@@ -24,9 +24,9 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
                   0: (0, 0, 255),  # red: using
                   -1: (155, 155, 155),  # gray: don't classify
                   }  # BGR form
-    rec_thickness_dict = {1: 1,  # green: not_using
-                          0: 1,  # red: using
-                          -1: 1,  # gray: don't classify
+    rec_thickness_dict = {1: 2,  # green: not_using
+                          0: 2,  # red: using
+                          -1: 2,  # gray: don't classify
                           }
 
     cv2.putText(
@@ -34,7 +34,7 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
         text,
         org=(int(xyxy[0]), int(xyxy[1])),
         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-        fontScale=0.5,
+        fontScale=1,
         color=color_dict[ok_signal],
         thickness=rec_thickness_dict[ok_signal]
     )
@@ -97,20 +97,20 @@ def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
 
 def crop_hand_frame(frame: np.ndarray,
                     ct_xy: Tuple[int, int],
-                    crop_hw: Tuple[int, int]) -> Union[np.ndarray, None]:
-    fh, fw = frame.size
+                    crop_hw: Tuple[int, int]) -> Union[Tuple[np.ndarray, List], None]:
+    fh, fw, _ = frame.shape
     x, y = ct_xy
     ch, cw = crop_hw
 
     if not (0 <= x <= fw and 0 <= y <= fh):
         return None
 
-    xs = [x - (cw / 2), x + (cw / 2)]
-    ys = [y - (ch / 2), y + (ch / 2)]
+    xs = np.array([x - (cw // 2), x + (cw // 2)]).astype(np.int32)
+    ys = np.array([y - (ch // 2), y + (ch // 2)]).astype(np.int32)
 
     np.clip(xs, 0, fw, out=xs)
     np.clip(ys, 0, fh, out=ys)
 
-    xyxy = xs[0], ys[0], xs[1], ys[1]
+    xyxy = [xs[0], ys[0], xs[1], ys[1]]
 
     return frame[ys[0]:ys[1], xs[0]:xs[1], :], xyxy

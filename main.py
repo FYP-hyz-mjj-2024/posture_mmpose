@@ -88,9 +88,9 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      xyxy: np.ndarray,  # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      classifier_model: List[Union[MLP, Dict[str, float]]],
+                     classifier_func,
                      phone_detector_model,
                      device_name: str,
-                     classifier_func,
                      mode: str = None) -> None:
     # Global variables:
     _num_value = 0.0
@@ -125,9 +125,8 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
     if classify_signal == 0:
-        frame_h, frame_w, _ = frame.size
-
-        hand_hw = (10, 10)
+        frame_w, frame_h, _ = frame.shape
+        hand_hw = (frame_h // 10, frame_w // 10)
 
         # Landmark index of left & right hand: 9, 10
         lh_landmark, rh_landmark = keypoints[9][:2], keypoints[10][:2]
