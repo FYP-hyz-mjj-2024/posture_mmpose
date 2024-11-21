@@ -2,8 +2,9 @@ import cv2
 import base64
 import json
 import websocket
-from typing import Union
+from typing import Union, Tuple
 import time
+import numpy as np
 
 
 def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
@@ -92,3 +93,24 @@ def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
         print(f"Connection to WebSocked Failed. The server might be closed. Error: {e}\n"
               f"If you are using local mode, you can ignore this error.")
         return None
+
+
+def crop_hand_frame(frame: np.ndarray,
+                    ct_xy: Tuple[int, int],
+                    crop_hw: Tuple[int, int]) -> Union[np.ndarray, None]:
+    fh, fw = frame.size
+    x, y = ct_xy
+    ch, cw = crop_hw
+
+    if not (0 <= x <= fw and 0 <= y <= fh):
+        return None
+
+    xs = [x - (cw / 2), x + (cw / 2)]
+    ys = [y - (ch / 2), y + (ch / 2)]
+
+    np.clip(xs, 0, fw, out=xs)
+    np.clip(ys, 0, fh, out=ys)
+
+    xyxy = xs[0], ys[0], xs[1], ys[1]
+
+    return frame[ys[0]:ys[1], xs[0]:xs[1], :], xyxy

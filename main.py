@@ -13,7 +13,8 @@ from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, tra
 from step01_annotate_image_mmpose.calculations import calc_keypoint_angle
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults
-from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_websocket, getUserConsoleConfig
+from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_websocket, getUserConsoleConfig, \
+    crop_hand_frame
 
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
@@ -124,7 +125,23 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
     if classify_signal == 0:
-        pass    # TODO: process yolo11 phone detector on regions around hands. (custom a new method)
+        frame_h, frame_w, _ = frame.size
+
+        hand_hw = (10, 10)
+
+        # Landmark index of left & right hand: 9, 10
+        lh_landmark, rh_landmark = keypoints[9][:2], keypoints[10][:2]
+
+        lh_frame_xyxy = crop_hand_frame(frame, lh_landmark, hand_hw)
+        rh_frame_xyxy = crop_hand_frame(frame, rh_landmark, hand_hw)
+
+        hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
+
+        for hf_xyxy in hand_frames_xyxy:
+            hf, sub_xyxy = hf_xyxy
+            render_detection_rectangle(frame, "?", sub_xyxy, ok_signal=classify_signal)
+
+        # pass    # TODO: process yolo11 phone detector on regions around hands. (custom a new method)
                 # TODO: transpose the image to (C, H, W) and resize it to (3, 640, 640)
 
 
@@ -226,7 +243,8 @@ classifier_func = classify if solution_mode == 'hyz' else classify3D
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
 
-phone_detector = YOLO(best_pt_path)
+best_pt_path_main = "./step03_yolo_phone_detection/archived onnx/best.pt"
+phone_detector = YOLO(best_pt_path_main)
 
 videoDemo(src=int(video_source) if video_source is not None else 0,
           bbox_detector_model=detector,
