@@ -267,7 +267,7 @@ classifier_func = classify if solution_mode == 'hyz' else classify3D
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
 
-best_pt_path_main = "./step03_yolo_phone_detection/archived onnx/best.pt"
+best_pt_path_main = "step03_yolo_phone_detection/archived onnx/202411192201_Phone-Detection-v2.pt"
 phone_detector = YOLO(best_pt_path_main)
 
 videoDemo(src=int(video_source) if video_source is not None else 0,

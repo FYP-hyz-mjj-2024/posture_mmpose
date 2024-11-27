@@ -9,4 +9,4 @@ preset_group = {
     },
 }
 
-best_pt_path = "./archived onnx/best.pt"
+best_pt_path = "archived onnx/best.pt"
