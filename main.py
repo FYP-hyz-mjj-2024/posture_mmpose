@@ -14,7 +14,7 @@ from step01_annotate_image_mmpose.calculations import calc_keypoint_angle
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults
 from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_websocket, getUserConsoleConfig, \
-    crop_hand_frame
+    cropFrame
 
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
@@ -126,25 +126,22 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
 
     if classify_signal == 0:
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
-        # frame_w, frame_h, _ = frame.shape
+
         hand_hw = (bbox_h // 5, bbox_w // 2)
+        """Height and width (sequence matter) of the bounding box."""
 
         # Landmark index of left & right hand: 9, 10
-        lh_landmark, rh_landmark = keypoints[9][:2], keypoints[10][:2]
+        lhand_center, rhand_center = keypoints[9][:2], keypoints[10][:2]
 
         # Landmark of left & right elbow: 7 & 8
-        _l_arm_vect, _r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
-        l_arm_mag, r_arm_mag = np.linalg.norm(_l_arm_vect), np.linalg.norm(_r_arm_vect)
-        l_arm_vect, r_arm_vect = _l_arm_vect // l_arm_mag, _r_arm_vect // r_arm_mag
+        # Vectors for left & right arm.
+        l_arm_vect, r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
+        lhand_center += l_arm_vect * 0.5
+        rhand_center += r_arm_vect * 0.5
 
-        offset_len = bbox_w // 5
-        l_offset, r_offset = l_arm_vect * offset_len, r_arm_vect * offset_len
-
-        lh_landmark += l_offset
-        rh_landmark += r_offset
-
-        lh_frame_xyxy = crop_hand_frame(frame, lh_landmark, hand_hw)
-        rh_frame_xyxy = crop_hand_frame(frame, rh_landmark, hand_hw)
+        # Coordinate of left & right hand's cropped frame
+        lh_frame_xyxy = cropFrame(frame, lhand_center, hand_hw)
+        rh_frame_xyxy = cropFrame(frame, rhand_center, hand_hw)
 
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 

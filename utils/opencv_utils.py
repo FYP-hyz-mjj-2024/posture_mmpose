@@ -95,9 +95,9 @@ def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
         return None
 
 
-def crop_hand_frame(frame: np.ndarray,
-                    ct_xy: Tuple[int, int],
-                    crop_hw: Tuple[int, int]) -> Union[Tuple[np.ndarray, List], None]:
+def cropFrame(frame: np.ndarray,
+              ct_xy: np.ndarray,
+              crop_hw: Tuple[int, int]) -> Union[Tuple[np.ndarray, List], None]:
     fh, fw, _ = frame.shape
     x, y = ct_xy
     ch, cw = crop_hw
