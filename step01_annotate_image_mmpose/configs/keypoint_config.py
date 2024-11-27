@@ -189,6 +189,11 @@ keypoint_indexes = {
     'Face-Lips_l3_right': 90
 }
 
+OK_CLASSIFY = 0
+OUT_OF_FRAME = 1
+BACKSIDE = 2
+
+# ===================================================== #
 
 def get_targets(mode: str = 'hyz') -> List:
     _target_list = mode == 'hyz' and get_full_angles() or get_cube_angles(use_str=True)
@@ -242,6 +247,7 @@ def get_cube_angles(use_str: bool = True, num: int = 13) -> List[List[List[Any]]
 
     return o_indices
 
+# ===================================================== #
 
 if __name__ == "__main__":
     angles1 = get_full_angles(use_str=False)

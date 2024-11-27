@@ -111,6 +111,9 @@ def processVideosInDir(video_dir: str,
         file_name_without_extension = os.path.splitext(file_name_with_extension)[0]
 
         # Converting Process
+        file_props = parseFileName(file_name_without_extension)
+        if 'frame_number' in file_props:
+            skip_interval = file_props['frame_number']
 
         feature_matrix = processOneVideo(video_path,
                                          bbox_detector_model,
@@ -341,8 +344,8 @@ def renderTheResults(img: Union[str, np.ndarray],
 
 
 if __name__ == "__main__":
-    # solution_mode = 'hyz'
-    solution_mode = 'mjj'
+    solution_mode = 'hyz'
+    # solution_mode = 'mjj'
     video_folder = "../data/blob/videos"
 
     # Initialize MMPose essentials
@@ -362,6 +365,7 @@ if __name__ == "__main__":
                                             mode=solution_mode)
 
     for name_mat in named_feature_mats:
-        save_path = "../data/train/3dnpy/" + name_mat['name'] + ".npy"
+        save_rt = "../data/train/1dnpy/" if solution_mode == "hyz" else "../data/train/3dnpy/"
+        save_path = save_rt + name_mat['name'] + ".npy"
         matrix = name_mat['feature_matrix']
         np.save(save_path, matrix)

@@ -2,8 +2,9 @@ import cv2
 import base64
 import json
 import websocket
-from typing import Union
+from typing import Union, Tuple, List
 import time
+import numpy as np
 
 
 def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
@@ -21,11 +22,11 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
     """
     color_dict = {1: (0, 255, 0),  # green: not_using
                   0: (0, 0, 255),  # red: using
-                  -1: (155, 155, 155),  # gray: backside
+                  -1: (155, 155, 155),  # gray: don't classify
                   }  # BGR form
     rec_thickness_dict = {1: 2,  # green: not_using
                           0: 2,  # red: using
-                          -1: 2,  # gray: backside
+                          -1: 2,  # gray: don't classify
                           }
 
     cv2.putText(
@@ -35,7 +36,7 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
         fontScale=1,
         color=color_dict[ok_signal],
-        thickness=2
+        thickness=rec_thickness_dict[ok_signal]
     )
     cv2.rectangle(
         frame,
@@ -92,3 +93,24 @@ def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
         print(f"Connection to WebSocked Failed. The server might be closed. Error: {e}\n"
               f"If you are using local mode, you can ignore this error.")
         return None
+
+
+def cropFrame(frame: np.ndarray,
+              ct_xy: np.ndarray,
+              crop_hw: Tuple[int, int]) -> Union[Tuple[np.ndarray, List], None]:
+    fh, fw, _ = frame.shape
+    x, y = ct_xy
+    ch, cw = crop_hw
+
+    if not (0 <= x <= fw and 0 <= y <= fh):
+        return None
+
+    xs = np.array([x - (cw // 2), x + (cw // 2)]).astype(np.int32)
+    ys = np.array([y - (ch // 2), y + (ch // 2)]).astype(np.int32)
+
+    np.clip(xs, 0, fw, out=xs)
+    np.clip(ys, 0, fh, out=ys)
+
+    xyxy = [xs[0], ys[0], xs[1], ys[1]]
+
+    return frame[ys[0]:ys[1], xs[0]:xs[1], :], xyxy
