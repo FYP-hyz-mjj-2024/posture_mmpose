@@ -4,7 +4,7 @@ preset_group = {
     'low-quality phone detection preset':{
         'workspace': 'victor-workspace-owmoa',
         'project': 'phone-detection-pllbi',
-        'version': 2,
+        'version': 3,
         'dataset': 'yolov11'
     },
 }
