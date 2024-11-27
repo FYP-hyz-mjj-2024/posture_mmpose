@@ -95,7 +95,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     # Global variables:
     _num_value = 0.0
     classifier_result_str = ""
-    classify_signal = 0
+    classify_signal = 1     # Default: Not Using
 
     # Tune STATE:
     classify_state = kcfg.OK_CLASSIFY
@@ -146,11 +146,10 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 
         for hf_xyxy in hand_frames_xyxy:
-            hf, sub_xyxy = hf_xyxy
-            render_detection_rectangle(frame, "?", sub_xyxy, ok_signal=classify_signal)
-
-        # pass    # TODO: process yolo11 phone detector on regions around hands. (custom a new method)
-                # TODO: transpose the image to (C, H, W) and resize it to (3, 640, 640)
+            subframe, subframe_xyxy = hf_xyxy
+            detect_signal = detectPhone(phone_detector_model, subframe, device=device_name, threshold=0.3)
+            detect_str = "+" if detect_signal == 0 else "-"
+            render_detection_rectangle(frame, detect_str, subframe_xyxy, ok_signal=detect_signal)
 
 
 def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
@@ -208,6 +207,22 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
     classifier_result_str = f"+ {out1:.2f}" if (prediction == 1) else f"- {out0:.2f}"
 
     return classifier_result_str, classify_signal
+
+
+def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: float = 0.2):
+    resized_frame = cv2.resize(frame, dsize=(640, 640), interpolation=cv2.INTER_CUBIC)
+    tensor_frame = torch.from_numpy(resized_frame).float() / 255.0
+    tensor_frame = tensor_frame.permute(2, 0, 1).unsqueeze(0).to(device)
+    results_tensor = model(tensor_frame, device=device)[0]
+
+    results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
+
+    if not any(results_cls == 0):
+        return 1    # Not using phone
+
+    results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == 0]
+
+    return 0 if any(results_conf > threshold) else 1
 
 
 if __name__ == '__main__':
