@@ -297,7 +297,7 @@ if solution_mode == 'hyz':
     model_state = torch.load('./data/models/posture_mmpose_vgg1d_17315770488631685.pth', map_location=global_device)
     classifier = MLP(input_channel_num=6, output_class_num=2)
 else:   # elif solution_mode == 'mjj':
-    model_state = torch.load('./data/models/posture_mmpose_vgg3d_1731574752918015.pth', map_location=global_device)
+    model_state = torch.load('./data/models/posture_mmpose_vgg3d_17327843901128154.pth', map_location=global_device)
     classifier = MLP3d(input_channel_num=2, output_class_num=2)
 
 classifier.load_state_dict(model_state['model_state_dict'])

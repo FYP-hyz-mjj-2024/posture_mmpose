@@ -344,8 +344,8 @@ def renderTheResults(img: Union[str, np.ndarray],
 
 
 if __name__ == "__main__":
-    solution_mode = 'hyz'
-    # solution_mode = 'mjj'
+    # solution_mode = 'hyz'
+    solution_mode = 'mjj'
     video_folder = "../data/blob/videos"
 
     # Initialize MMPose essentials
