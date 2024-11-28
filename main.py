@@ -115,7 +115,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     # Global variables:
     _num_value = 0.0
     classifier_result_str = ""
-    classify_signal = 1     # Default: Not Using
+    classify_signal = 0     # Default: Not Using. Used to control bbox color.
 
     # Tune STATE:
     classify_state = kcfg.OK_CLASSIFY
@@ -144,7 +144,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
-    if classify_signal == 0 and phone_detector_model is not None:
+    if classify_signal == 1 and phone_detector_model is not None:
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
         hand_hw = (bbox_h // 2, bbox_w // 2)
@@ -167,7 +167,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
 
         for subframe, subframe_xyxy in hand_frames_xyxy:
             detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
-            detect_str = "+" if detect_signal == 0 else "-"
+            detect_str = "+" if detect_signal == 1 else "-"
             render_detection_rectangle(frame, detect_str, subframe_xyxy, ok_signal=detect_signal)
 
 
@@ -221,8 +221,10 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
         prediction = int(sg[0] < sg[1] or sg[1] > 0.32)
         # prediction = torch.argmax(sg, dim=0).item()
 
+    # out0: Conf for "using"; out1: conf for "not using".
     out0, out1 = sg
-    classify_signal = 1 if prediction != 1 else 0
+    # Note: prediction=0 => classify_signal=1 (Using); prediction=1 => classify_signal=0 (Not using).
+    classify_signal = 0 if prediction != 1 else 1
     classifier_result_str = f"+ {out1:.2f}" if (prediction == 1) else f"- {out0:.2f}"
 
     return classifier_result_str, classify_signal
