@@ -120,9 +120,11 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     # Tune STATE:
     classify_state = kcfg.OK_CLASSIFY
 
+    # Person is out of frame.
     if np.sum(keypoints[:13, 2] < 0.3) >= 5:
         classify_state |= kcfg.OUT_OF_FRAME
 
+    # Person not out of frame, but show back.
     if not (classify_state & kcfg.OUT_OF_FRAME):
         l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
         l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
@@ -131,9 +133,13 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
             _num_value = ((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0
             classify_state |= kcfg.BACKSIDE
 
-    # Classify with accordance to STATE:
+    # Classify with accordance to STATE.
+    # If any of the filtering condition is fulfilled, make the signal to -1.
+    # Otherwise, keep the original signal.
     if classify_state == kcfg.OK_CLASSIFY:
         kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
+        # Here, if the person is sus for using phone, signal will be assigned to 1.
+        # Otherwise, keep the original 0, i.e., not using.
         classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
     elif classify_state & kcfg.BACKSIDE:
         classifier_result_str = f"Back {_num_value:.2f}"
@@ -144,6 +150,8 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
+    # Posture model finds the posture sus.
+    # Invokes YOLO for further detection.
     if classify_signal == 1 and phone_detector_model is not None:
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
