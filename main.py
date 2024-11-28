@@ -264,11 +264,11 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
     results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
 
     if not any(results_cls == 0):
-        return 1    # Not using phone
+        return 0    # Not using phone
 
     results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == 0]
 
-    return 0 if any(results_conf > threshold) else 1
+    return any(results_conf > threshold)
 
 
 if __name__ == '__main__':
