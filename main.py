@@ -32,6 +32,7 @@ def videoDemo(src: Union[str, int],
               classifier_func=None,
               websocket_obj=None,
               phone_detector_model=None,
+              phone_detector_func=None,
               device_name: str=global_device_name,
               mode: str = None) -> None:
     cap = cv2.VideoCapture(src)
@@ -73,6 +74,7 @@ def videoDemo(src: Union[str, int],
                                  classifier_model,
                                  classifier_func,
                                  phone_detector_model,
+                                 phone_detector_func,
                                  device_name,
                                  mode)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
@@ -106,8 +108,9 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      classifier_model: List[Union[MLP, Dict[str, float]]],
                      classifier_func,
-                     phone_detector_model,
-                     device_name: str,
+                     phone_detector_model: YOLO = None,
+                     phone_detector_func=None,
+                     device_name: str = "cpu",
                      mode: str = None) -> None:
     # Global variables:
     _num_value = 0.0
@@ -120,7 +123,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     if np.sum(keypoints[:13, 2] < 0.3) >= 5:
         classify_state |= kcfg.OUT_OF_FRAME
 
-    if not classify_state & kcfg.OUT_OF_FRAME:
+    if not (classify_state & kcfg.OUT_OF_FRAME):
         l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
         l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
         backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
@@ -141,10 +144,10 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
-    if classify_signal == 0:
+    if classify_signal == 0 and phone_detector_model is not None:
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
-        hand_hw = (bbox_h // 5, bbox_w // 2)
+        hand_hw = (bbox_h // 2, bbox_w // 2)
         """Height and width (sequence matter) of the bounding box."""
 
         # Landmark index of left & right hand: 9, 10
@@ -163,7 +166,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 
         for subframe, subframe_xyxy in hand_frames_xyxy:
-            detect_signal = detectPhone(phone_detector_model, subframe, device=device_name, threshold=0.3)
+            detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
             detect_str = "+" if detect_signal == 0 else "-"
             render_detection_rectangle(frame, detect_str, subframe_xyxy, ok_signal=detect_signal)
 
@@ -278,7 +281,7 @@ classifier_params = {
     'std_dev_X': model_state['std_dev_X'].item()
 }
 
-classifier_func = classify if solution_mode == 'hyz' else classify3D
+classifier_function = classify if solution_mode == 'hyz' else classify3D
 
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
@@ -292,8 +295,9 @@ videoDemo(src=int(video_source) if video_source is not None else 0,
           detection_target_list=target_list,
           estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
           classifier_model=[classifier, classifier_params],
-          classifier_func=classifier_func,
+          classifier_func=classifier_function,
           websocket_obj=ws,
           phone_detector_model=phone_detector,
+          phone_detector_func=detectPhone,
           device_name=global_device_name,
           mode=solution_mode)
