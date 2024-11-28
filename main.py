@@ -30,11 +30,28 @@ def videoDemo(src: Union[str, int],
               estim_results_visualizer=None,
               classifier_model=None,
               classifier_func=None,
-              websocket_obj=None,
               phone_detector_model=None,
               phone_detector_func=None,
-              device_name: str=global_device_name,
-              mode: str = None) -> None:
+              device_name: str = global_device_name,
+              mode: str = None,
+              websocket_obj=None) -> None:
+    """
+    Overall demonstration function of this project. Uses live video.
+    :param src: Video Source. Int: Live; Str: Path to pre-recorded video.
+    :param bbox_detector_model: MMPose bounding box detector model.
+    :param pose_estimator_model: MMPose pose estimator model.
+    :param detection_target_list: List of detection targets.
+    :param estim_results_visualizer: MMPose estimation results visualizer.
+    :param classifier_model: Self-trained pose classification model.
+    :param classifier_func: Pose classification function.
+    :param websocket_obj: WebSocket Object.
+    :param phone_detector_model: Pre-trained YOLO object detection model.
+    :param phone_detector_func: Phone detection function.
+    :param device_name: Name of hardware, cpu or cuda.
+    :param mode: Mode of convolution: hyz or mjj.
+    :return: None.
+    """
+
     cap = cv2.VideoCapture(src)
 
     last_time = time.time()     # Record frame rate
@@ -306,8 +323,8 @@ videoDemo(src=int(video_source) if video_source is not None else 0,
           estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
           classifier_model=[classifier, classifier_params],
           classifier_func=classifier_function,
-          websocket_obj=ws,
           phone_detector_model=phone_detector,
           phone_detector_func=detectPhone,
           device_name=global_device_name,
-          mode=solution_mode)
+          mode=solution_mode,
+          websocket_obj=ws)
