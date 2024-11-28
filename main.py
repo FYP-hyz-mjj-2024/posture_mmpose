@@ -36,6 +36,8 @@ def videoDemo(src: Union[str, int],
               mode: str = None) -> None:
     cap = cv2.VideoCapture(src)
 
+    last_time = time.time()     # Record frame rate
+
     while cap.isOpened():
         ret, frame = cap.read()
 
@@ -75,6 +77,21 @@ def videoDemo(src: Union[str, int],
                                  mode)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
             ]
+
+            # Calculate and display frame rate
+            this_time = time.time()
+            frame_rate = 1 / (this_time - last_time + np.finfo(np.float32).eps)     # Handle divide-0 error
+            last_time = this_time
+
+            cv2.putText(
+                frame,
+                str(f"FPS: {frame_rate:.3f}"),
+                org=(20, 40),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                fontScale=0.5,
+                color=(255, 255, 255),
+                thickness=2
+            )
 
             yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
 
@@ -145,8 +162,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
 
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 
-        for hf_xyxy in hand_frames_xyxy:
-            subframe, subframe_xyxy = hf_xyxy
+        for subframe, subframe_xyxy in hand_frames_xyxy:
             detect_signal = detectPhone(phone_detector_model, subframe, device=device_name, threshold=0.3)
             detect_str = "+" if detect_signal == 0 else "-"
             render_detection_rectangle(frame, detect_str, subframe_xyxy, ok_signal=detect_signal)
