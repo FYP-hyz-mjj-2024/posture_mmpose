@@ -259,8 +259,9 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
     resized_frame = cv2.resize(frame, dsize=(640, 640), interpolation=cv2.INTER_CUBIC)
     tensor_frame = torch.from_numpy(resized_frame).float() / 255.0
     tensor_frame = tensor_frame.permute(2, 0, 1).unsqueeze(0).to(device)
-    results_tensor = model(tensor_frame, device=device)[0]
 
+    results_tmp = model(tensor_frame, device=device)
+    results_tensor = results_tmp[0]
     results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
 
     if not any(results_cls == 0):
@@ -312,7 +313,8 @@ classifier_function = classify if solution_mode == 'hyz' else classify3D
 
 # YOLO object detection model
 best_pt_path_main = "step03_yolo_phone_detection/archived onnx/best.pt"
-phone_detector = YOLO(best_pt_path_main)
+# phone_detector = YOLO(best_pt_path_main)
+phone_detector = YOLO("yolo11n.pt")    # TODO:
 
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
