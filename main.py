@@ -18,6 +18,7 @@ from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_
 
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
+from utils.plot_report import plot_report
 
 global_device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 global_device = torch.device(global_device_name)
@@ -34,7 +35,7 @@ def videoDemo(src: Union[str, int],
               phone_detector_func=None,
               device_name: str = global_device_name,
               mode: str = None,
-              websocket_obj=None) -> None:
+              websocket_obj=None):
     """
     Overall demonstration function of this project. Uses live video.
     :param src: Video Source. Int: Live; Str: Path to pre-recorded video.
@@ -54,7 +55,15 @@ def videoDemo(src: Union[str, int],
 
     cap = cv2.VideoCapture(src)
 
-    last_time = time.time()     # Record frame rate
+    # Record frame rate
+    last_time = time.time()
+
+    # Record Performance
+    performance = {
+        "mmpose": [],
+        "mlp": [],
+        "yolo": []
+    }
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -62,10 +71,13 @@ def videoDemo(src: Union[str, int],
         if not ret or cv2.waitKey(5) & 0xFF == 27:
             break
 
+        t_start_frame = time.time()
         keypoints_list, xyxy_list, data_samples = processOneImage(frame,
                                                                   bbox_detector_model,
                                                                   pose_estimator_model,
                                                                   bbox_threshold=mcfg.bbox_thr)
+
+        performance["mmpose"].append(time.time() - t_start_frame)
 
         if estim_results_visualizer is not None:
             renderTheResults(frame, data_samples, estim_results_visualizer, show_interval=.001)
@@ -83,7 +95,7 @@ def videoDemo(src: Union[str, int],
                 wait_time=0.01,
                 kpt_thr=mcfg.kpt_thr)
         else:
-            [
+            mlp_yolo_times = [
                 processOnePerson(frame,
                                  keypoints,
                                  xyxy,
@@ -96,6 +108,10 @@ def videoDemo(src: Union[str, int],
                                  mode)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
             ]
+
+            mlp_yolo_times = np.array(mlp_yolo_times)
+            performance["mlp"].append(np.sum(mlp_yolo_times[:, 0]))
+            performance["yolo"].append(np.sum(mlp_yolo_times[:, 1]))
 
             # Calculate and display frame rate
             this_time = time.time()
@@ -118,6 +134,8 @@ def videoDemo(src: Union[str, int],
 
     cap.release()
 
+    return performance
+
 
 def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      keypoints: np.ndarray,  # shape: (17, 3)
@@ -128,7 +146,12 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      phone_detector_model: YOLO = None,
                      phone_detector_func=None,
                      device_name: str = "cpu",
-                     mode: str = None) -> None:
+                     mode: str = None) -> Union[None, List[float]]:
+
+    # Performance
+    t_mlp = 0
+    t_yolo = 0
+
     # Global variables:
     _num_value = 0.0
     classifier_result_str = ""
@@ -157,7 +180,9 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
         # Here, if the person is sus for using phone, signal will be assigned to 1.
         # Otherwise, keep the original 0, i.e., not using.
+        start_mlp = time.time()
         classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
+        t_mlp = time.time() - start_mlp
     elif classify_state & kcfg.BACKSIDE:
         classifier_result_str = f"Back {_num_value:.2f}"
         classify_signal = -1
@@ -191,11 +216,15 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 
         for subframe, subframe_xyxy in hand_frames_xyxy:
+            start_yolo = time.time()
             detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
+            t_yolo = time.time() - start_yolo
             detect_str = "+" if detect_signal == 1 else "-"
             render_detection_rectangle(frame, detect_str, subframe_xyxy, ok_signal=detect_signal)
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
+    return [t_mlp, t_yolo]
+
 
 def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
              numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
@@ -342,15 +371,23 @@ phone_detector = YOLO("step03_yolo_phone_detection/non_tuned/yolo11m.pt")    # T
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
 
 # Start the loop
-videoDemo(src=int(video_source) if video_source is not None else 0,
-          bbox_detector_model=detector,
-          pose_estimator_model=pose_estimator,
-          detection_target_list=target_list,
-          estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
-          classifier_model=[classifier, classifier_params],
-          classifier_func=classifier_function,
-          phone_detector_model=phone_detector,
-          phone_detector_func=detectPhone,
-          device_name=global_device_name,
-          mode=solution_mode,
-          websocket_obj=ws)
+demo_performance = videoDemo(src=int(video_source) if video_source is not None else 0,
+                             bbox_detector_model=detector,
+                             pose_estimator_model=pose_estimator,
+                             detection_target_list=target_list,
+                             estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
+                             classifier_model=[classifier, classifier_params],
+                             classifier_func=classifier_function,
+                             phone_detector_model=phone_detector,
+                             phone_detector_func=detectPhone,
+                             device_name=global_device_name,
+                             mode=solution_mode,
+                             websocket_obj=ws)
+
+
+plot_report(
+    arrays=np.array(list(demo_performance.values()))[1:],
+    labels=["mmpose", "mlp", "yolo"],
+    config={"title": "Performance Report", "x_name": "Frame", "y_name": "Time"},
+    plot_mean=True
+)
