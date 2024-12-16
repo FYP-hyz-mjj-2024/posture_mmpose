@@ -76,9 +76,11 @@ step03_yolo_phone_detection/Phone-detection-3
 step03_yolo_phone_detection/Phone-detection-4
 step03_yolo_phone_detection/pvalue.py
 step03_yolo_phone_detection/yolo11n.pt
+step03_yolo_phone_detection/non_tuned
 
 data/blob/videos/*
 data/yolo/*
+logs
 
 # MacOS
 .DS_Store

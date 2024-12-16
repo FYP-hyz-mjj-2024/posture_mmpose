@@ -165,14 +165,14 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         classifier_result_str = f"Out Of Frame"
         classify_signal = -1
 
-    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
+    # render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
     # Posture model finds the posture sus.
     # Invokes YOLO for further detection.
     if classify_signal == 1 and phone_detector_model is not None:
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
-        hand_hw = (bbox_h * 0.4, bbox_w * 0.6)
+        hand_hw = (bbox_w * 0.7, bbox_w * 0.7)      # Only relate to width of bbox
         """Height and width (sequence matter) of the bounding box."""
 
         # Landmark index of left & right hand: 9, 10
@@ -195,6 +195,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
             detect_str = "+" if detect_signal == 1 else "-"
             render_detection_rectangle(frame, detect_str, subframe_xyxy, ok_signal=detect_signal)
 
+    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
 def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
              numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
@@ -243,7 +244,7 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
     with torch.no_grad():
         outputs = model(input_tensor)
         sg = torch.sigmoid(outputs[0])
-        prediction = int(sg[0] < sg[1] or sg[1] > 0.32)
+        prediction = int(sg[0] < sg[1] or sg[1] > 0.42)
         # prediction = torch.argmax(sg, dim=0).item()
 
     # out0: Conf for "using"; out1: conf for "not using".
@@ -256,7 +257,7 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
 
 
 def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: float = 0.2):
-
+    cv2.imwrite("./logs/inital_frame.png", frame)
     empty_frame = np.zeros([640, 640, 3])
     h, w, _ = frame.shape
 
@@ -272,6 +273,9 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
 
     start_put_h, start_put_w = (640 - h) // 2, (640 - w) // 2
     empty_frame[start_put_h:start_put_h + h, start_put_w:start_put_w + w] = frame
+
+    # cv2.imwrite("./logs/frame.png", frame)
+    # cv2.imwrite("./logs/empty_frame.png", empty_frame)
 
     # resized_frame = cv2.resize(frame, dsize=(640, 640), interpolation=cv2.INTER_CUBIC)
     resized_frame = empty_frame
@@ -332,7 +336,7 @@ classifier_function = classify if solution_mode == 'hyz' else classify3D
 # YOLO object detection model
 best_pt_path_main = "step03_yolo_phone_detection/archived onnx/best.pt"
 # phone_detector = YOLO(best_pt_path_main)
-phone_detector = YOLO("yolo11s.pt")    # TODO:
+phone_detector = YOLO("step03_yolo_phone_detection/non_tuned/yolo11m.pt")    # TODO:
 
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
