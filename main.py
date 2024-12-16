@@ -172,7 +172,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     if classify_signal == 1 and phone_detector_model is not None:
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
-        hand_hw = (bbox_h // 2, bbox_w // 2)
+        hand_hw = (bbox_h * 0.4, bbox_w * 0.6)
         """Height and width (sequence matter) of the bounding box."""
 
         # Landmark index of left & right hand: 9, 10
@@ -181,8 +181,8 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         # Landmark of left & right elbow: 7 & 8
         # Vectors for left & right arm.
         l_arm_vect, r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
-        lhand_center += l_arm_vect * 0.5
-        rhand_center += r_arm_vect * 0.5
+        lhand_center += l_arm_vect * 0.8
+        rhand_center += r_arm_vect * 0.8
 
         # Coordinate of left & right hand's cropped frame
         lh_frame_xyxy = cropFrame(frame, lhand_center, hand_hw)
@@ -264,10 +264,10 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
     results_tensor = results_tmp[0]
     results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
 
-    if not any(results_cls == 0):
+    if not any(results_cls == 67):
         return 0    # Not using phone
 
-    results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == 0]
+    results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == 67]
 
     return any(results_conf > threshold)
 
@@ -314,7 +314,7 @@ classifier_function = classify if solution_mode == 'hyz' else classify3D
 # YOLO object detection model
 best_pt_path_main = "step03_yolo_phone_detection/archived onnx/best.pt"
 # phone_detector = YOLO(best_pt_path_main)
-phone_detector = YOLO("yolo11n.pt")    # TODO:
+phone_detector = YOLO("yolo11s.pt")    # TODO:
 
 # WebSocket Object
 ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
