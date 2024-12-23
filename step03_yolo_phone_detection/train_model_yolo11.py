@@ -9,7 +9,9 @@ import requests
 
 from roboflow import Roboflow, Workspace, Project
 
-from step03_yolo_phone_detection.dvalue import API_KEY_mjj, preset_group
+
+from step03_yolo_phone_detection.dvalue import preset_group
+from step03_yolo_phone_detection.pvalue import API_KEY_mjj
 
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 preset_group_name = 'low-quality phone detection preset'

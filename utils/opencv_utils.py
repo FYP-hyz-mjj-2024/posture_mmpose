@@ -20,12 +20,12 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
                      -1: gray (backside)
     :returns: None.
     """
-    color_dict = {1: (0, 255, 0),  # green: not_using
-                  0: (0, 0, 255),  # red: using
+    color_dict = {0: (0, 255, 0),  # green: not_using
+                  1: (0, 0, 255),  # red: using
                   -1: (155, 155, 155),  # gray: don't classify
                   }  # BGR form
-    rec_thickness_dict = {1: 2,  # green: not_using
-                          0: 2,  # red: using
+    rec_thickness_dict = {0: 2,  # green: not_using
+                          1: 2,  # red: using
                           -1: 2,  # gray: don't classify
                           }
 
