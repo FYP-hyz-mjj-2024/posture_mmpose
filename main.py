@@ -349,7 +349,7 @@ if solution_mode == 'hyz':
     model_state = torch.load('./data/models/posture_mmpose_vgg1d_17315770488631685.pth', map_location=global_device)
     classifier = MLP(input_channel_num=6, output_class_num=2)
 else:   # elif solution_mode == 'mjj':
-    model_state = torch.load('./data/models/posture_mmpose_vgg3d_17327843901128154.pth', map_location=global_device)
+    model_state = torch.load('./data/models/posture_mmpose_vgg3d_17349570075562594.pth', map_location=global_device)
     classifier = MLP3d(input_channel_num=2, output_class_num=2)
 
 classifier.load_state_dict(model_state['model_state_dict'])
@@ -368,7 +368,7 @@ best_pt_path_main = "step03_yolo_phone_detection/archived onnx/best.pt"
 phone_detector = YOLO("step03_yolo_phone_detection/non_tuned/yolo11m.pt")    # TODO:
 
 # WebSocket Object
-ws = init_websocket("ws://152.42.198.96:8976") if is_remote else None
+ws = init_websocket("ws://localhost:8976") if is_remote else None
 
 # Start the loop
 demo_performance = videoDemo(src=int(video_source) if video_source is not None else 0,
@@ -386,7 +386,7 @@ demo_performance = videoDemo(src=int(video_source) if video_source is not None e
 
 
 plot_report(
-    arrays=np.array(list(demo_performance.values()))[1:],
+    arrays=np.array(list(demo_performance.values()))[:, 1:],
     labels=["mmpose", "mlp", "yolo"],
     config={"title": "Performance Report", "x_name": "Frame", "y_name": "Time"},
     plot_mean=True
