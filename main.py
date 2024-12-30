@@ -195,8 +195,13 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     # Posture model finds the posture sus.
     # Invokes YOLO for further detection.
     if classify_signal == 1 and phone_detector_model is not None:
+        phone_detect_signal = 0
+
+        # TODO: If two hand frame is too close, merge to one.
+        # TODO: Size logic still not optimized.
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
+        """ Crop two hands """
         hand_hw = (bbox_w * 0.7, bbox_w * 0.7)      # Only relate to width of bbox
         """Height and width (sequence matter) of the bounding box."""
 
@@ -213,14 +218,28 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         lh_frame_xyxy = cropFrame(frame, lhand_center, hand_hw)
         rh_frame_xyxy = cropFrame(frame, rhand_center, hand_hw)
 
+        # TODO: Use something else than for-loop...
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 
         for subframe, subframe_xyxy in hand_frames_xyxy:
             start_yolo = time.time()
-            detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
+            phone_detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
             t_yolo = time.time() - start_yolo
-            detect_str = "+" if detect_signal == 1 else "-"
-            render_detection_rectangle(frame, detect_str, subframe_xyxy, ok_signal=detect_signal)
+            phone_detect_str = "+" if phone_detect_signal == 1 else "-"
+            render_detection_rectangle(frame, phone_detect_str, subframe_xyxy, ok_signal=phone_detect_signal)
+
+            if phone_detect_signal == 1:
+                break
+
+        if phone_detect_signal == 1:  # TODO: face_detection model
+            """ Crop Face """
+            face_hw = (keypoints[4][0] - keypoints[3][0], keypoints[4][0] - keypoints[3][0])
+            face_center = keypoints[0][:2]
+
+            face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
+            face_detect_str = "="
+
+            render_detection_rectangle(frame, face_detect_str, face_xyxy, ok_signal=1)
 
     render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
     return [t_mlp, t_yolo]
