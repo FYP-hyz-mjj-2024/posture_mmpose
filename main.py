@@ -54,6 +54,8 @@ def videoDemo(src: Union[str, int],
     """
 
     cap = cv2.VideoCapture(src)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
 
     # Record frame rate
     last_time = time.time()
