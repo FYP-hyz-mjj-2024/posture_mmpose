@@ -25,14 +25,9 @@ global_device = torch.device(global_device_name)
 
 
 def videoDemo(src: Union[str, int],
-              bbox_detector_model,
-              pose_estimator_model,
-              detection_target_list,
-              estim_results_visualizer=None,
-              classifier_model=None,
-              classifier_func=None,
-              phone_detector_model=None,
-              phone_detector_func=None,
+              pkg_mmpose,
+              pkg_classifier,
+              pkg_phoneDetect,
               device_name: str = global_device_name,
               mode: str = None,
               websocket_obj=None):
@@ -52,6 +47,20 @@ def videoDemo(src: Union[str, int],
     :param mode: Mode of convolution: hyz or mjj.
     :return: None.
     """
+    # bbox_detector_model, pose_estimator_model, detection_target_list, estim_results_visualizer = pkg_mmpose.values()
+    # classifier_model, classifier_func = pkg_classifier.values()
+    # phone_detector_model, phone_detector_func = pkg_phoneDetect.values()
+
+    bbox_detector_model = pkg_mmpose["bbox_detector_model"]
+    pose_estimator_model = pkg_mmpose["pose_estimator_model"]
+    detection_target_list = pkg_mmpose["detection_target_list"]
+    estim_results_visualizer = pkg_mmpose["estim_results_visualizer"]
+
+    classifier_model = pkg_classifier["classifier_model"]
+    classifier_func = pkg_classifier["classifier_func"]
+
+    phone_detector_model = pkg_phoneDetect["phone_detector_model"]
+    phone_detector_func = pkg_phoneDetect["phone_detector_func"]
 
     cap = cv2.VideoCapture(src)
 
@@ -136,7 +145,7 @@ def videoDemo(src: Union[str, int],
 
             yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
 
-        time.sleep(0.085) if (websocket_obj is not None) else None
+        time.sleep(0.045) if (websocket_obj is not None) else None
 
     cap.release()
 
@@ -396,19 +405,28 @@ phone_detector = YOLO("step03_yolo_phone_detection/non_tuned/yolo11m.pt")    # T
 # WebSocket Object
 ws = init_websocket("ws://localhost:8976") if is_remote else None
 
+pkg_mmpose = {
+    "bbox_detector_model": detector,
+    "pose_estimator_model": pose_estimator,
+    "detection_target_list": target_list,
+    "estim_results_visualizer": visualizer if use_mmpose_visualizer else None,
+}
+
+pkg_classifier = {
+    "classifier_model": [classifier, classifier_params],
+    "classifier_func": classifier_function,
+}
+
+pkg_phoneDetect = {
+    "phone_detector_model": phone_detector,
+    "phone_detector_func": detectPhone
+}
+
 # Start the loop
 demo_performance = videoDemo(src=int(video_source) if video_source is not None else 0,
-                             bbox_detector_model=detector,
-                             pose_estimator_model=pose_estimator,
-                             detection_target_list=target_list,
-                             estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
-
-                             classifier_model=[classifier, classifier_params],
-                             classifier_func=classifier_function,
-
-                             phone_detector_model=phone_detector,
-                             phone_detector_func=detectPhone,
-
+                             pkg_mmpose=pkg_mmpose,
+                             pkg_classifier=pkg_classifier,
+                             pkg_phoneDetect=pkg_phoneDetect,
                              device_name=global_device_name,
                              mode=solution_mode,
                              websocket_obj=ws)
