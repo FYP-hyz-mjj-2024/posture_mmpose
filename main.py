@@ -1,23 +1,18 @@
-import cv2
 import time
 from typing import List, Union, Tuple, Dict
 
+import cv2
 import numpy as np
 import torch
-from mmpose.evaluation.functional.nms import oks_iou
 from ultralytics import YOLO
-from PIL import Image
 
-from step03_yolo_phone_detection.dvalue import best_pt_path
 from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, translateOneLandmarks
-from step01_annotate_image_mmpose.calculations import calc_keypoint_angle
-from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults
-from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_websocket, getUserConsoleConfig, \
-    cropFrame
-
+from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
+from utils.opencv_utils import render_detection_rectangle, yieldVideoFeed, init_websocket, getUserConsoleConfig, \
+    cropFrame
 from utils.plot_report import plot_report
 
 global_device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
@@ -27,40 +22,27 @@ global_device = torch.device(global_device_name)
 def videoDemo(src: Union[str, int],
               pkg_mmpose,
               pkg_classifier,
-              pkg_phoneDetect,
+              pkg_phone_detector,
               device_name: str = global_device_name,
               mode: str = None,
               websocket_obj=None):
     """
     Overall demonstration function of this project. Uses live video.
     :param src: Video Source. Int: Live; Str: Path to pre-recorded video.
-    :param bbox_detector_model: MMPose bounding box detector model.
-    :param pose_estimator_model: MMPose pose estimator model.
-    :param detection_target_list: List of detection targets.
-    :param estim_results_visualizer: MMPose estimation results visualizer.
-    :param classifier_model: Self-trained pose classification model.
-    :param classifier_func: Pose classification function.
-    :param websocket_obj: WebSocket Object.
-    :param phone_detector_model: Pre-trained YOLO object detection model.
-    :param phone_detector_func: Phone detection function.
+    :param pkg_mmpose: Tool package of mmpose.
+    :param pkg_classifier: Tool package of mlp posture classifier.
+    :param pkg_phone_detector: Tool package of phone detector.
     :param device_name: Name of hardware, cpu or cuda.
     :param mode: Mode of convolution: hyz or mjj.
+    :param websocket_obj: Websocket object.
     :return: None.
     """
-    # bbox_detector_model, pose_estimator_model, detection_target_list, estim_results_visualizer = pkg_mmpose.values()
-    # classifier_model, classifier_func = pkg_classifier.values()
-    # phone_detector_model, phone_detector_func = pkg_phoneDetect.values()
 
+    # Extract mmpose tools from package.
     bbox_detector_model = pkg_mmpose["bbox_detector_model"]
     pose_estimator_model = pkg_mmpose["pose_estimator_model"]
     detection_target_list = pkg_mmpose["detection_target_list"]
     estim_results_visualizer = pkg_mmpose["estim_results_visualizer"]
-
-    classifier_model = pkg_classifier["classifier_model"]
-    classifier_func = pkg_classifier["classifier_func"]
-
-    phone_detector_model = pkg_phoneDetect["phone_detector_model"]
-    phone_detector_func = pkg_phoneDetect["phone_detector_func"]
 
     cap = cv2.VideoCapture(src)
 
@@ -115,10 +97,8 @@ def videoDemo(src: Union[str, int],
                                  keypoints,
                                  xyxy,
                                  detection_target_list,
-                                 classifier_model,
-                                 classifier_func,
-                                 phone_detector_model,
-                                 phone_detector_func,
+                                 pkg_classifier,
+                                 pkg_phone_detector,
                                  device_name,
                                  mode)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
@@ -156,12 +136,17 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      keypoints: np.ndarray,  # shape: (17, 3)
                      xyxy: np.ndarray,  # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
-                     classifier_model: List[Union[MLP, Dict[str, float]]],
-                     classifier_func,
-                     phone_detector_model: YOLO = None,
-                     phone_detector_func=None,
+                     pkg_classifier,
+                     pkg_phone_detector,
                      device_name: str = "cpu",
                      mode: str = None) -> Union[None, List[float]]:
+
+    # Extract posture classifier and phone detector tools from respective packages.
+    classifier_model = pkg_classifier["classifier_model"]
+    classifier_func = pkg_classifier["classifier_func"]
+    normalize_parameters = pkg_classifier["norm_params"]
+    phone_detector_model = pkg_phone_detector["phone_detector_model"]
+    phone_detector_func = pkg_phone_detector["phone_detector_func"]
 
     # Performance
     t_mlp = 0
@@ -170,10 +155,10 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     # Global variables:
     _num_value = 0.0
     classifier_result_str = ""
-    classify_signal = 0     # Default: Not Using. Used to control bbox color.
+    posture_signal = 0     # Default: Not Using. Used to control bbox color.
 
     # Tune STATE:
-    classify_state = kcfg.OK_CLASSIFY
+    classify_state = kcfg.EMPTY
 
     # Person is out of frame.
     if np.sum(keypoints[:13, 2] < 0.3) >= 5:
@@ -191,25 +176,25 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     # Classify with accordance to STATE.
     # If any of the filtering condition is fulfilled, make the signal to -1.
     # Otherwise, keep the original signal.
-    if classify_state == kcfg.OK_CLASSIFY:
+    if classify_state == kcfg.EMPTY:
         kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
         # Here, if the person is sus for using phone, signal will be assigned to 1.
         # Otherwise, keep the original 0, i.e., not using.
         start_mlp = time.time()
-        classifier_result_str, classify_signal = classifier_func(classifier_model, kas_one_person)
+        classifier_result_str, posture_signal = classifier_func(classifier_model, normalize_parameters, kas_one_person)
         t_mlp = time.time() - start_mlp
     elif classify_state & kcfg.BACKSIDE:
         classifier_result_str = f"Back {_num_value:.2f}"
-        classify_signal = -1
+        posture_signal = -1
     elif classify_state & kcfg.OUT_OF_FRAME:
         classifier_result_str = f"Out Of Frame"
-        classify_signal = -1
+        posture_signal = -1
 
     # render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
 
     # Posture model finds the posture sus.
     # Invokes YOLO for further detection.
-    if classify_signal == 1 and phone_detector_model is not None:
+    if posture_signal == 1 and phone_detector_model is not None:
         phone_detect_signal = 0
 
         # TODO: If two hand frame is too close, merge to one.
@@ -240,6 +225,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
             start_yolo = time.time()
             phone_detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
             t_yolo = time.time() - start_yolo
+
             phone_detect_str = "+" if phone_detect_signal == 1 else "-"
             render_detection_rectangle(frame, phone_detect_str, subframe_xyxy, ok_signal=phone_detect_signal)
 
@@ -256,11 +242,12 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
 
             render_detection_rectangle(frame, face_detect_str, face_xyxy, ok_signal=1)
 
-    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
+    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=posture_signal)
     return [t_mlp, t_yolo]
 
 
 def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
+             # TODO: lazy tag
              numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
     model, params = classifier_model
 
@@ -288,15 +275,14 @@ def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
     return classifier_result_str, classify_signal
 
 
-def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
+def classify3D(classifier_model: MLP,
+               normalize_parameters: Dict[str, float],
                numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
-    model, params = classifier_model
-
     # Normalize
     input_data = np.array(numeric_data)
     input_data[0, :, :, :] /= 180
-    mean_X = params['mean_X']
-    std_dev_X = params['std_dev_X']
+    mean_X = normalize_parameters['mean_X']
+    std_dev_X = normalize_parameters['std_dev_X']
     input_data = (input_data - mean_X) / std_dev_X
 
     # Convert to tensor
@@ -305,7 +291,7 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
     input_tensor = input_tensor.unsqueeze(0).to(global_device)  # Add a "batch" dimension for the model: (N, C, D, H, W)
 
     with torch.no_grad():
-        outputs = model(input_tensor)
+        outputs = classifier_model(input_tensor)
         sg = torch.sigmoid(outputs[0])
         prediction = int(sg[0] < sg[1] or sg[1] > 0.42)
         # prediction = torch.argmax(sg, dim=0).item()
@@ -368,12 +354,7 @@ else:
 solution_mode = 'mjj'
 
 # Initialize MMPose essentials
-detector, pose_estimator, visualizer = getMMPoseEssentials(
-    det_config=mcfg.det_config,
-    det_chkpt=mcfg.det_checkpoint,
-    pose_config=mcfg.pose_config,
-    pose_chkpt=mcfg.pose_checkpoint
-)
+bbox_detector, pose_estimator, visualizer = getMMPoseEssentials()
 
 # List of detection targets
 target_list = kcfg.get_targets(solution_mode)
@@ -390,7 +371,7 @@ classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
 classifier.cuda()
 
-classifier_params = {
+norm_params = {
     'mean_X': model_state['mean_X'].item(),
     'std_dev_X': model_state['std_dev_X'].item()
 }
@@ -398,35 +379,39 @@ classifier_params = {
 classifier_function = classify if solution_mode == 'hyz' else classify3D
 
 # YOLO object detection model
-best_pt_path_main = "step03_yolo_phone_detection/archived onnx/best.pt"
+# best_pt_path_main = "step03_yolo_phone_detection/archived onnx/best.pt"
 # phone_detector = YOLO(best_pt_path_main)
-phone_detector = YOLO("step03_yolo_phone_detection/non_tuned/yolo11m.pt")    # TODO:
+phone_detector = YOLO("step03_yolo_phone_detection/non_tuned/yolo11m.pt")
 
 # WebSocket Object
 ws = init_websocket("ws://localhost:8976") if is_remote else None
 
-pkg_mmpose = {
-    "bbox_detector_model": detector,
+# Package up essential binding tools into dictionaries.
+package_mmpose = {
+    "bbox_detector_model": bbox_detector,
     "pose_estimator_model": pose_estimator,
     "detection_target_list": target_list,
     "estim_results_visualizer": visualizer if use_mmpose_visualizer else None,
 }
 
-pkg_classifier = {
-    "classifier_model": [classifier, classifier_params],
+package_classifier = {
+    "classifier_model": classifier,
     "classifier_func": classifier_function,
+    "norm_params": norm_params,
 }
 
-pkg_phoneDetect = {
+package_phone_detector = {
     "phone_detector_model": phone_detector,
     "phone_detector_func": detectPhone
 }
 
 # Start the loop
 demo_performance = videoDemo(src=int(video_source) if video_source is not None else 0,
-                             pkg_mmpose=pkg_mmpose,
-                             pkg_classifier=pkg_classifier,
-                             pkg_phoneDetect=pkg_phoneDetect,
+
+                             pkg_mmpose=package_mmpose,
+                             pkg_classifier=package_classifier,
+                             pkg_phone_detector=package_phone_detector,
+
                              device_name=global_device_name,
                              mode=solution_mode,
                              websocket_obj=ws)
