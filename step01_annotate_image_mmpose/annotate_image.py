@@ -40,8 +40,10 @@ from utils.parse_file_name import parseFileName
 register_all_modules()
 
 
-def getMMPoseEssentials(det_config: str, det_chkpt: str,
-                        pose_config: str, pose_chkpt: str) -> Tuple[RTMDet, TopdownPoseEstimator, PoseLocalVisualizer]:
+def getMMPoseEssentials(det_config: str=mcfg.det_config,
+                        det_chkpt: str=mcfg.det_checkpoint,
+                        pose_config: str=mcfg.pose_config,
+                        pose_chkpt: str=mcfg.pose_checkpoint) -> Tuple[RTMDet, TopdownPoseEstimator, PoseLocalVisualizer]:
     """
     Get essential detectors and visualizers of MMPose.getMMPose.
 

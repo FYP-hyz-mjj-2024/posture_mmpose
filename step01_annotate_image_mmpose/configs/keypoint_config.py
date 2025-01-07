@@ -189,7 +189,7 @@ keypoint_indexes = {
     'Face-Lips_l3_right': 90
 }
 
-OK_CLASSIFY = 0
+EMPTY = 0
 OUT_OF_FRAME = 1
 BACKSIDE = 2
 
