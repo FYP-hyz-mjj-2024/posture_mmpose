@@ -54,9 +54,13 @@ def videoDemo(src: Union[str, int],
     """
 
     cap = cv2.VideoCapture(src)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
 
+    if websocket_obj:
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 384)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 288)
+    else:
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     # Record frame rate
     last_time = time.time()
 
@@ -288,8 +292,8 @@ def classify3D(classifier_model: List[Union[MLP, Dict[str, float]]],
 
     # Convert to tensor
     input_tensor = torch.tensor(input_data, dtype=torch.float32)
-    input_tensor = input_tensor.permute(0, 3, 1, 2)     # Convert from (Cin, H, W, D) to (Cin, D, H, W)
-    input_tensor = input_tensor.unsqueeze(0)                  # Add a "batch" dimension for the model: (N, C, D, H, W)
+    input_tensor = input_tensor.permute(0, 3, 1, 2)       # Convert from (Cin, H, W, D) to (Cin, D, H, W)
+    input_tensor = input_tensor.unsqueeze(0).to(global_device)  # Add a "batch" dimension for the model: (N, C, D, H, W)
 
     with torch.no_grad():
         outputs = model(input_tensor)
@@ -332,7 +336,7 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
     tensor_frame = torch.from_numpy(resized_frame).float() / 255.0
     tensor_frame = tensor_frame.permute(2, 0, 1).unsqueeze(0).to(device)
 
-    results_tmp = model(tensor_frame, device=device)
+    results_tmp = model(tensor_frame)
     results_tensor = results_tmp[0]
     results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
 
@@ -375,6 +379,7 @@ else:   # elif solution_mode == 'mjj':
 
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
+classifier.cuda()
 
 classifier_params = {
     'mean_X': model_state['mean_X'].item(),
@@ -397,10 +402,13 @@ demo_performance = videoDemo(src=int(video_source) if video_source is not None e
                              pose_estimator_model=pose_estimator,
                              detection_target_list=target_list,
                              estim_results_visualizer=visualizer if use_mmpose_visualizer else None,
+
                              classifier_model=[classifier, classifier_params],
                              classifier_func=classifier_function,
+
                              phone_detector_model=phone_detector,
                              phone_detector_func=detectPhone,
+
                              device_name=global_device_name,
                              mode=solution_mode,
                              websocket_obj=ws)
