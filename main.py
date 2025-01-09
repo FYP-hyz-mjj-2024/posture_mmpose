@@ -125,7 +125,7 @@ def videoDemo(src: Union[str, int],
 
             yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
 
-        time.sleep(0.045) if (websocket_obj is not None) else None
+        time.sleep(0.005) if (websocket_obj is not None) else None
 
     cap.release()
 
