@@ -18,7 +18,6 @@ from utils.plot_report import plot_report
 global_device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 global_device = torch.device(global_device_name)
 
-
 def videoDemo(src: Union[str, int],
               pkg_mmpose,
               pkg_classifier,
@@ -153,48 +152,55 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     t_yolo = 0
 
     # Global variables:
-    _num_value = 0.0
-    classifier_result_str = ""
-    posture_signal = 0     # Default: Not Using. Used to control bbox color.
+    _num_value = 0.0                # Arbitrary numeric value slot
+    display_str = ""                # String that displays on the screen
+    classifier_result_str = ""      # Classification result (in numeric percentage)
+    posture_signal = 0              # Default: Not Using. Used to control bbox color.
 
-    # Tune STATE:
-    classify_state = kcfg.EMPTY
+    # Entry state of the state machine
+    classify_state = kcfg.TO_BE_CLASSIFIED
 
     # Person is out of frame.
     if np.sum(keypoints[:13, 2] < 0.3) >= 5:
-        classify_state |= kcfg.OUT_OF_FRAME
+        classify_state = kcfg.OUT_OF_FRAME
 
     # Person not out of frame, but show back.
-    if not (classify_state & kcfg.OUT_OF_FRAME):
+    if not (classify_state == kcfg.OUT_OF_FRAME):
         l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
         l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
         backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
         if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
             _num_value = ((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0
-            classify_state |= kcfg.BACKSIDE
+            classify_state = kcfg.BACKSIDE
 
-    # Classify with accordance to STATE.
+    # Filter with accordance to STATE.
     # If any of the filtering condition is fulfilled, make the signal to -1.
     # Otherwise, keep the original signal.
-    if classify_state == kcfg.EMPTY:
+    if classify_state == kcfg.TO_BE_CLASSIFIED:
         kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
         # Here, if the person is sus for using phone, signal will be assigned to 1.
         # Otherwise, keep the original 0, i.e., not using.
         start_mlp = time.time()
         classifier_result_str, posture_signal = classifier_func(classifier_model, normalize_parameters, kas_one_person)
         t_mlp = time.time() - start_mlp
-    elif classify_state & kcfg.BACKSIDE:
-        classifier_result_str = f"Back {_num_value:.2f}"
+    elif classify_state == kcfg.BACKSIDE:
+        display_str = f"Back {_num_value:.2f}"
         posture_signal = -1
-    elif classify_state & kcfg.OUT_OF_FRAME:
-        classifier_result_str = f"Out Of Frame"
+    elif classify_state == kcfg.OUT_OF_FRAME:
+        display_str = f"Out Of Frame"
         posture_signal = -1
 
-    # render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=classify_signal)
-
-    # Posture model finds the posture sus.
+    # Real classification logic starts here.
+    # Posture model finds the posture suspicious.
     # Invokes YOLO for further detection.
-    if posture_signal == 1 and phone_detector_model is not None:
+    if posture_signal == 0:
+        classify_state = kcfg.NOT_USING
+        display_str = "- " + classifier_result_str
+    elif posture_signal == 1 and phone_detector_model is not None:
+        # Set suspicious
+        classify_state = kcfg.SUSPICIOUS
+        display_str = "? " + classifier_result_str
+
         phone_detect_signal = 0
 
         # TODO: If two hand frame is too close, merge to one.
@@ -202,7 +208,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
         """ Crop two hands """
-        hand_hw = (bbox_w * 0.7, bbox_w * 0.7)      # Only relate to width of bbox
+        hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))      # Only relate to width of bbox
         """Height and width (sequence matter) of the bounding box."""
 
         # Landmark index of left & right hand: 9, 10
@@ -226,23 +232,29 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
             phone_detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
             t_yolo = time.time() - start_yolo
 
-            phone_detect_str = "+" if phone_detect_signal == 1 else "-"
-            render_detection_rectangle(frame, phone_detect_str, subframe_xyxy, ok_signal=phone_detect_signal)
+            phone_detect_str = "phone" if phone_detect_signal == 2 else "-"
+            render_detection_rectangle(frame, phone_detect_str, subframe_xyxy, signal=phone_detect_signal)
 
-            if phone_detect_signal == 1:
+            if phone_detect_signal == 2:
                 break
 
-        if phone_detect_signal == 1:  # TODO: face_detection model
+        if phone_detect_signal == 2:  # TODO: face_detection model
+            # Set UI to display using logic
+            classify_state = kcfg.USING
+            posture_signal = 2
+            display_str = "+ " + classifier_result_str
+
             """ Crop Face """
-            face_hw = (keypoints[4][0] - keypoints[3][0], keypoints[4][0] - keypoints[3][0])
+            face_len = int((keypoints[4][0] - keypoints[3][0]) * 1.1)
+            face_hw = (face_len, face_len)
             face_center = keypoints[0][:2]
 
             face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
             face_detect_str = "="
 
-            render_detection_rectangle(frame, face_detect_str, face_xyxy, ok_signal=1)
+            render_detection_rectangle(frame, face_detect_str, face_xyxy, signal=2)
 
-    render_detection_rectangle(frame, classifier_result_str, xyxy, ok_signal=posture_signal)
+    render_detection_rectangle(frame, display_str, xyxy, signal=posture_signal)
     return [t_mlp, t_yolo]
 
 
@@ -300,7 +312,7 @@ def classify3D(classifier_model: MLP,
     out0, out1 = sg
     # Note: prediction=0 => classify_signal=1 (Using); prediction=1 => classify_signal=0 (Not using).
     classify_signal = 0 if prediction != 1 else 1
-    classifier_result_str = f"+ {out1:.2f}" if (prediction == 1) else f"- {out0:.2f}"
+    classifier_result_str = f"{out1:.2f}" if (prediction == 1) else f"{out0:.2f}"
 
     return classifier_result_str, classify_signal
 
@@ -340,7 +352,8 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
 
     results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == 67]
 
-    return any(results_conf > threshold)
+    # 2 stands for positive now
+    return 2 if any(results_conf > threshold) else 0
 
 
 if __name__ == '__main__':
@@ -369,7 +382,7 @@ else:   # elif solution_mode == 'mjj':
 
 classifier.load_state_dict(model_state['model_state_dict'])
 classifier.eval()
-classifier.cuda()
+classifier.to(global_device)
 
 norm_params = {
     'mean_X': model_state['mean_X'].item(),

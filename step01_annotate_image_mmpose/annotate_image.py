@@ -351,12 +351,7 @@ if __name__ == "__main__":
     video_folder = "../data/blob/videos"
 
     # Initialize MMPose essentials
-    detector, pose_estimator, visualizer = getMMPoseEssentials(
-        det_config=mcfg.det_config_train,
-        det_chkpt=mcfg.det_checkpoint_train,
-        pose_config=mcfg.pose_config_train,
-        pose_chkpt=mcfg.pose_checkpoint_train
-    )
+    detector, pose_estimator, visualizer = getMMPoseEssentials()
 
     # Save the feature matrices.
     named_feature_mats = processVideosInDir(video_dir=video_folder,

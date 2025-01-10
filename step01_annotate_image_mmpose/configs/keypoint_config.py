@@ -189,9 +189,12 @@ keypoint_indexes = {
     'Face-Lips_l3_right': 90
 }
 
-EMPTY = 0
+TO_BE_CLASSIFIED = 0
 OUT_OF_FRAME = 1
 BACKSIDE = 2
+SUSPICIOUS = 4
+USING = 32
+NOT_USING = 128
 
 # ===================================================== #
 
