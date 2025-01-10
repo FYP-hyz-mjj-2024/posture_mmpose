@@ -137,7 +137,6 @@ def train_and_evaluate(model,
 class MLP3d(nn.Module):
     def __init__(self, input_channel_num, output_class_num):
         super(MLP3d, self).__init__()
-        self.relu = nn.ELU()
         self.k = (3, 5, 5)  # kernel_size
         self.m_k = 2  # max_pool kernel_size
         self.activation = nn.ELU()

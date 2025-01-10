@@ -7,14 +7,14 @@ import time
 import numpy as np
 
 
-def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
+def render_detection_rectangle(frame, text, xyxy, signal: int = 1):
     """
     Render a common YOLO detection rectangle onto a frame with opencv.
 
     :param frame: The video/stream frame to render onto.
     :param text: The description of the detection target.
     :param xyxy: The coordinates of the rectangle (x1, y1, x2, y2).
-    :param ok_signal: The integer signal that helps to choose the color of rectangle:
+    :param signal: The integer signal that helps to choose the color of rectangle:
                       1: green (not_using)
                       0: red (using)
                      -1: gray (backside)
@@ -22,10 +22,12 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
     """
     color_dict = {0: (0, 255, 0),  # green: not_using
                   1: (0, 0, 255),  # red: using
-                  -1: (155, 155, 155),  # gray: don't classify
+                  2: (232, 140, 51), # orange: suspicious
+                  -1: (155, 155, 155),  # gray: do not classify
                   }  # BGR form
     rec_thickness_dict = {0: 2,  # green: not_using
                           1: 2,  # red: using
+                          2: 2,  # orange: suspicious
                           -1: 2,  # gray: don't classify
                           }
 
@@ -35,15 +37,15 @@ def render_detection_rectangle(frame, text, xyxy, ok_signal: int = 1):
         org=(int(xyxy[0]), int(xyxy[1])),
         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
         fontScale=1,
-        color=color_dict[ok_signal],
-        thickness=rec_thickness_dict[ok_signal]
+        color=color_dict[signal],
+        thickness=rec_thickness_dict[signal]
     )
     cv2.rectangle(
         frame,
         pt1=(int(xyxy[0]), int(xyxy[1])),
         pt2=(int(xyxy[2]), int(xyxy[3])),
-        color=color_dict[ok_signal],
-        thickness=rec_thickness_dict[ok_signal]
+        color=color_dict[signal],
+        thickness=rec_thickness_dict[signal]
     )
 
 
