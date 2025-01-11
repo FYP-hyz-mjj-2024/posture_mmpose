@@ -196,6 +196,34 @@ SUSPICIOUS = 4
 USING = 32
 NOT_USING = 128
 
+state_display_type = {
+    TO_BE_CLASSIFIED : {
+        "color": "gray",
+        "str": "-"
+    },
+    OUT_OF_FRAME : {
+        "color": "gray",
+        "str": "Out of frame"
+    },
+    BACKSIDE : {
+        "color": "gray",
+        "str": "Back"
+    },
+    SUSPICIOUS : {
+        "color": "orange",
+        "str": "?"
+    },
+    USING : {
+        "color": "red",
+        "str": "+"
+    },
+    NOT_USING : {
+        "color": "green",
+        "str": "-"
+    },
+}
+
+
 # ===================================================== #
 
 def get_targets(mode: str = 'hyz') -> List:

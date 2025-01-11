@@ -152,7 +152,6 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     t_yolo = 0
 
     # Global variables:
-    _num_value = 0.0                # Arbitrary numeric value slot
     display_str = ""                # String that displays on the screen
     classifier_result_str = ""      # Classification result (in numeric percentage)
 
@@ -160,16 +159,18 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     classify_state = kcfg.TO_BE_CLASSIFIED
 
     # Person is out of frame.
-    if np.sum(keypoints[:13, 2] < 0.3) >= 5:
-        classify_state = kcfg.OUT_OF_FRAME
+    if classify_state == kcfg.TO_BE_CLASSIFIED:
+        if np.sum(keypoints[:13, 2] < 0.3) >= 5:
+            classify_state = kcfg.OUT_OF_FRAME
 
     # Person not out of frame, but show back.
-    if not (classify_state == kcfg.OUT_OF_FRAME):
+    if classify_state == kcfg.TO_BE_CLASSIFIED:
         l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
         l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
         backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
         if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
             _num_value = ((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0
+            classifier_result_str = str(_num_value)
             classify_state = kcfg.BACKSIDE
 
     # Filter with accordance to STATE.
@@ -246,23 +247,25 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
             render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
-    if classify_state == kcfg.NOT_USING:
-        color = "green"
-        display_str = "- " + classifier_result_str
-    elif classify_state == kcfg.SUSPICIOUS:
-        color = "orange"
-        display_str = "? " + classifier_result_str
-    elif classify_state == kcfg.USING:
-        color = "red"
-        display_str = "+ " + classifier_result_str
-    elif classify_state == kcfg.BACKSIDE:
-        color = "gray"
-        display_str = f"Back {_num_value:.2f}"
-    elif classify_state == kcfg.OUT_OF_FRAME:
-        color = "gray"
-        display_str = f"Out Of Frame"
-    else:
-        color = "gray"
+    # if classify_state == kcfg.NOT_USING:
+    #     color = "green"
+    #     display_str = f"- {classifier_result_str}"
+    # elif classify_state == kcfg.SUSPICIOUS:
+    #     color = "orange"
+    #     display_str = f"? {classifier_result_str}"
+    # elif classify_state == kcfg.USING:
+    #     color = "red"
+    #     display_str = f"+ {classifier_result_str}"
+    # elif classify_state == kcfg.BACKSIDE:
+    #     color = "gray"
+    #     display_str = f"Back {classifier_result_str}"
+    # elif classify_state == kcfg.OUT_OF_FRAME:
+    #     color = "gray"
+    #     display_str = f"Out Of Frame"
+    # else:
+    #     color = "gray"
+    color = kcfg.state_display_type[classify_state]["color"]
+    display_str = f"{kcfg.state_display_type[classify_state]['str']} {classifier_result_str}"
 
     render_detection_rectangle(frame, display_str, xyxy, color=color)
     return [t_mlp, t_yolo]
