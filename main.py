@@ -104,9 +104,10 @@ def videoDemo(src: Union[str, int],
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
             ]
 
-            mlp_yolo_times = np.array(mlp_yolo_times)
-            performance["mlp"].append(np.sum(mlp_yolo_times[:, 0]))
-            performance["yolo"].append(np.sum(mlp_yolo_times[:, 1]))
+            if websocket_obj is None:
+                mlp_yolo_times = np.array(mlp_yolo_times)
+                performance["mlp"].append(np.sum(mlp_yolo_times[:, 0]))
+                performance["yolo"].append(np.sum(mlp_yolo_times[:, 1]))
 
             # Calculate and display frame rate
             this_time = time.time()
