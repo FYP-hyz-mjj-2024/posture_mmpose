@@ -1,3 +1,4 @@
+import copy
 import time
 from typing import List, Union, Tuple, Dict
 
@@ -131,9 +132,9 @@ def videoDemo(src: Union[str, int],
     return performance
 
 
-def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
-                     keypoints: np.ndarray,  # shape: (17, 3)
-                     xyxy: np.ndarray,  # shape: (4,)
+def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
+                     keypoints: np.ndarray,     # shape: (17, 3)
+                     xyxy: np.ndarray,          # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      pkg_classifier,
                      pkg_phone_detector,
@@ -152,25 +153,28 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     t_yolo = 0
 
     # Global variables:
-    _num_value = 0.0                # Arbitrary numeric value slot
-    display_str = ""                # String that displays on the screen
     classifier_result_str = ""      # Classification result (in numeric percentage)
-    posture_signal = 0              # Default: Not Using. Used to control bbox color.
 
     # Entry state of the state machine
     classify_state = kcfg.TO_BE_CLASSIFIED
 
+    # Content copy of the frame
+    # Prevent the disturbance from rect rendering to object detection.
+    ori_frame = copy.deepcopy(frame)
+
     # Person is out of frame.
-    if np.sum(keypoints[:13, 2] < 0.3) >= 5:
-        classify_state = kcfg.OUT_OF_FRAME
+    if classify_state == kcfg.TO_BE_CLASSIFIED:
+        if np.sum(keypoints[:13, 2] < 0.3) >= 5:
+            classify_state = kcfg.OUT_OF_FRAME
 
     # Person not out of frame, but show back.
-    if not (classify_state == kcfg.OUT_OF_FRAME):
+    if classify_state == kcfg.TO_BE_CLASSIFIED:
         l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
         l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
         backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
         if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
             _num_value = ((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0
+            classifier_result_str = str(_num_value)
             classify_state = kcfg.BACKSIDE
 
     # Filter with accordance to STATE.
@@ -182,29 +186,20 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         # Otherwise, keep the original 0, i.e., not using.
         start_mlp = time.time()
         classifier_result_str, posture_signal = classifier_func(classifier_model, normalize_parameters, kas_one_person)
+        if posture_signal == 0:
+            classify_state = kcfg.NOT_USING
+        elif posture_signal == 1:
+            classify_state = kcfg.SUSPICIOUS
+        else:
+            raise ValueError(f"Invalid posture signal {posture_signal}.")
         t_mlp = time.time() - start_mlp
-    elif classify_state == kcfg.BACKSIDE:
-        display_str = f"Back {_num_value:.2f}"
-        posture_signal = -1
-    elif classify_state == kcfg.OUT_OF_FRAME:
-        display_str = f"Out Of Frame"
-        posture_signal = -1
 
     # Real classification logic starts here.
     # Posture model finds the posture suspicious.
     # Invokes YOLO for further detection.
-    if posture_signal == 0:
-        classify_state = kcfg.NOT_USING
-        display_str = "- " + classifier_result_str
-    elif posture_signal == 1 and phone_detector_model is not None:
-        # Set suspicious
-        classify_state = kcfg.SUSPICIOUS
-        display_str = "? " + classifier_result_str
-
-        phone_detect_signal = 0
-
-        # TODO: If two hand frame is too close, merge to one.
-        # TODO: Size logic still not optimized.
+    if classify_state == kcfg.NOT_USING:
+        pass
+    elif classify_state == kcfg.SUSPICIOUS and phone_detector_model is not None:
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
         """ Crop two hands """
@@ -220,11 +215,14 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         lhand_center += l_arm_vect * 0.8
         rhand_center += r_arm_vect * 0.8
 
-        # Coordinate of left & right hand's cropped frame
-        lh_frame_xyxy = cropFrame(frame, lhand_center, hand_hw)
-        rh_frame_xyxy = cropFrame(frame, rhand_center, hand_hw)
+        if np.linalg.norm(lhand_center - rhand_center) > 0.21 * bbox_w:
+            # Coordinate of left & right hand's cropped frame
+            lh_frame_xyxy = cropFrame(ori_frame, lhand_center, hand_hw)
+            rh_frame_xyxy = cropFrame(ori_frame, rhand_center, hand_hw)
+        else:
+            lh_frame_xyxy = cropFrame(ori_frame, (lhand_center + rhand_center) // 2, hand_hw)
+            rh_frame_xyxy = None
 
-        # TODO: Use something else than for-loop...
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 
         for subframe, subframe_xyxy in hand_frames_xyxy:
@@ -232,29 +230,37 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
             phone_detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
             t_yolo = time.time() - start_yolo
 
-            phone_detect_str = "phone" if phone_detect_signal == 2 else "-"
-            render_detection_rectangle(frame, phone_detect_str, subframe_xyxy, signal=phone_detect_signal)
+            if phone_detect_signal == 2:
+                classify_state = kcfg.USING
+                phone_display_str = "phone"
+                phone_display_color = "red"
+            else:
+                phone_display_str = "-"
+                phone_display_color = "green"
 
+            render_detection_rectangle(frame, phone_display_str, subframe_xyxy, color=phone_display_color)
+
+            # If one hand is already holding a phone, don't detect another.
             if phone_detect_signal == 2:
                 break
 
-        if phone_detect_signal == 2:  # TODO: face_detection model
-            # Set UI to display using logic
-            classify_state = kcfg.USING
-            posture_signal = 2
-            display_str = "+ " + classifier_result_str
+    if classify_state == kcfg.USING:  # TODO: face_detection model
+        """ Crop Face """
+        face_len = int((keypoints[4][0] - keypoints[3][0]) * 1.1)
+        face_hw = (face_len, face_len)
+        face_center = keypoints[0][:2]
 
-            """ Crop Face """
-            face_len = int((keypoints[4][0] - keypoints[3][0]) * 1.1)
-            face_hw = (face_len, face_len)
-            face_center = keypoints[0][:2]
+        face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
+        face_detect_str = "="
 
-            face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
-            face_detect_str = "="
+        render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
-            render_detection_rectangle(frame, face_detect_str, face_xyxy, signal=2)
+    # Get display color and string
+    del ori_frame
+    color = kcfg.state_display_type[classify_state]["color"]
+    display_str = f"{kcfg.state_display_type[classify_state]['str']} {classifier_result_str}"
 
-    render_detection_rectangle(frame, display_str, xyxy, signal=posture_signal)
+    render_detection_rectangle(frame, display_str, xyxy, color=color)
     return [t_mlp, t_yolo]
 
 
