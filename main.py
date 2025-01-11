@@ -215,9 +215,13 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         lhand_center += l_arm_vect * 0.8
         rhand_center += r_arm_vect * 0.8
 
-        # Coordinate of left & right hand's cropped frame
-        lh_frame_xyxy = cropFrame(ori_frame, lhand_center, hand_hw)
-        rh_frame_xyxy = cropFrame(ori_frame, rhand_center, hand_hw)
+        if np.linalg.norm(lhand_center - rhand_center) > 0.21 * bbox_w:
+            # Coordinate of left & right hand's cropped frame
+            lh_frame_xyxy = cropFrame(ori_frame, lhand_center, hand_hw)
+            rh_frame_xyxy = cropFrame(ori_frame, rhand_center, hand_hw)
+        else:
+            lh_frame_xyxy = cropFrame(ori_frame, (lhand_center + rhand_center) // 2, hand_hw)
+            rh_frame_xyxy = None
 
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 
