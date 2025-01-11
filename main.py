@@ -1,3 +1,4 @@
+import copy
 import time
 from typing import List, Union, Tuple, Dict
 
@@ -157,6 +158,10 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     # Entry state of the state machine
     classify_state = kcfg.TO_BE_CLASSIFIED
 
+    # Content copy of the frame
+    # Prevent the disturbance from rect rendering to object detection.
+    ori_frame = copy.deepcopy(frame)
+
     # Person is out of frame.
     if classify_state == kcfg.TO_BE_CLASSIFIED:
         if np.sum(keypoints[:13, 2] < 0.3) >= 5:
@@ -211,8 +216,8 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         rhand_center += r_arm_vect * 0.8
 
         # Coordinate of left & right hand's cropped frame
-        lh_frame_xyxy = cropFrame(frame, lhand_center, hand_hw)
-        rh_frame_xyxy = cropFrame(frame, rhand_center, hand_hw)
+        lh_frame_xyxy = cropFrame(ori_frame, lhand_center, hand_hw)
+        rh_frame_xyxy = cropFrame(ori_frame, rhand_center, hand_hw)
 
         hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
 
@@ -247,6 +252,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
     # Get display color and string
+    del ori_frame
     color = kcfg.state_display_type[classify_state]["color"]
     display_str = f"{kcfg.state_display_type[classify_state]['str']} {classifier_result_str}"
 
