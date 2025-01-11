@@ -152,7 +152,6 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     t_yolo = 0
 
     # Global variables:
-    display_str = ""                # String that displays on the screen
     classifier_result_str = ""      # Classification result (in numeric percentage)
 
     # Entry state of the state machine
@@ -236,34 +235,18 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             if phone_detect_signal == 2:
                 break
 
-        if classify_state == kcfg.USING:  # TODO: face_detection model
-            """ Crop Face """
-            face_len = int((keypoints[4][0] - keypoints[3][0]) * 1.1)
-            face_hw = (face_len, face_len)
-            face_center = keypoints[0][:2]
+    if classify_state == kcfg.USING:  # TODO: face_detection model
+        """ Crop Face """
+        face_len = int((keypoints[4][0] - keypoints[3][0]) * 1.1)
+        face_hw = (face_len, face_len)
+        face_center = keypoints[0][:2]
 
-            face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
-            face_detect_str = "="
+        face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
+        face_detect_str = "="
 
-            render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
+        render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
-    # if classify_state == kcfg.NOT_USING:
-    #     color = "green"
-    #     display_str = f"- {classifier_result_str}"
-    # elif classify_state == kcfg.SUSPICIOUS:
-    #     color = "orange"
-    #     display_str = f"? {classifier_result_str}"
-    # elif classify_state == kcfg.USING:
-    #     color = "red"
-    #     display_str = f"+ {classifier_result_str}"
-    # elif classify_state == kcfg.BACKSIDE:
-    #     color = "gray"
-    #     display_str = f"Back {classifier_result_str}"
-    # elif classify_state == kcfg.OUT_OF_FRAME:
-    #     color = "gray"
-    #     display_str = f"Out Of Frame"
-    # else:
-    #     color = "gray"
+    # Get display color and string
     color = kcfg.state_display_type[classify_state]["color"]
     display_str = f"{kcfg.state_display_type[classify_state]['str']} {classifier_result_str}"
 
