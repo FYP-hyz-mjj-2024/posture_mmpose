@@ -175,7 +175,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
         if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
             _num_value = ((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0
-            classifier_result_str = str(_num_value)
+            classifier_result_str = f"{_num_value:.2f}"
             classify_state = kcfg.BACKSIDE
 
     # Filter with accordance to STATE.
