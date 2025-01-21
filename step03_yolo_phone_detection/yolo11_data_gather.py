@@ -1,22 +1,24 @@
+# Basics
 import cv2
 import os
 import shutil
 
+# Utilities
 import numpy as np
+from PIL import Image
+from tqdm import tqdm
 
+# Local
 from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, processOneImage
 from step01_annotate_image_mmpose.configs import mmpose_config as mcfg
 from utils.opencv_utils import cropFrame
-from PIL import Image
-
-from tqdm import tqdm
 
 
 def video_name2properties(video_name: str) -> int:
     """
-    extract properties written in video's name.
-    :param video_name:
-    :return:
+    Extract properties written in video's name.
+    :param video_name: Video file name without extension.
+    :return: Hand index. L:0, R:1, B:2.
     """
     properties = tuple(video_name.split("_"))
     hand = properties[-1][0]
@@ -28,11 +30,11 @@ def video_name2properties(video_name: str) -> int:
 
 def video2dataset(video_path, dataset_save_dir, step_size=10) -> None:
     """
-    save effective frames as input data from a video with mmpose and crop-frame methods.
-    :param video_path:
-    :param dataset_save_dir:
-    :param step_size:
-    :return:
+    Save effective frames as input data from a video with mmpose and crop-frame methods.
+    :param video_path: Path to the video .mp4 file.
+    :param dataset_save_dir: Path to the directory where the dataset folders are saved.
+    :param step_size: Step size of frame sampling.
+    :return: Nothing.
     """
 
     if not os.path.exists(video_path):
@@ -113,6 +115,7 @@ def video2dataset(video_path, dataset_save_dir, step_size=10) -> None:
         image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         resized_image = image.resize((64, 64))
         resized_image.save(os.path.join(dataset_dir, f"_fig{i}.jpg"))
+
 
 if __name__ == "__main__":
     video2dataset(video_path="../data/blob/yolo_videos/20250121_2211_mjj_neck_nongreen_L000.mp4",
