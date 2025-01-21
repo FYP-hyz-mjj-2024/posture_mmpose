@@ -102,7 +102,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     elif state == kcfg.SUSPICIOUS and phone_detector_model is not None:
         bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
 
-        """ Crop two hands """
+        # Crop two hands.
         hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))      # Only relate to width of bbox
         """Height and width (sequence matter) of the bounding box."""
 
@@ -146,21 +146,25 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                 break
 
     if state == kcfg.USING:  # TODO: face_detection model
-        """ Crop Face """
-        face_len = int((keypoints[4][0] - keypoints[3][0]) * 1.1)
-        face_hw = (face_len, face_len)
-        face_center = keypoints[0][:2]
+        # Crop Face
+        face_len = int((keypoints[4][0] - keypoints[3][0]) * 1.1)   # Edge length of the face sub-frame
+        face_hw = (face_len, face_len)  # Dimensions of the face sub-frame.
+        face_center = keypoints[0][:2]  # Face center
 
+        # Face Subframe
         face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
         face_detect_str = "="
 
         render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
-    # Get display color and string
+    # Remove utility frame.
     del ori_frame
+
+    # Get display color and string
     color = kcfg.state_display_type[state]["color"]
     display_str = f"{kcfg.state_display_type[state]['str']} {classifier_result_str}"
 
+    # Overall frame of pedestrian. Color display result.
     render_detection_rectangle(frame, display_str, xyxy, color=color)
     return [t_mlp, t_yolo]
 
