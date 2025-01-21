@@ -35,7 +35,7 @@ def video_name2properties(video_name: str) -> int:
 def getVideoProperties(video_name: str, item=None) -> Union[Dict, int, str]:
     """
     Extract properties from a video's name. Available properties:
-    date, time, model name, position, green info, hand index, hand item.
+    date, time, model name, position, green info, hand index, hand item, and hex id.
     The hand index and its corresponding chars are: L:0, R:1, B:2.
     :param video_name: Name of the video file.
     :param item: Which item of the properties to extract.
@@ -55,10 +55,22 @@ def getVideoProperties(video_name: str, item=None) -> Union[Dict, int, str]:
     properties["hand item"] = properties["hand info"][1:]
     del properties["hand info"]
 
-    if item is not None:
-        return properties[item]
-    else:
+    # "item" isn't specified => Directly give out all stuff.
+    if item is None:
         return properties
+
+    # "item" is specified.
+    if item not in list(properties.keys()) + ["hex id"]:
+        raise KeyError(f"Invalid item {item}. Can't extract item from properties.")
+    elif item == "hex id":
+        hex_id = (f"{hex(int(properties['date'][:4])).replace('0x', '')}"    # Year
+                  f"{hex(int(properties['date'][4:6])).replace('0x', '')}"   # Month
+                  f"{hex(int(properties['date'][6:8])).replace('0x', '')}"   # Day
+                  f"{hex(int(properties['time'][:2])).replace('0x', '')}"    # Hour
+                  f"{hex(int(properties['time'][-2:])).replace('0x', '')}")  # Minute
+        return hex_id
+    else:
+        return properties[item]
 
 
 def video2dataset(video_path: str,
@@ -93,7 +105,7 @@ def video2dataset(video_path: str,
     os.makedirs(dataset_dir, exist_ok=True)
 
     # Hand index.
-    which_hand = getVideoProperties(video_name, item="hand index")
+    which_hand = getVideoProperties(video_name, "hand index")
     """
     Index within range [0, 1, 2]. Corresponding to char as ['L', 'R', 'B'].
     """
@@ -148,10 +160,11 @@ def video2dataset(video_path: str,
 
     # save
     cap.release()
+    video_hex_id = getVideoProperties(video_name, "hex id")
     for i, (frame, _) in tqdm(enumerate(stored_frames), desc=f"Saving {video_path}"):
         image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         resized_image = image.resize((64, 64))
-        resized_image.save(os.path.join(str(dataset_dir), f"_fig{i}.jpg"))
+        resized_image.save(os.path.join(str(dataset_dir), f"{video_hex_id}_fig{i}.jpg"))
 
 
 def videos2datasets(videos_save_dir: str, dataset_save_dir: str, sample_step_size=10):
