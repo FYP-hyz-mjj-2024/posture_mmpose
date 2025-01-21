@@ -9,7 +9,10 @@ from step01_annotate_image_mmpose.configs import mmpose_config as mcfg
 from utils.opencv_utils import cropFrame
 from PIL import Image
 
-def video_name2properties(video_name:str) -> int:
+from tqdm import tqdm
+
+
+def video_name2properties(video_name: str) -> int:
     """
     extract properties written in video's name.
     :param video_name:
@@ -21,6 +24,7 @@ def video_name2properties(video_name:str) -> int:
     hand_idx = {"L": 0, "R": 1, "B": 2}[hand]
 
     return hand_idx
+
 
 def video2dataset(video_path, dataset_save_dir, step_size=10) -> None:
     """
@@ -52,7 +56,7 @@ def video2dataset(video_path, dataset_save_dir, step_size=10) -> None:
     """
     one single char, only can be 'L', 'R', 'B'. (left, right, both)
     """
-    if which_hand not in ["L", "R", "B"]:
+    if which_hand < 0 or which_hand > 2:
         raise ValueError(f"{which_hand} is not in ['L', 'R', 'B']")
 
     # mmpose
@@ -64,50 +68,53 @@ def video2dataset(video_path, dataset_save_dir, step_size=10) -> None:
 
     frame_count = 0
     stored_frames = []
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret or cv2.waitKey(5) & 0xFF == 27:
-            break
+    with tqdm(total=total_frames, desc=f"Processing {video_path}") as pbar:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret or cv2.waitKey(5) & 0xFF == 27:
+                break
 
-        keypoints_list, xyxy_list, _ = processOneImage(frame, bbox_detector, pose_estimator)
+            keypoints_list, xyxy_list, _ = processOneImage(frame, bbox_detector, pose_estimator)
 
-        keypoints, xyxy = keypoints_list[0], xyxy_list[0]
+            keypoints, xyxy = keypoints_list[0], xyxy_list[0]
 
-        bbox_w, bbox_h = xyxy[2] - xyxy[0], xyxy[3] - xyxy[1]
-        hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))
-        """Height and width (sequence matter) of the bounding box."""
+            bbox_w, bbox_h = xyxy[2] - xyxy[0], xyxy[3] - xyxy[1]
+            hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))
+            """Height and width (sequence matter) of the bounding box."""
 
-        lhand_center, rhand_center = keypoints[9][:2], keypoints[10][:2]
+            lhand_center, rhand_center = keypoints[9][:2], keypoints[10][:2]
 
-        l_arm_vect, r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
-        lhand_center += l_arm_vect * 0.8
-        rhand_center += r_arm_vect * 0.8
+            l_arm_vect, r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
+            lhand_center += l_arm_vect * 0.8
+            rhand_center += r_arm_vect * 0.8
 
-        hand_frames_xyxy = [None, None, None]
+            hand_frames_xyxy = [None, None, None]
 
-        if np.linalg.norm(lhand_center - rhand_center) > 0.21 * bbox_w:
-            hand_frames_xyxy[0] = cropFrame(frame, lhand_center, hand_hw)
-            hand_frames_xyxy[1] = cropFrame(frame, rhand_center, hand_hw)
-        else:
-            hand_frames_xyxy[2] = cropFrame(frame, (lhand_center + rhand_center) // 2, hand_hw)
+            if np.linalg.norm(lhand_center - rhand_center) > 0.21 * bbox_w:
+                hand_frames_xyxy[0] = cropFrame(frame, lhand_center, hand_hw)
+                hand_frames_xyxy[1] = cropFrame(frame, rhand_center, hand_hw)
+            else:
+                hand_frames_xyxy[2] = cropFrame(frame, (lhand_center + rhand_center) // 2, hand_hw)
 
-        target_frame = hand_frames_xyxy[which_hand]
-        if target_frame is None:
-            continue
+            target_frame = hand_frames_xyxy[which_hand]
+            if target_frame is None:
+                continue
 
-        frame_count += 1
-        if frame_count % step_size == 0:
-            stored_frames.append(target_frame)
+            frame_count += 1
+            if frame_count % step_size == 0:
+                stored_frames.append(target_frame)
+                pbar.update(step_size)
 
     # save
     cap.release()
-    for i, (frame, _) in enumerate(stored_frames):
-        image = Image.fromarray(frame)
+    for i, (frame, _) in tqdm(enumerate(stored_frames)):
+        image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         resized_image = image.resize((64, 64))
         resized_image.save(os.path.join(dataset_dir, f"_fig{i}.jpg"))
 
 if __name__ == "__main__":
-    video2dataset(video_path="./tmp_videos/tmp000.mp4",
-                  dataset_save_dir="./datasets",
+    video2dataset(video_path="../data/blob/yolo_videos/20250121_2211_mjj_neck_nongreen_L000.mp4",
+                  dataset_save_dir="../data/yolo_dataset",
                   step_size=10)

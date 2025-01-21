@@ -60,6 +60,7 @@ Follow
 data/train/img/
 data/test/img/
 data/train/img_from_video/*
+data/yolo_dataset/*
 
 # MMPose config files
 #*.pth
