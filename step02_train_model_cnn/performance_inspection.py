@@ -1,10 +1,14 @@
+# Basic
+import os
+import numpy as np
+
+# Model training
 import torch
 import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 
-import numpy as np
-
+# Model testing
 from sklearn.metrics import (confusion_matrix, accuracy_score,
                             precision_score, recall_score,
                             f1_score, roc_auc_score,
@@ -48,16 +52,18 @@ def get_predictions(ModelClass,
     return pred_scores, true_labels, pred_labels
 
 
-def plot_cm(true_labels, pred_labels):
+def plot_cm(true_labels, pred_labels, save_path=None):
     cm = confusion_matrix(true_labels, pred_labels)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
     disp.plot(cmap=plt.cm.Blues)
 
     plt.title("Confusion Matrix")
+    if save_path is not None:
+        plt.savefig(os.path.join(save_path, "confusion_matrix.png"))
     plt.show()
 
 
-def plot_pr(true_labels, pred_scores):
+def plot_pr(true_labels, pred_scores, save_path=None):
     true_labels_bin = np.array([([0, 1] if i == 1 else [1, 0])for i in true_labels])
     for i in range(0, 2):
         precision_i, recall_i, _ = precision_recall_curve(true_labels_bin[:, i], np.array(pred_scores)[:, i])
@@ -69,11 +75,13 @@ def plot_pr(true_labels, pred_scores):
 
     plt.title("Precision-Recall Curve")
     plt.legend(loc="best")
+    if save_path is not None:
+        plt.savefig(os.path.join(save_path, "precision_recall.png"))
     plt.show()
 
 
 # Plot ROC AUC Curves
-def plot_roc_auc(true_labels, pred_scores):
+def plot_roc_auc(true_labels, pred_scores, save_path=None):
     # Compute ROC AUC for each class
     def get_roc_auc(true_labels_bin, pred_scores):
         roc_auc = dict()
@@ -94,6 +102,8 @@ def plot_roc_auc(true_labels, pred_scores):
     # plt.yscale("logit")
     plt.title("ROC Curve")
     plt.legend(loc="best")
+    if save_path is not None:
+        plt.savefig(os.path.join(save_path, "roc_curve.png"))
     plt.show()
 
 

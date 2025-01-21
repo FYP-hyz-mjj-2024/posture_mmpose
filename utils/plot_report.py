@@ -1,13 +1,17 @@
-from matplotlib import pyplot as plt
+import os
 import numpy as np
+from matplotlib import pyplot as plt
 
 
-def plot_report(arrays, labels, config, plot_mean=False) -> None:
+def plot_report(arrays, labels, config, plot_mean=False, save_path=None, file_name=None) -> None:
     """
     Plot the performance report.
     :param arrays: The performance indications.
     :param labels: The labels of each curve.
     :param config: Plot configurations.
+    :param plot_mean: Whether to plot the mean of each array.
+    :param save_path: The directory to save file.
+    :param file_name: The file name.
     """
     if not all(len(array) == len(arrays[0]) for array in arrays):
         raise ValueError("All arrays must be the same length.")
@@ -26,4 +30,6 @@ def plot_report(arrays, labels, config, plot_mean=False) -> None:
     plt.ylabel(config['y_name'])
     plt.legend()
     plt.grid(True)
+    if save_path is not None and file_name is not None:
+        plt.savefig(os.path.join(save_path, file_name))
     plt.show()

@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 
 # Utilities
 import os
+import shutil
 import copy
 import time
 
@@ -65,18 +66,22 @@ def train_and_evaluate(model,
                        optimizer,
                        num_epochs=100,
                        early_stop_params=None):
-    print(f"Training started. ID of the current model:{id(model)}")
 
     # Record Losses
     train_losses = []
     valid_losses = []
     overfit_factors = []
+    log_strs = [f"Training started. ID of the current model:{id(model)}"]
 
     # Early stopping params
     current_optimized_model = None
     current_min_test_loss = np.inf
     num_overfit_epochs = 0
 
+    # For display purposes only.
+    epoch_digit_num = len(str(abs(num_epochs)))
+
+    print(log_strs[0])
     for epoch in range(num_epochs):
         # Train on Epoch
         model.train()
@@ -93,7 +98,7 @@ def train_and_evaluate(model,
             running_loss += loss.item() * len(inputs)
         train_losses.append(running_loss / len(train_loader))
 
-        # Evaluate one Epoch
+        # Validate one Epoch
         model.eval()
         valid_loss = 0.0
         with torch.no_grad():
@@ -104,14 +109,23 @@ def train_and_evaluate(model,
                 valid_loss += loss.item() * len(inputs)
         valid_losses.append(valid_loss / len(valid_loader))
 
+        # Overfit factor calculation
         valid_loss_last_step = np.mean(valid_losses[-10:]) if epoch > 10 else 1
-
         overfit_factor = np.tanh(valid_losses[-1] - valid_loss_last_step)
         if epoch > 10:
             overfit_factors.append(overfit_factor)
-        print(f"Epoch[{epoch + 1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{valid_losses[-1]:.4f}, "
-              f"OFF:{overfit_factor:.4f} | Cur Optim: {id(current_optimized_model)}, Min TL: {current_min_test_loss:.4f}, "
-              f"Num OF epochs: {num_overfit_epochs}")
+
+        # These logics are written for displaying purposes only.
+        log_str = (f"Epoch[{str(epoch + 1).zfill(epoch_digit_num)}/{num_epochs}], "
+                   f"Train Loss:{train_losses[-1]:.4f}, "
+                   f"Valid Loss:{valid_losses[-1]:.4f}, "
+                   f"OFF:{' ' if overfit_factor > 0 else ''}{overfit_factor:.4f} | "
+                   f"Cur Optim: {id(current_optimized_model)}, "
+                   f"Min VL: {current_min_test_loss:.4f}, "
+                   f"Num OF epochs: {num_overfit_epochs}")
+
+        log_strs.append(log_str)
+        print(log_str)
 
         # Early-stopping Mechanism
         if early_stop_params is None:
@@ -128,10 +142,12 @@ def train_and_evaluate(model,
         # Perform early-stopping
         if num_overfit_epochs > early_stop_params["patience"]:
             model = current_optimized_model
-            print(f"Early stopped at epoch {epoch+1}. ID of current model： {id(model)}")
+            early_stop_log = f"Early stopped at epoch {epoch+1}. ID of optimized model: {id(model)}"
+            log_strs.append(early_stop_log)
+            print(early_stop_log)
             break
 
-    return train_losses, valid_losses, overfit_factors
+    return train_losses, valid_losses, overfit_factors, log_strs
 
 
 class MLP3d(nn.Module):
@@ -170,10 +186,25 @@ class MLP3d(nn.Module):
 
 if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     """
+    Save information
+    """
+    # Logging
+    time_str = str(time.time()).replace(".", "")
+    log_root = f"../logs/training_performance_log/{time_str}/"
+    train_log_path = os.path.join(log_root, "train_log.txt")
+    if os.path.exists(log_root):
+        shutil.rmtree(log_root)
+    os.makedirs(log_root, exist_ok=True)
+
+    # Model Saving
+    dataset_source_path = "../data/train/3dnpy"
+    model_save_root = "../data/models/"
+
+    """
     Prepare data
     """
     # Training data points
-    train_data, test_data = getNPY("../data/train/3dnpy", test_ratio=0.3)
+    train_data, test_data = getNPY(dataset_source_path, test_ratio=0.3)
 
     U_train, N_train = train_data # TODO: why this return form? 2024-01-21 18:11
 
@@ -225,18 +256,23 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Auto adjust lr prevent o.f.
 
     report_loss = []
-    print(f"Start Training...\nSize of Using: {len(U_train)}, Size of Not Using: {len(N_train)}")
 
-    train_losses, valid_losses, overfit_factors = train_and_evaluate(model,
-                                                                     train_loader,
-                                                                     valid_loader,
-                                                                     criterion,
-                                                                     optimizer,
-                                                                     num_epochs,
-                                                                     early_stop_params={
-                                                                        "min_delta": 1e-2,
-                                                                        "patience": 20
-                                                                    })
+    preamble = f"Preparing dataset...\nSize of Using: {len(U_train)}, Size of Not Using: {len(N_train)}"
+    print(preamble)
+
+    (train_losses,
+     valid_losses,
+     overfit_factors,
+     log_strs) = train_and_evaluate(model,
+                                    train_loader,
+                                    valid_loader,
+                                    criterion,
+                                    optimizer,
+                                    num_epochs,
+                                    early_stop_params={
+                                        "min_delta": 1e-2,
+                                        "patience": 20
+                                    })
 
     model_state = {
         'model_state_dict': model.state_dict(),
@@ -244,17 +280,20 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
         'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
     }
 
-    time_str = str(time.time()).replace(".", "")
-    torch.save(model_state, f"../data/models/posture_mmpose_vgg3d_{time_str}.pth")
-    print(f"Model saved to ../data/models/posture_mmpose_vgg3d_{time_str}.pth")
+    model_file_name = f"posture_mmpose_vgg3d_{time_str}.pth"
+    torch.save(model_state, os.path.join(model_save_root, model_file_name))
+    postamble = f"Training finished. Model saved to {os.path.join(model_save_root, model_file_name)}"
+    print(postamble)
+
+    log_strs = [preamble] + log_strs + [postamble]
 
     """
     Test
     """
     U_test, N_test = test_data
 
-    # model_essentials = torch.load(f"../data/models/posture_mmpose_vgg3d_{time_str}.pth")
-    model_essentials = torch.load(f"../data/models/posture_mmpose_vgg3d_17349534273325243.pth")
+    model_essentials = torch.load(os.path.join(model_save_root, model_file_name))
+    # model_essentials = torch.load(f"../data/models/posture_mmpose_vgg3d_17349534273325243.pth")
     model = model_essentials["model_state_dict"]
     mean = model_essentials["mean_X"].cpu().item()
     std = model_essentials["std_dev_X"].cpu().item()
@@ -292,12 +331,14 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     # Training Performances
     # Losses
     plot_report([train_losses, valid_losses],
-                ["Train Loss", "Test Loss"],
+                ["Train Loss", "Validation Loss"],
                 {
-                    "title": "TR&TE Loss w.r.t. Epoch",
+                    "title": "Train and Validation Loss w.r.t. Epoch",
                     "x_name": "Epoch",
                     "y_name": "Loss"
-                })
+                },
+                save_path=log_root,
+                file_name="epoch_loss.png")
 
     # Overfit Factors
     plot_report([overfit_factors],
@@ -306,10 +347,14 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
                     "title": "Overfit Factors w.r.t. Epoch",
                     "x_name": "Epoch",
                     "y_name": "Overfit Factor"
-                })
+                },
+                save_path=log_root,
+                file_name="overfit_factors.png")
 
     # Test Performances
-    # print(pred_scores)
-    plot_cm(true_labels, pred_labels)
-    plot_pr(true_labels, pred_scores)
-    plot_roc_auc(true_labels, pred_scores)
+    plot_cm(true_labels, pred_labels, save_path=log_root)
+    plot_pr(true_labels, pred_scores, save_path=log_root)
+    plot_roc_auc(true_labels, pred_scores, save_path=log_root)
+
+    with open(train_log_path, "w") as f:
+        f.writelines(f"{lgs}\n" for lgs in log_strs)
