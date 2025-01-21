@@ -68,8 +68,9 @@ model_config/checkpoints
 # Custom files
 runs/
 step01_annotate_image_mmpose/_disabled/
-
 step03_yolo_phone_detection/pvalue.py
+step03_yolo_phone_detection/non_tuned/*
+
 
 data/blob/videos/*
 data/yolo/*
