@@ -60,7 +60,7 @@ def getNPY(npy_dir, test_ratio=0.5):
 
 def train_and_evaluate(model,
                        train_loader,
-                       test_loader,
+                       valid_loader,
                        criterion,
                        optimizer,
                        num_epochs=100,
@@ -69,7 +69,7 @@ def train_and_evaluate(model,
 
     # Record Losses
     train_losses = []
-    test_losses = []
+    valid_losses = []
     overfit_factors = []
 
     # Early stopping params
@@ -86,7 +86,7 @@ def train_and_evaluate(model,
 
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels) # TODO: May try combination of different losses, 2024-1-21 18:20
             loss.backward()
             optimizer.step()
 
@@ -95,21 +95,21 @@ def train_and_evaluate(model,
 
         # Evaluate one Epoch
         model.eval()
-        test_loss = 0.0
+        valid_loss = 0.0
         with torch.no_grad():
-            for inputs, labels in test_loader:
+            for inputs, labels in valid_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
-                test_loss += loss.item() * len(inputs)
-        test_losses.append(test_loss / len(test_loader))
+                valid_loss += loss.item() * len(inputs)
+        valid_losses.append(valid_loss / len(valid_loader))
 
-        test_loss_last_step = np.mean(test_losses[-10:]) if epoch > 10 else 1
+        valid_loss_last_step = np.mean(valid_losses[-10:]) if epoch > 10 else 1
 
-        overfit_factor = np.tanh(test_losses[-1] - test_loss_last_step)
+        overfit_factor = np.tanh(valid_losses[-1] - valid_loss_last_step)
         if epoch > 10:
             overfit_factors.append(overfit_factor)
-        print(f"Epoch[{epoch + 1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{test_losses[-1]:.4f}, "
+        print(f"Epoch[{epoch + 1}/{num_epochs}], Train Loss:{train_losses[-1]:.4f}, Test Loss:{valid_losses[-1]:.4f}, "
               f"OFF:{overfit_factor:.4f} | Cur Optim: {id(current_optimized_model)}, Min TL: {current_min_test_loss:.4f}, "
               f"Num OF epochs: {num_overfit_epochs}")
 
@@ -118,8 +118,8 @@ def train_and_evaluate(model,
             continue
 
         # Update early stopping parameters
-        if current_min_test_loss - early_stop_params["min_delta"] > test_losses[-1]:
-            current_min_test_loss = test_losses[-1]
+        if current_min_test_loss - early_stop_params["min_delta"] > valid_losses[-1]:
+            current_min_test_loss = valid_losses[-1]
             current_optimized_model = copy.deepcopy(model)
             num_overfit_epochs = max(num_overfit_epochs - 1, 0)
         else:
@@ -131,7 +131,7 @@ def train_and_evaluate(model,
             print(f"Early stopped at epoch {epoch+1}. ID of current model： {id(model)}")
             break
 
-    return train_losses, test_losses, overfit_factors
+    return train_losses, valid_losses, overfit_factors
 
 
 class MLP3d(nn.Module):
@@ -175,7 +175,7 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     # Training data points
     train_data, test_data = getNPY("../data/train/3dnpy", test_ratio=0.3)
 
-    U_train, N_train = train_data
+    U_train, N_train = train_data # TODO: why this return form? 2024-01-21 18:11
 
     # Normalize Data
     # Using Z-score normalization: mean(mu)=0, std_dev(sigma)=1
@@ -198,9 +198,6 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     X_train, X_valid = X[split_board:], X[:split_board]
     y_train, y_valid = y[split_board:], y[:split_board]
 
-    # Put into torch tensor
-    initial_channel_num = 2
-
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
 
@@ -216,27 +213,27 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     valid_loader = DataLoader(valid_dataset, batch_size=128, shuffle=False)
 
     """
-    Model
+    Model Training
     """
     input_size = X_train.shape[1]
     hidden_size = 100
     learning_rate = 5e-6
     num_epochs = 650
 
-    model = MLP3d(input_channel_num=initial_channel_num, output_class_num=2).to(device)
+    model = MLP3d(input_channel_num=2, output_class_num=2).to(device)
     criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Auto adjust lr prevent o.f.
 
     report_loss = []
     print(f"Start Training...\nSize of Using: {len(U_train)}, Size of Not Using: {len(N_train)}")
 
-    train_losses, test_losses, overfit_factors = train_and_evaluate(model,
-                                                                    train_loader,
-                                                                    valid_loader,
-                                                                    criterion,
-                                                                    optimizer,
-                                                                    num_epochs,
-                                                                    early_stop_params={
+    train_losses, valid_losses, overfit_factors = train_and_evaluate(model,
+                                                                     train_loader,
+                                                                     valid_loader,
+                                                                     criterion,
+                                                                     optimizer,
+                                                                     num_epochs,
+                                                                     early_stop_params={
                                                                         "min_delta": 1e-2,
                                                                         "patience": 20
                                                                     })
@@ -294,7 +291,7 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     """
     # Training Performances
     # Losses
-    plot_report([train_losses, test_losses],
+    plot_report([train_losses, valid_losses],
                 ["Train Loss", "Test Loss"],
                 {
                     "title": "TR&TE Loss w.r.t. Epoch",
