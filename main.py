@@ -205,7 +205,7 @@ demo_performance = videoDemo(src=int(video_source) if video_source is not None e
 # Performance Report
 plot_report(
     arrays=np.array(list(demo_performance.values()))[:, 1:],
-    labels=["mmpose", "mlp", "yolo"],
-    config={"title": "Performance Report", "x_name": "Frame", "y_name": "Time"},
+    labels=["RTMPose", "posture", "yolo"],
+    config={"title": "Frame Computation Time", "x_name": "Frame Number", "y_name": "Time (s)"},
     plot_mean=True
 )
