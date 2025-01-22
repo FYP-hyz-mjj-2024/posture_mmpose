@@ -43,7 +43,7 @@ def getVideoProperties(video_name: str, item=None) -> Union[Dict, int, str]:
     :return: Properties object or the required properties item.
     """
     if video_name.endswith(".mp4"):
-        video_name.replace(".mp4", "")
+        raise ValueError("File name should not contain extension.")
 
     # Form properties object.
     prop_dict_values = tuple(video_name.split("_"))
@@ -63,11 +63,12 @@ def getVideoProperties(video_name: str, item=None) -> Union[Dict, int, str]:
     if item not in list(properties.keys()) + ["hex id"]:
         raise KeyError(f"Invalid item {item}. Can't extract item from properties.")
     elif item == "hex id":
-        hex_id = (f"{hex(int(properties['date'][:4])).replace('0x', '')}"    # Year
-                  f"{hex(int(properties['date'][4:6])).replace('0x', '')}"   # Month
-                  f"{hex(int(properties['date'][6:8])).replace('0x', '')}"   # Day
-                  f"{hex(int(properties['time'][:2])).replace('0x', '')}"    # Hour
-                  f"{hex(int(properties['time'][-2:])).replace('0x', '')}")  # Minute
+        hex_id = f"{properties['date'][:8]}_{properties['time']}"
+        # hex_id = (f"{hex(int(properties['date'][:4])).replace('0x', '')}"    # Year
+        #           f"{hex(int(properties['date'][4:6])).replace('0x', '')}"   # Month
+        #           f"{hex(int(properties['date'][6:8])).replace('0x', '')}"   # Day
+        #           f"{hex(int(properties['time'][:2])).replace('0x', '')}"    # Hour
+        #           f"{hex(int(properties['time'][-2:])).replace('0x', '')}")  # Minute
         return hex_id
     else:
         return properties[item]
