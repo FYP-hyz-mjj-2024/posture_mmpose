@@ -13,7 +13,7 @@ from roboflow import Roboflow, Workspace, Project
 from step03_yolo_phone_detection.dvalue import preset_group
 from step03_yolo_phone_detection.pvalue import API_KEY_mjj
 
-device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+global_device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 preset_group_name = 'low-quality phone detection preset'
 preset = preset_group[preset_group_name]
 
@@ -29,11 +29,11 @@ if __name__ == '__main__':
     results = model.train(
         data=f"{dataset.location}/data.yaml",
         epochs=100,
-        imgsz=640,
+        imgsz=64,
         batch=16,
-        device=device,
+        device=global_device,
     )
 
     results = model.val()   # Evaluate the model's performance on the validation set
 
-    success = model.export(format="onnx")   # Export the model to ONNX format
+    # success = model.export(format="onnx")   # Export the model to ONNX format
