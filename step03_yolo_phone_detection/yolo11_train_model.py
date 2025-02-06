@@ -14,7 +14,7 @@ from step03_yolo_phone_detection.dvalue import preset_group
 from step03_yolo_phone_detection.pvalue import API_KEY_mjj
 
 global_device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-preset_group_name = 'low-quality phone detection preset'
+preset_group_name = 'yolo dataset v1 preset'
 preset = preset_group[preset_group_name]
 
 if __name__ == '__main__':

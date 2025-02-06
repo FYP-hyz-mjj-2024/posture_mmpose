@@ -81,3 +81,4 @@ step03_yolo_phone_detection/non_tuned/*
 
 # MacOS
 .DS_Store
+/step03_yolo_phone_detection/Cell-Phone-1/

@@ -5,6 +5,13 @@ preset_group = {
         'version': 3,
         'dataset': 'yolov11'
     },
+    'yolo dataset v1 preset':{
+        'workspace': 'victor-workspace-owmoa',
+        'project': 'cell-phone-cyvjf',
+        'version': 1,
+        'dataset': 'yolov11'
+    },
+
 }
 
 best_pt_path = "archived onnx/best.pt"
