@@ -7,6 +7,7 @@ from typing import List, Union, Tuple, Dict
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 from ultralytics import YOLO
 
 # Local packages
@@ -215,28 +216,32 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
     :param threshold: Minimum confidence of phone detection to output a positive result.
     :return: Detection result.
     """
-    cv2.imwrite("./logs/inital_frame.png", frame)
-    empty_frame = np.zeros([640, 640, 3])
-    h, w, _ = frame.shape
-
-    if h > 640:
-        start_clip_h = (640 - h) // 2
-        h = 640
-        frame = frame[start_clip_h:start_clip_h + h, :, :]
-
-    if w > 640:
-        start_clip_w = (640 - w) // 2
-        w = 640
-        frame = frame[:, start_clip_w:start_clip_w + w, :]
-
-    start_put_h, start_put_w = (640 - h) // 2, (640 - w) // 2
-    empty_frame[start_put_h:start_put_h + h, start_put_w:start_put_w + w] = frame
+    # cv2.imwrite("./logs/inital_frame.png", frame)
+    # empty_frame = np.zeros([640, 640, 3])
+    # h, w, _ = frame.shape
+    #
+    # if h > 640:
+    #     start_clip_h = (640 - h) // 2
+    #     h = 640
+    #     frame = frame[start_clip_h:start_clip_h + h, :, :]
+    #
+    # if w > 640:
+    #     start_clip_w = (640 - w) // 2
+    #     w = 640
+    #     frame = frame[:, start_clip_w:start_clip_w + w, :]
+    #
+    # start_put_h, start_put_w = (640 - h) // 2, (640 - w) // 2
+    # empty_frame[start_put_h:start_put_h + h, start_put_w:start_put_w + w] = frame
 
     # cv2.imwrite("./logs/frame.png", frame)
     # cv2.imwrite("./logs/empty_frame.png", empty_frame)
 
     # resized_frame = cv2.resize(frame, dsize=(640, 640), interpolation=cv2.INTER_CUBIC)
-    resized_frame = empty_frame
+    resized_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    resized_frame = resized_frame.resize((64, 64))    # TODO: use 64x64
+    resized_frame = np.asarray(resized_frame)
+
+    # Move image frame to tensor
     tensor_frame = torch.from_numpy(resized_frame).float() / 255.0
     tensor_frame = tensor_frame.permute(2, 0, 1).unsqueeze(0).to(device)
 
@@ -245,10 +250,12 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
     results_tensor = results_tmp[0]
     results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
 
-    if not any(results_cls == 67):
+    cell_phone_index = 0    # TODO: Use static variable
+    if not any(results_cls == cell_phone_index):
         return 0    # Not using phone
 
-    results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == 67]
+    # 67 is the index of "cell phone" in the non-tuned model
+    results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == cell_phone_index]
 
     # 2 stands for positive now
     return 2 if any(results_conf > threshold) else 0

@@ -25,7 +25,7 @@ if __name__ == '__main__':
     version: Version = project.version(preset['version'])
     dataset: Dataset = version.download(preset['dataset'])
 
-    model: YOLO = YOLO('yolo11n.pt')
+    model: YOLO = YOLO('./none_tuned/yolo11n.pt')
     results = model.train(
         data=f"{dataset.location}/data.yaml",
         epochs=100,

@@ -8,7 +8,7 @@ preset_group = {
     'yolo dataset v1 preset':{
         'workspace': 'victor-workspace-owmoa',
         'project': 'cell-phone-cyvjf',
-        'version': 1,
+        'version': 2,
         'dataset': 'yolov11'
     },
 
