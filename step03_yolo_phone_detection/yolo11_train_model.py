@@ -37,3 +37,5 @@ if __name__ == '__main__':
     results = model.val()   # Evaluate the model's performance on the validation set
 
     # success = model.export(format="onnx")   # Export the model to ONNX format
+
+    project.version(dataset.version).deploy(model_type="yolo11", model_path="./runs/detect/train/")
