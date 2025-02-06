@@ -47,7 +47,7 @@ def getVideoProperties(video_name: str, item=None) -> Union[Dict, int, str]:
 
     # Form properties object.
     prop_dict_values = tuple(video_name.split("_"))
-    prop_dict_keys = ["date", "time", "model name", "position", "green info", "hand info"]
+    prop_dict_keys = ["date", "time", "model name", "position", "color info", "hand info"]
     properties = {k: v for k, v in zip(prop_dict_keys, prop_dict_values)}
 
     # Expand hand information.
@@ -185,7 +185,11 @@ def videos2datasets(videos_save_dir: str, dataset_save_dir: str, sample_step_siz
         pose_chkpt=mcfg.pose_checkpoint_train)
 
     # Extract all videos.
+    used_videos = []
     for root, dirs, files in os.walk(videos_save_dir):
+        if "used" in dirs:      # Skip used videos
+            dirs.remove("used")
+
         for file in files:
             if not file.endswith('.mp4'):
                 print(f"Ignoring file {file}: Not an acceptable video file.")
@@ -196,6 +200,12 @@ def videos2datasets(videos_save_dir: str, dataset_save_dir: str, sample_step_siz
                           dataset_save_dir=dataset_save_dir,
                           mmpose_essentials=(bbox_detector, pose_estimator),
                           step_size=sample_step_size)
+
+            print(f"Moving file {file} to {os.path.join(root, 'used')}.")
+            shutil.move(file_path, os.path.join(root, "used"))
+
+
+
 
 
 if __name__ == "__main__":
