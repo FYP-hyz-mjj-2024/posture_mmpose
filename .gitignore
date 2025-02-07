@@ -75,6 +75,8 @@ runs/
 step01_annotate_image_mmpose/_disabled/
 step03_yolo_phone_detection/pvalue.py
 step03_yolo_phone_detection/non_tuned/*
+step03_yolo_phone_detection/roboflow_dataset_download/*
+step03_yolo_phone_detection/yolo11n.pt
 
 
 

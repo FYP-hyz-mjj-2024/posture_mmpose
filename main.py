@@ -167,8 +167,7 @@ norm_params = {
 classifier_function = classify if solution_mode == 'hyz' else classify3D
 
 # YOLO object detection model
-# phone_detector = YOLO("step03_yolo_phone_detection/non_tuned/yolo11m.pt")
-phone_detector = YOLO("step03_yolo_phone_detection/archived onnx/20250206_1214_best.pt")
+phone_detector = YOLO("step03_yolo_phone_detection/archived_onnx/best.pt")
 
 # WebSocket Object
 ws = init_websocket("ws://localhost:8976") if is_remote else None

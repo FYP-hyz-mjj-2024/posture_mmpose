@@ -15,6 +15,7 @@ from step01_annotate_image_mmpose.annotate_image import translateOneLandmarks
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
+from step03_yolo_phone_detection.dvalue import yolo_input_size
 from utils.opencv_utils import render_detection_rectangle, cropFrame
 
 # Hardware devices
@@ -207,13 +208,16 @@ def classify3D(classifier_model: MLP3d,
     return classifier_result_str, classify_signal
 
 
-def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: float = 0.2):
+def detectPhone(model: YOLO, frame: np.ndarray,
+                device: str = 'cpu', threshold: float = 0.2,
+                cell_phone_index: int = 0):
     """
     Infers the cropped hand frame of a pedestrian and use a YOLO model to detect the existence of a cell-phone.
     :param model: YOLO model of arbitrary variant.
     :param frame: Frame array in shape [height, width, channels].
     :param device: Device string to use for inference.
     :param threshold: Minimum confidence of phone detection to output a positive result.
+    :param cell_phone_index: Index of cell phone in YOLO inference result.
     :return: Detection result.
     """
     # cv2.imwrite("./logs/inital_frame.png", frame)
@@ -238,7 +242,7 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
 
     # resized_frame = cv2.resize(frame, dsize=(640, 640), interpolation=cv2.INTER_CUBIC)
     resized_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-    resized_frame = resized_frame.resize((64, 64))    # TODO: use 64x64
+    resized_frame = resized_frame.resize((yolo_input_size, yolo_input_size))    # YOLO Image size
     resized_frame = np.asarray(resized_frame)
 
     # Move image frame to tensor
@@ -250,7 +254,6 @@ def detectPhone(model: YOLO, frame: np.ndarray, device: str = 'cpu', threshold: 
     results_tensor = results_tmp[0]
     results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
 
-    cell_phone_index = 0    # TODO: Use static variable
     if not any(results_cls == cell_phone_index):
         return 0    # Not using phone
 
