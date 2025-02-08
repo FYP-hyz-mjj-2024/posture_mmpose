@@ -49,7 +49,7 @@ def render_detection_rectangle(frame, text, xyxy, color: str):
     )
 
 
-def getUserConsoleConfig(max_required_num=3):
+def getUserConsoleConfig():
     # Video Source Selection
     video_source = input(f"Which camera would you like to use? > ")
 
@@ -59,7 +59,10 @@ def getUserConsoleConfig(max_required_num=3):
     # Use mmpose visualizer
     use_mmpose_visualizer = input("Use MMPose visualizer? [y/n] > ") == 'y'
 
-    return is_remote, video_source, use_mmpose_visualizer
+    # Use trained
+    use_trained_yolo = input("Use self-trained YOLO model? [y/n] > ") == 'y'
+
+    return is_remote, video_source, use_mmpose_visualizer, use_trained_yolo
 
 
 def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:

@@ -1,0 +1,10 @@
+{
+  "preset_group": {
+    "yolo dataset": {
+      "workspace": "victor-workspace-owmoa",
+      "project": "pedestrian-cell-phone-detection",
+      "version": 3,
+      "dataset": "yolov11"
+    }
+  }
+}

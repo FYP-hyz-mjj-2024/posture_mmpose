@@ -12,6 +12,7 @@ from tqdm import tqdm
 # Local
 from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, processOneImage
 from step01_annotate_image_mmpose.configs import mmpose_config as mcfg
+from dvalue import yolo_input_size
 from utils.opencv_utils import cropFrame
 
 
@@ -47,7 +48,7 @@ def getVideoProperties(video_name: str, item=None) -> Union[Dict, int, str]:
 
     # Form properties object.
     prop_dict_values = tuple(video_name.split("_"))
-    prop_dict_keys = ["date", "time", "model name", "position", "green info", "hand info"]
+    prop_dict_keys = ["date", "time", "model name", "position", "color info", "hand info"]
     properties = {k: v for k, v in zip(prop_dict_keys, prop_dict_values)}
 
     # Expand hand information.
@@ -64,11 +65,6 @@ def getVideoProperties(video_name: str, item=None) -> Union[Dict, int, str]:
         raise KeyError(f"Invalid item {item}. Can't extract item from properties.")
     elif item == "hex id":
         hex_id = f"{properties['date'][:8]}_{properties['time']}"
-        # hex_id = (f"{hex(int(properties['date'][:4])).replace('0x', '')}"    # Year
-        #           f"{hex(int(properties['date'][4:6])).replace('0x', '')}"   # Month
-        #           f"{hex(int(properties['date'][6:8])).replace('0x', '')}"   # Day
-        #           f"{hex(int(properties['time'][:2])).replace('0x', '')}"    # Hour
-        #           f"{hex(int(properties['time'][-2:])).replace('0x', '')}")  # Minute
         return hex_id
     else:
         return properties[item]
@@ -127,6 +123,8 @@ def video2dataset(video_path: str,
             if not ret or cv2.waitKey(5) & 0xFF == 27:
                 break
 
+            pbar.update()
+
             # Extract the first person.
             keypoints_list, xyxy_list, _ = processOneImage(frame, bbox_detector, pose_estimator)
             keypoints, xyxy = keypoints_list[0], xyxy_list[0]
@@ -157,14 +155,15 @@ def video2dataset(video_path: str,
             frame_count += 1
             if frame_count % step_size == 0:
                 stored_frames.append(target_frame)
-                pbar.update(step_size)
+
+
 
     # save
     cap.release()
     video_hex_id = getVideoProperties(video_name, "hex id")
     for i, (frame, _) in tqdm(enumerate(stored_frames), desc=f"Saving {video_path}"):
         image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        resized_image = image.resize((64, 64))
+        resized_image = image.resize((yolo_input_size, yolo_input_size))
         resized_image.save(os.path.join(str(dataset_dir), f"{video_hex_id}_fig{i}.jpg"))
 
 
@@ -185,20 +184,30 @@ def videos2datasets(videos_save_dir: str, dataset_save_dir: str, sample_step_siz
         pose_chkpt=mcfg.pose_checkpoint_train)
 
     # Extract all videos.
+    used_videos = []
     for root, dirs, files in os.walk(videos_save_dir):
+        if "used" in dirs:      # Skip used videos
+            dirs.remove("used")
+
         for file in files:
             if not file.endswith('.mp4'):
                 print(f"Ignoring file {file}: Not an acceptable video file.")
                 continue
             file_path = os.path.join(root, file)
-            print(f"Reading file {file}: Formulating dataset.")
+            print(f"\nReading file {file}: Formulating dataset.")
             video2dataset(video_path=file_path,
                           dataset_save_dir=dataset_save_dir,
                           mmpose_essentials=(bbox_detector, pose_estimator),
                           step_size=sample_step_size)
 
+            print(f"Moving file {file} to {os.path.join(root, 'used')}.")
+            shutil.move(file_path, os.path.join(root, "used"))
+
 
 if __name__ == "__main__":
+    step_size = input("Enter step size > ")
+    step_size = 5 if not step_size.isdigit() else int(step_size)
+
     videos2datasets(videos_save_dir="../data/blob/yolo_videos/",
                     dataset_save_dir="../data/yolo_dataset",
-                    sample_step_size=5)
+                    sample_step_size=step_size)
