@@ -133,9 +133,9 @@ def videoDemo(src: Union[str, int],
 
 if __name__ == '__main__':
     # Configuration
-    is_remote, video_source, use_mmpose_visualizer = getUserConsoleConfig(max_required_num=3)
+    is_remote, video_source, use_mmpose_visualizer, use_trained_yolo = getUserConsoleConfig()
 else:
-    is_remote, video_source, use_mmpose_visualizer = False, 0, False
+    is_remote, video_source, use_mmpose_visualizer, use_trained_yolo = False, 0, False, False
 
 # Decision on mode
 solution_mode = 'mjj'   # or 'hyz'
@@ -167,7 +167,13 @@ norm_params = {
 classifier_function = classify if solution_mode == 'hyz' else classify3D
 
 # YOLO object detection model
-phone_detector = YOLO("step03_yolo_phone_detection/archived_onnx/best.pt")
+if use_trained_yolo:
+    yolo_path = "step03_yolo_phone_detection/archived_onnx/best.pt"
+else:
+    yolo_path = "step03_yolo_phone_detection/non_tuned/yolo11n.pt"
+
+
+phone_detector = YOLO(yolo_path)
 
 # WebSocket Object
 ws = init_websocket("ws://localhost:8976") if is_remote else None
@@ -188,7 +194,8 @@ package_classifier = {
 
 package_phone_detector = {
     "phone_detector_model": phone_detector,
-    "phone_detector_func": detectPhone
+    "phone_detector_func": detectPhone,
+    "self_trained": use_trained_yolo
 }
 
 # Start the loop

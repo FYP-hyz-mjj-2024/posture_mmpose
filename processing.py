@@ -50,6 +50,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     normalize_parameters = pkg_classifier["norm_params"]
     phone_detector_model = pkg_phone_detector["phone_detector_model"]
     phone_detector_func = pkg_phone_detector["phone_detector_func"]
+    self_trained = pkg_phone_detector["self_trained"]
 
     # Performance
     t_mlp = 0
@@ -57,6 +58,8 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
     # Global variables:
     classifier_result_str = ""      # Classification result (in numeric percentage)
+    phone_frame_size = yolo_input_size if self_trained else 640     # Yolo input frame size
+    phone_index = 0 if self_trained else 67     # Phone index of model
 
     # Entry state of the state machine
     state = kcfg.TO_BE_CLASSIFIED
@@ -130,7 +133,9 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
         for subframe, subframe_xyxy in hand_frames_xyxy:
             start_yolo = time.time()
-            phone_detect_signal = phone_detector_func(phone_detector_model, subframe, device=device_name, threshold=0.3)
+            phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
+                                                      device=device_name, threshold=0.3,
+                                                      frame_size=phone_frame_size, cell_phone_index=phone_index)
             t_yolo = time.time() - start_yolo
 
             if phone_detect_signal == 2:
@@ -210,39 +215,19 @@ def classify3D(classifier_model: MLP3d,
 
 def detectPhone(model: YOLO, frame: np.ndarray,
                 device: str = 'cpu', threshold: float = 0.2,
-                cell_phone_index: int = 0):
+                frame_size: int = 640, cell_phone_index: int = 0):
     """
     Infers the cropped hand frame of a pedestrian and use a YOLO model to detect the existence of a cell-phone.
     :param model: YOLO model of arbitrary variant.
     :param frame: Frame array in shape [height, width, channels].
     :param device: Device string to use for inference.
     :param threshold: Minimum confidence of phone detection to output a positive result.
+    :param frame_size: Yolo input frame size width,
     :param cell_phone_index: Index of cell phone in YOLO inference result.
     :return: Detection result.
     """
-    # cv2.imwrite("./logs/inital_frame.png", frame)
-    # empty_frame = np.zeros([640, 640, 3])
-    # h, w, _ = frame.shape
-    #
-    # if h > 640:
-    #     start_clip_h = (640 - h) // 2
-    #     h = 640
-    #     frame = frame[start_clip_h:start_clip_h + h, :, :]
-    #
-    # if w > 640:
-    #     start_clip_w = (640 - w) // 2
-    #     w = 640
-    #     frame = frame[:, start_clip_w:start_clip_w + w, :]
-    #
-    # start_put_h, start_put_w = (640 - h) // 2, (640 - w) // 2
-    # empty_frame[start_put_h:start_put_h + h, start_put_w:start_put_w + w] = frame
-
-    # cv2.imwrite("./logs/frame.png", frame)
-    # cv2.imwrite("./logs/empty_frame.png", empty_frame)
-
-    # resized_frame = cv2.resize(frame, dsize=(640, 640), interpolation=cv2.INTER_CUBIC)
     resized_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-    resized_frame = resized_frame.resize((yolo_input_size, yolo_input_size))    # YOLO Image size
+    resized_frame = resized_frame.resize((frame_size, frame_size))    # YOLO Image size
     resized_frame = np.asarray(resized_frame)
 
     # Move image frame to tensor
