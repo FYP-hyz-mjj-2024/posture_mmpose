@@ -1,0 +1,9 @@
+numpy
+matplotlib
+websocket-client
+ultralytics
+pillow
+scikit-learn
+tqdm
+roboflow
+opencv-python
