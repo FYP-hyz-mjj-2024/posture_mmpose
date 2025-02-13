@@ -61,6 +61,7 @@ data/train/img/
 data/test/img/
 data/train/img_from_video/*
 data/yolo_dataset/*
+data/yolo_dataset_runtime/*
 data/blob/videos/*
 data/blob/yolo_videos/*
 data/yolo/*

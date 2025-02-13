@@ -1,11 +1,16 @@
+# Basic
+import os
+from tqdm import tqdm
 import time
 from typing import Union
 
+# Utilities
 import cv2
 import numpy as np
 import torch
 from ultralytics import YOLO
 
+# Locals
 from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials
 from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
@@ -13,7 +18,6 @@ from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
 from utils.opencv_utils import yieldVideoFeed, init_websocket, getUserConsoleConfig
 from utils.plot_report import plot_report
-
 from processing import processOnePerson, classify, classify3D, detectPhone, global_device_name, global_device
 
 
@@ -21,6 +25,7 @@ def videoDemo(src: Union[str, int],
               pkg_mmpose,
               pkg_classifier,
               pkg_phone_detector,
+              runtime_save_handframes_path: str,
               device_name: str = global_device_name,
               mode: str = None,
               websocket_obj=None):
@@ -30,6 +35,7 @@ def videoDemo(src: Union[str, int],
     :param pkg_mmpose: Tool package of mmpose.
     :param pkg_classifier: Tool package of mlp posture classifier.
     :param pkg_phone_detector: Tool package of phone detector.
+    :param runtime_save_handframes_path: Path to save runtime hand frames.
     :param device_name: Name of hardware, cpu or cuda.
     :param mode: Mode of convolution: hyz or mjj.
     :param websocket_obj: Websocket object.
@@ -60,11 +66,30 @@ def videoDemo(src: Union[str, int],
         "yolo": []
     }
 
+    # Clear all runtime yolo dataset images
+    print(f"Clearing all previous runtime hand frames in dir {runtime_save_handframes_path}...")
+    if runtime_save_handframes_path is not None:
+        files = [f for f in os.listdir(runtime_save_handframes_path)
+                 if os.path.isfile(os.path.join(runtime_save_handframes_path, f))]
+        for file in tqdm(files):
+            file_path = os.path.join(runtime_save_handframes_path, file)
+            os.remove(file_path)
+    print(f"Done!\n")
+
     while cap.isOpened():
         ret, frame = cap.read()
-
-        if not ret or cv2.waitKey(5) & 0xFF == 27:
+        if not ret:
             break
+
+        # Key op detection
+        key = cv2.waitKey(5) & 0xFF
+        runtime_save_handframes_path_cur = None
+
+        if key == 27:
+            break
+        elif websocket_obj is None and (key == 82 or key == 114):
+            # Press R or r to save hand frames at run time.
+            runtime_save_handframes_path_cur = runtime_save_handframes_path
 
         t_start_frame = time.time()
         keypoints_list, xyxy_list, data_samples = processOneImage(frame,
@@ -91,14 +116,15 @@ def videoDemo(src: Union[str, int],
                 kpt_thr=mcfg.kpt_thr)
         else:
             mlp_yolo_times = [
-                processOnePerson(frame,
-                                 keypoints,
-                                 xyxy,
-                                 detection_target_list,
-                                 pkg_classifier,
-                                 pkg_phone_detector,
-                                 device_name,
-                                 mode)
+                processOnePerson(frame=frame,
+                                 keypoints=keypoints,
+                                 xyxy=xyxy,
+                                 detection_target_list=detection_target_list,
+                                 pkg_classifier=pkg_classifier,
+                                 pkg_phone_detector=pkg_phone_detector,
+                                 device_name=device_name,
+                                 mode=mode,
+                                 runtime_save_handframes_path=runtime_save_handframes_path_cur)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
             ]
 
@@ -198,12 +224,16 @@ package_phone_detector = {
     "self_trained": use_trained_yolo
 }
 
+runtime_save_hf_path = "data/yolo_dataset_runtime/"
+
 # Start the loop
 demo_performance = videoDemo(src=int(video_source) if video_source is not None else 0,
 
                              pkg_mmpose=package_mmpose,
                              pkg_classifier=package_classifier,
                              pkg_phone_detector=package_phone_detector,
+
+                             runtime_save_handframes_path=runtime_save_hf_path,
 
                              device_name=global_device_name,
                              mode=solution_mode,
