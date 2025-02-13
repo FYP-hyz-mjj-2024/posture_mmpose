@@ -1,7 +1,8 @@
 # Basic
+import os
 import copy
 import time
-from typing import List, Union, Tuple, Dict
+from typing import List, Union, Tuple, Dict, Optional
 
 # Simple package
 import cv2
@@ -23,14 +24,15 @@ global_device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.bac
 global_device = torch.device(global_device_name)
 
 
-def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
-                     keypoints: np.ndarray,     # shape: (17, 3)
-                     xyxy: np.ndarray,          # shape: (4,)
+def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
+                     keypoints: np.ndarray,  # shape: (17, 3)
+                     xyxy: np.ndarray,  # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      pkg_classifier,
                      pkg_phone_detector,
                      device_name: str = "cpu",
-                     mode: str = None) -> Union[None, List[float]]:
+                     mode: str = None,
+                     runtime_save_handframes_path: Optional[str] = None) -> Union[None, List[float]]:
     """
     In each frame, process the assigned pedestrian. Use a state machine to perform two-layer detection.
     :param frame: Frame array. Shape (height, weight, channels=3).
@@ -41,6 +43,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     :param pkg_phone_detector: Package object for cell-phone detection.
     :param device_name: Name of the hardware device.
     :param mode: Solution of different convolutions.
+    :param runtime_save_handframes_path: Path to save hand frames.
     :return: Evaluated time for posture recognition and object detection at this pedestrian at this frame.
     """
 
@@ -147,6 +150,14 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                 phone_display_color = "green"
 
             render_detection_rectangle(frame, phone_display_str, subframe_xyxy, color=phone_display_color)
+
+            if runtime_save_handframes_path is not None:
+                try:
+                    image_file_name = f"{time.strftime('%Y%m%d-%H%M%S')}_runtime.png"
+                    save_path = os.path.join(runtime_save_handframes_path, image_file_name)
+                    cv2.imwrite(save_path, subframe)
+                except Exception as e:
+                    print(f"Failed to save current hand frame. Exception{e}")
 
             # If one hand is already holding a phone, don't detect another.
             if phone_detect_signal == 2:
