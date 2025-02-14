@@ -30,9 +30,9 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      pkg_classifier,
                      pkg_phone_detector,
+                     runtime_options,   # Save runtime handframes, crop face frame, etc.
                      device_name: str = "cpu",
-                     mode: str = None,
-                     runtime_save_handframes_path: Optional[str] = None) -> Union[None, List[float]]:
+                     mode: str = None) -> Union[None, List[float]]:
     """
     In each frame, process the assigned pedestrian. Use a state machine to perform two-layer detection.
     :param frame: Frame array. Shape (height, weight, channels=3).
@@ -41,9 +41,9 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     :param detection_target_list: List of detection targets.
     :param pkg_classifier: Package object for posture recognition.
     :param pkg_phone_detector: Package object for cell-phone detection.
+    :param runtime_options: Runtime options. Crop hand frames, Crop face frames, etc.
     :param device_name: Name of the hardware device.
     :param mode: Solution of different convolutions.
-    :param runtime_save_handframes_path: Path to save hand frames.
     :return: Evaluated time for posture recognition and object detection at this pedestrian at this frame.
     """
 
@@ -54,6 +54,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     phone_detector_model = pkg_phone_detector["phone_detector_model"]
     phone_detector_func = pkg_phone_detector["phone_detector_func"]
     self_trained = pkg_phone_detector["self_trained"]
+    runtime_save_handframes_path = runtime_options["runtime_save_handframes_path"]
 
     # Performance
     t_mlp = 0

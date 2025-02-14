@@ -1,5 +1,9 @@
+# Basic
 import os
 import numpy as np
+
+# Plot utils
+from matplotlib import cm
 from matplotlib import pyplot as plt
 
 
@@ -19,11 +23,22 @@ def plot_report(arrays, labels, config, plot_mean=False, save_path=None, file_na
     plt.figure(figsize=(10, 6))
     iterations = [i for i in range(len(arrays[0]))]
 
-    for arr, label in zip(arrays, labels):
+    cmap = cm.get_cmap(config.get('colormap', 'tab20b'), len(arrays) if plot_mean else 3 * len(arrays))
+
+    for i, (arr, label) in enumerate(zip(arrays, labels)):
+        this_color = cmap(i)
         if plot_mean:
-            mean = np.mean(arr)
-            plt.plot(iterations, [mean for _ in range(len(arr))], linestyle='--', label=f"{label} - Mean={mean:.2f}")
-        plt.plot(iterations, arr, label=f"{label}")
+            appl_mean = np.mean(arr)                            # Application Mean: Include 0 values
+            perf_mean = np.mean(arr, where=(arr > 1e-5))        # Performance Mean: Exclude 0 values
+
+            # Plot the two means
+            plt.plot(iterations, [appl_mean for _ in range(len(arr))],
+                     linestyle='--', color=this_color, label=f"{label} - Appl Mean={appl_mean:.3f}")
+            plt.plot(iterations, [perf_mean for _ in range(len(arr))],
+                     linestyle=':',  color=this_color, label=f"{label} - Perf Mean={perf_mean:.3f}")
+
+        # Plot the array itself
+        plt.plot(iterations, arr, color=this_color, label=f"{label}")
 
     plt.title(config['title'])
     plt.xlabel(config['x_name'])

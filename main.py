@@ -50,12 +50,11 @@ def videoDemo(src: Union[str, int],
 
     cap = cv2.VideoCapture(src)
 
-    if websocket_obj:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 384)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 288)
-    else:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    # Determine video size according to out source.
+    _set_video_w, _set_video_h = [384, 288] if websocket_obj else [640, 480]
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, _set_video_w)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, _set_video_h)
+
     # Record frame rate
     last_time = time.time()
 
@@ -67,14 +66,16 @@ def videoDemo(src: Union[str, int],
     }
 
     # Clear all runtime yolo dataset images
-    print(f"Clearing all previous runtime hand frames in dir {runtime_save_handframes_path}...")
     if runtime_save_handframes_path is not None:
+        print(f"Clearing all previous runtime hand frames in dir {runtime_save_handframes_path}...")
         files = [f for f in os.listdir(runtime_save_handframes_path)
                  if os.path.isfile(os.path.join(runtime_save_handframes_path, f))]
         for file in tqdm(files):
             file_path = os.path.join(runtime_save_handframes_path, file)
             os.remove(file_path)
-    print(f"Done!\n")
+        print(f"Done!\n")
+    else:
+        print(f"Path to save runtime hand frames is not defined.")
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -122,9 +123,11 @@ def videoDemo(src: Union[str, int],
                                  detection_target_list=detection_target_list,
                                  pkg_classifier=pkg_classifier,
                                  pkg_phone_detector=pkg_phone_detector,
+                                 runtime_options={
+                                     "runtime_save_handframes_path": runtime_save_handframes_path_cur
+                                 },
                                  device_name=device_name,
-                                 mode=mode,
-                                 runtime_save_handframes_path=runtime_save_handframes_path_cur)
+                                 mode=mode)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
             ]
 
@@ -148,9 +151,10 @@ def videoDemo(src: Union[str, int],
                 thickness=2
             )
 
-            yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
+            yieldVideoFeed(frame, title="Pedestrian Cell Phone Usage Detection", ws=websocket_obj)
 
-        time.sleep(0.005) if (websocket_obj is not None) else None
+        if websocket_obj is not None:
+            time.sleep(0.005)
 
     cap.release()
 
@@ -228,13 +232,13 @@ runtime_save_hf_path = "data/yolo_dataset_runtime/"
 
 # Start the loop
 demo_performance = videoDemo(src=int(video_source) if video_source is not None else 0,
-
+                             # Model Task packages
                              pkg_mmpose=package_mmpose,
                              pkg_classifier=package_classifier,
                              pkg_phone_detector=package_phone_detector,
-
+                             # Runtime configs
                              runtime_save_handframes_path=runtime_save_hf_path,
-
+                             # Configs
                              device_name=global_device_name,
                              mode=solution_mode,
                              websocket_obj=ws)
