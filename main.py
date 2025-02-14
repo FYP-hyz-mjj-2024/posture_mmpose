@@ -50,12 +50,11 @@ def videoDemo(src: Union[str, int],
 
     cap = cv2.VideoCapture(src)
 
-    if websocket_obj:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 384)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 288)
-    else:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    # Determine video size according to out source.
+    _set_video_w, _set_video_h = [384, 288] if websocket_obj else [640, 480]
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, _set_video_w)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, _set_video_h)
+
     # Record frame rate
     last_time = time.time()
 
@@ -148,9 +147,10 @@ def videoDemo(src: Union[str, int],
                 thickness=2
             )
 
-            yieldVideoFeed(frame, title="Smart Device Usage Detection", ws=websocket_obj)
+            yieldVideoFeed(frame, title="Pedestrian Cell Phone Usage Detection", ws=websocket_obj)
 
-        time.sleep(0.005) if (websocket_obj is not None) else None
+        if websocket_obj is not None:
+            time.sleep(0.005)
 
     cap.release()
 
