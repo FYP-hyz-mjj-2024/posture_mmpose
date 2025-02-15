@@ -1,10 +1,15 @@
+# Basic
+from typing import Union, Tuple, List
+import time
+
+# Utilities
+import numpy as np
 import cv2
+
+# Stream Pushing
 import base64
 import json
 import websocket
-from typing import Union, Tuple, List
-import time
-import numpy as np
 
 ui_text_config = {
     "fontFace": cv2.FONT_HERSHEY_SIMPLEX,
@@ -106,7 +111,7 @@ def getUserConsoleConfig():
     # Use mmpose visualizer
     use_mmpose_visualizer = input("Use MMPose visualizer? [y/n] > ") == 'y'
 
-    # Use trained
+    # Use trained YOLO11 or un-tuned.
     use_trained_yolo = input("Use self-trained YOLO model? [y/n] > ") == 'y'
 
     return is_remote, video_source, use_mmpose_visualizer, use_trained_yolo
@@ -150,6 +155,13 @@ def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
 def cropFrame(frame: np.ndarray,
               ct_xy: np.ndarray,
               crop_hw: Tuple[int, int]) -> Union[Tuple[np.ndarray, List], None]:
+    """
+    Crop out sub-frames from a large frame.
+    :param frame: The frame.
+    :param ct_xy: Center (x,y) coordinates.
+    :param crop_hw: Sub-frame size of (height, width).
+    :return:
+    """
     fh, fw, _ = frame.shape
     x, y = ct_xy
     ch, cw = crop_hw
