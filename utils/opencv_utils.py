@@ -6,6 +6,13 @@ from typing import Union, Tuple, List
 import time
 import numpy as np
 
+ui_text_config = {
+    "fontFace": cv2.FONT_HERSHEY_SIMPLEX,
+    "fontScale": 0.5,
+    "color": (255, 255, 255),
+    "thickness": 2
+}
+
 
 def render_detection_rectangle(frame, text, xyxy, color: str):
     """
@@ -46,6 +53,46 @@ def render_detection_rectangle(frame, text, xyxy, color: str):
         pt2=(int(xyxy[2]), int(xyxy[3])),
         color=color_dict[color],
         thickness=rec_thickness_dict[0]
+    )
+
+
+def render_ui_text(frame, text: str,
+                   frame_wh: Tuple[int, int], margin_wh: Tuple[int, int],
+                   align: str, order: int):
+    """
+    Render text on image frame as UI.
+    :param frame: Image frame.
+    :param text: Text content.
+    :param frame_wh: Frame size.
+    :param margin_wh: Frame margin size.
+    :param align: Align method.
+    :param order: Align order.
+    :return:
+    """
+    frame_w, frame_h = frame_wh
+    margin_w, margin_h = margin_wh
+
+    (text_width, text_height), _ = cv2.getTextSize(text=text,
+                                                   fontFace=ui_text_config["fontFace"],
+                                                   fontScale=ui_text_config["fontScale"],
+                                                   thickness=ui_text_config["thickness"])
+
+    if align == "left":
+        org = (margin_w, margin_h + order * (text_height + 5))
+    elif align == "right":
+        org = (frame_w - margin_w - int((0.01 if frame_w <= 600 else 1) * text_width),
+               margin_h + order * (text_height + 5))
+    else:
+        raise ValueError("Unrecognized alignment: align parameter should be either 'left' or 'right'.")
+
+    cv2.putText(
+        frame,
+        text,
+        org=org,
+        fontFace=ui_text_config["fontFace"],
+        fontScale=ui_text_config["fontScale"],
+        color=ui_text_config["color"],
+        thickness=ui_text_config["thickness"]
     )
 
 

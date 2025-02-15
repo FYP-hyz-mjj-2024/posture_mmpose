@@ -24,15 +24,15 @@ global_device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.bac
 global_device = torch.device(global_device_name)
 
 
-def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
-                     keypoints: np.ndarray,  # shape: (17, 3)
-                     xyxy: np.ndarray,  # shape: (4,)
+def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
+                     keypoints: np.ndarray,     # shape: (17, 3)
+                     xyxy: np.ndarray,          # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      pkg_classifier,
                      pkg_phone_detector,
-                     runtime_options,   # Save runtime handframes, crop face frame, etc.
+                     runtime_parameters,  # Save runtime handframes, crop face frame, etc.
                      device_name: str = "cpu",
-                     mode: str = None) -> Union[None, List[float]]:
+                     mode: str = None) -> Dict[str, Union[Tuple[float, float], float]]:
     """
     In each frame, process the assigned pedestrian. Use a state machine to perform two-layer detection.
     :param frame: Frame array. Shape (height, weight, channels=3).
@@ -41,20 +41,26 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
     :param detection_target_list: List of detection targets.
     :param pkg_classifier: Package object for posture recognition.
     :param pkg_phone_detector: Package object for cell-phone detection.
-    :param runtime_options: Runtime options. Crop hand frames, Crop face frames, etc.
+    :param runtime_parameters: Runtime parameters that records various running states of the system.
     :param device_name: Name of the hardware device.
     :param mode: Solution of different convolutions.
     :return: Evaluated time for posture recognition and object detection at this pedestrian at this frame.
     """
 
-    # Extract posture classifier and phone detector tools from respective packages.
+    # Posture Recognition.
     classifier_model = pkg_classifier["classifier_model"]
     classifier_func = pkg_classifier["classifier_func"]
     normalize_parameters = pkg_classifier["norm_params"]
+
+    # Cell Phone Detection
     phone_detector_model = pkg_phone_detector["phone_detector_model"]
     phone_detector_func = pkg_phone_detector["phone_detector_func"]
     self_trained = pkg_phone_detector["self_trained"]
-    runtime_save_handframes_path = runtime_options["runtime_save_handframes_path"]
+    face_announce_interval = pkg_phone_detector["face_announce_interval"]
+
+    # Runtime options
+    runtime_save_handframes_path = runtime_parameters["path_runtime_handframes"]
+    time_last_announce_face = runtime_parameters["time_last_announce_face"]
 
     # Performance
     t_mlp = 0
@@ -174,6 +180,10 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
         face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
         face_detect_str = "="
 
+        # TODO: Face Announcing API
+        if time.time() - time_last_announce_face > face_announce_interval:
+            time_last_announce_face = time.time()
+
         render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
     # Remove utility frame.
@@ -185,7 +195,7 @@ def processOnePerson(frame: np.ndarray,  # shape: (H, W, 3)
 
     # Overall frame of pedestrian. Color display result.
     render_detection_rectangle(frame, display_str, xyxy, color=color)
-    return [t_mlp, t_yolo]
+    return {"performance": (t_mlp, t_yolo), "time_last_announce_face": time_last_announce_face}
 
 
 def classify3D(classifier_model: MLP3d,

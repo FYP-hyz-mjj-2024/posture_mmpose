@@ -2,6 +2,7 @@
 import os
 from tqdm import tqdm
 import time
+from datetime import datetime, timedelta
 from typing import Union
 
 # Utilities
@@ -16,7 +17,7 @@ from step01_annotate_image_mmpose.annotate_image import processOneImage, renderT
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
-from utils.opencv_utils import yieldVideoFeed, init_websocket, getUserConsoleConfig
+from utils.opencv_utils import yieldVideoFeed, init_websocket, getUserConsoleConfig, render_ui_text
 from utils.plot_report import plot_report
 from processing import processOnePerson, classify, classify3D, detectPhone, global_device_name, global_device
 
@@ -48,15 +49,23 @@ def videoDemo(src: Union[str, int],
     detection_target_list = pkg_mmpose["detection_target_list"]
     estim_results_visualizer = pkg_mmpose["estim_results_visualizer"]
 
-    cap = cv2.VideoCapture(src)
+    # Determine video size and UI margins according to output source.
+    _set_video_w, _set_video_h = (384, 288) if websocket_obj else (640, 480)
+    _margin_w, _margin_h = (10, 20) if websocket_obj else (20, 40)
 
-    # Determine video size according to out source.
-    _set_video_w, _set_video_h = [384, 288] if websocket_obj else [640, 480]
+    # Initialize video source.
+    cap = cv2.VideoCapture(src)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, _set_video_w)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, _set_video_h)
 
-    # Record frame rate
-    last_time = time.time()
+    # Runtime parameters.
+    # These parameters will be constantly changing.
+    t_program_start = time.time()
+    runtime_params = {
+        "time_last_record_framerate": t_program_start,
+        "time_last_announce_face": t_program_start,
+        "path_runtime_handframes": None,
+    }
 
     # Record Performance
     performance = {
@@ -84,13 +93,13 @@ def videoDemo(src: Union[str, int],
 
         # Key op detection
         key = cv2.waitKey(5) & 0xFF
-        runtime_save_handframes_path_cur = None
+        runtime_params["path_runtime_handframes"] = None
 
         if key == 27:
             break
         elif websocket_obj is None and (key == 82 or key == 114):
             # Press R or r to save hand frames at run time.
-            runtime_save_handframes_path_cur = runtime_save_handframes_path
+            runtime_params["path_runtime_handframes"] = runtime_save_handframes_path
 
         t_start_frame = time.time()
         keypoints_list, xyxy_list, data_samples = processOneImage(frame,
@@ -116,40 +125,60 @@ def videoDemo(src: Union[str, int],
                 wait_time=0.01,
                 kpt_thr=mcfg.kpt_thr)
         else:
-            mlp_yolo_times = [
+            # perf_state: performance and state.
+            # {"performance": (t_mlp, t_yolo), "time_last_announce_face": time_last_announce_face}
+            # A list of above struct
+            response_list = [
                 processOnePerson(frame=frame,
                                  keypoints=keypoints,
                                  xyxy=xyxy,
                                  detection_target_list=detection_target_list,
                                  pkg_classifier=pkg_classifier,
                                  pkg_phone_detector=pkg_phone_detector,
-                                 runtime_options={
-                                     "runtime_save_handframes_path": runtime_save_handframes_path_cur
-                                 },
+                                 runtime_parameters=runtime_params,
                                  device_name=device_name,
                                  mode=mode)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
             ]
 
+            # Performance Record
             if websocket_obj is None:
-                mlp_yolo_times = np.array(mlp_yolo_times)
+                mlp_yolo_times = np.array([res["performance"] for res in response_list])
                 performance["mlp"].append(np.sum(mlp_yolo_times[:, 0]))
                 performance["yolo"].append(np.sum(mlp_yolo_times[:, 1]))
 
-            # Calculate and display frame rate
-            this_time = time.time()
-            frame_rate = 1 / (this_time - last_time + np.finfo(np.float32).eps)     # Handle divide-0 error
-            last_time = this_time
+            # Update framewrate
+            now: float = time.time()
+            frame_rate = 1 / (now - runtime_params["time_last_record_framerate"] + np.finfo(np.float32).eps)
+            runtime_params["time_time_last_record_framerate"] = now
 
-            cv2.putText(
-                frame,
-                str(f"FPS: {frame_rate:.3f}"),
-                org=(20, 40),
-                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=0.5,
-                color=(255, 255, 255),
-                thickness=2
-            )
+            # Update frame announcing time
+            runtime_params["time_last_announce_face"] = response_list[-1]["time_last_announce_face"]
+
+            # Render frame rate
+            render_ui_text(frame=frame,
+                           text=str(f"FPS: {frame_rate:.3f}"),
+                           frame_wh=(_set_video_w, _set_video_h),
+                           margin_wh=(_margin_w, _margin_h),
+                           align="left",
+                           order=0)
+
+            # Render times and framerate.
+            render_ui_text(frame=frame,     # Current time
+                           text=f"Time: {time.strftime('%Y%m%d %H:%M:%S')}",
+                           frame_wh=(_set_video_w, _set_video_h),
+                           margin_wh=(_margin_w, _margin_h),
+                           align="left",
+                           order=1)
+
+            # Render last announce face time (LAFT).
+            render_ui_text(frame=frame,
+                           text=f"LAFT: "
+                                f"{datetime.fromtimestamp(runtime_params['time_last_announce_face']).strftime('%Y%m%d %H:%M:%S')}",
+                           frame_wh=(_set_video_w, _set_video_h),
+                           margin_wh=(_margin_w, _margin_h),
+                           align="left",
+                           order=2)
 
             yieldVideoFeed(frame, title="Pedestrian Cell Phone Usage Detection", ws=websocket_obj)
 
@@ -225,7 +254,8 @@ package_classifier = {
 package_phone_detector = {
     "phone_detector_model": phone_detector,
     "phone_detector_func": detectPhone,
-    "self_trained": use_trained_yolo
+    "self_trained": use_trained_yolo,
+    "face_announce_interval": 5
 }
 
 runtime_save_hf_path = "data/yolo_dataset_runtime/"
