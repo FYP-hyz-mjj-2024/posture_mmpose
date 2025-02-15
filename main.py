@@ -79,9 +79,10 @@ def videoDemo(src: Union[str, int],
         print(f"Clearing all previous runtime hand frames in dir {runtime_save_handframes_path}...")
         files = [f for f in os.listdir(runtime_save_handframes_path)
                  if os.path.isfile(os.path.join(runtime_save_handframes_path, f))]
-        for file in tqdm(files):
-            file_path = os.path.join(runtime_save_handframes_path, file)
-            os.remove(file_path)
+        if len(files) > 0:
+            for file in tqdm(files):
+                file_path = os.path.join(runtime_save_handframes_path, file)
+                os.remove(file_path)
         print(f"Done!\n")
     else:
         print(f"Path to save runtime hand frames is not defined.")
