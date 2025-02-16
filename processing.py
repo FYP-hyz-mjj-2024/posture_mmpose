@@ -178,7 +178,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
         # Face Subframe
         face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
-        face_detect_str = "="
+        face_detect_str = ""
 
         # TODO: Face Announcing API
         if time.time() - time_last_announce_face > face_announce_interval:

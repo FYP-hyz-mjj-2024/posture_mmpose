@@ -2,7 +2,7 @@
 import os
 from tqdm import tqdm
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Union
 
 # Utilities
@@ -148,15 +148,17 @@ def videoDemo(src: Union[str, int],
                 performance["mlp"].append(np.sum(mlp_yolo_times[:, 0]))
                 performance["yolo"].append(np.sum(mlp_yolo_times[:, 1]))
 
-            # Update framewrate
+            # Update framerate
             now: float = time.time()
             frame_rate = 1 / (now - runtime_params["time_last_record_framerate"] + np.finfo(np.float32).eps)
             runtime_params["time_time_last_record_framerate"] = now
 
             # Update frame announcing time
+            # "time_last_announce_face" of the last inference person of this frame.
+            # May not be changed if no face in this frame is announced.
             runtime_params["time_last_announce_face"] = response_list[-1]["time_last_announce_face"]
 
-            # Render frame rate
+            # Frame rate
             render_ui_text(frame=frame,
                            text=str(f"FPS: {frame_rate:.3f}"),
                            frame_wh=(_set_video_w, _set_video_h),
@@ -164,15 +166,15 @@ def videoDemo(src: Union[str, int],
                            align="left",
                            order=0)
 
-            # Render times and framerate.
-            render_ui_text(frame=frame,     # Current time
+            # Current Time
+            render_ui_text(frame=frame,
                            text=f"Time: {time.strftime('%Y%m%d %H:%M:%S')}",
                            frame_wh=(_set_video_w, _set_video_h),
                            margin_wh=(_margin_w, _margin_h),
                            align="left",
                            order=1)
 
-            # Render last announce face time (LAFT).
+            # Last announce face time (LAFT).
             render_ui_text(frame=frame,
                            text=f"LAFT: "
                                 f"{datetime.fromtimestamp(runtime_params['time_last_announce_face']).strftime('%Y%m%d %H:%M:%S')}",
