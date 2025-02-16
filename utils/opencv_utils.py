@@ -11,53 +11,63 @@ import base64
 import json
 import websocket
 
-ui_text_config = {
+color_bgr = {
+    "green": (0, 255, 0),
+    "orange": (51, 140, 232),
+    "red": (0, 0, 255),
+    "gray": (155, 155, 155),
+    "white": (255, 255, 255)
+}
+
+color_thickness = {
+    "green": 2,
+    "orange": 2,
+    "red": 2,
+    "gray": 2,
+    "white": 2
+}
+
+ui_text_styles = {
     "fontFace": cv2.FONT_HERSHEY_SIMPLEX,
     "fontScale": 0.5,
-    "color": (255, 255, 255),
+    "color": color_bgr["white"],
+    "thickness": 2
+}
+
+detection_rect_styles = {
     "thickness": 2
 }
 
 
-def render_detection_rectangle(frame, text, xyxy, color: str):
+def render_detection_rectangle(frame, text: str, xyxy: List[float], color: str):
     """
     Render a common YOLO detection rectangle onto a frame with opencv.
 
     :param frame: The video/stream frame to render onto.
-    :param text: The description of the detection target.
+    :param text: The description of the detection target, e.g. detection label.
     :param xyxy: The coordinates of the rectangle (x1, y1, x2, y2).
-    :param color: The integer signal that helps to choose the color of rectangle:
-                      1: green (not_using)
-                      0: red (using)
-                     -1: gray (backside)
+    :param color: The color string.
     :returns: None.
     """
-    color_dict = {"green": (0, 255, 0),  # green: not_using
-                  "orange": (51, 140, 232),  # orange: suspicious
-                  "red": (0, 0, 255),  # red: using
-                  "gray": (155, 155, 155),  # gray: do not classify
-                  }  # BGR form
-    rec_thickness_dict = {0: 2,  # green: not_using
-                          1: 2,  # red: using
-                          2: 2,  # orange: suspicious
-                          -1: 2,  # gray: don't classify
-                          }
 
+    # Label Text
     cv2.putText(
         frame,
         text,
-        org=(int(xyxy[0]), int(xyxy[1])),
-        fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-        fontScale=1,
-        color=color_dict[color],
-        thickness=rec_thickness_dict[0]     # TODO:
+        org=(int(xyxy[0]), int(xyxy[1])-5),
+        fontFace=ui_text_styles["fontFace"],
+        fontScale=0.6,
+        color=color_bgr[color],
+        thickness=ui_text_styles["thickness"]     # TODO:
     )
+
+    # Rectangle
     cv2.rectangle(
         frame,
         pt1=(int(xyxy[0]), int(xyxy[1])),
         pt2=(int(xyxy[2]), int(xyxy[3])),
-        color=color_dict[color],
-        thickness=rec_thickness_dict[0]
+        color=color_bgr[color],
+        thickness=detection_rect_styles["thickness"]
     )
 
 
@@ -70,17 +80,17 @@ def render_ui_text(frame, text: str,
     :param text: Text content.
     :param frame_wh: Frame size.
     :param margin_wh: Frame margin size.
-    :param align: Align method.
-    :param order: Align order.
+    :param align: Align method: left or right.
+    :param order: Align order that starts with 0.
     :return:
     """
     frame_w, frame_h = frame_wh
     margin_w, margin_h = margin_wh
 
     (text_width, text_height), _ = cv2.getTextSize(text=text,
-                                                   fontFace=ui_text_config["fontFace"],
-                                                   fontScale=ui_text_config["fontScale"],
-                                                   thickness=ui_text_config["thickness"])
+                                                   fontFace=ui_text_styles["fontFace"],
+                                                   fontScale=ui_text_styles["fontScale"],
+                                                   thickness=ui_text_styles["thickness"])
 
     if align == "left":
         org = (margin_w, margin_h + order * (text_height + 5))
@@ -94,14 +104,18 @@ def render_ui_text(frame, text: str,
         frame,
         text,
         org=org,
-        fontFace=ui_text_config["fontFace"],
-        fontScale=ui_text_config["fontScale"],
-        color=ui_text_config["color"],
-        thickness=ui_text_config["thickness"]
+        fontFace=ui_text_styles["fontFace"],
+        fontScale=ui_text_styles["fontScale"],
+        color=ui_text_styles["color"],
+        thickness=ui_text_styles["thickness"]
     )
 
 
 def getUserConsoleConfig():
+    """
+    Get user selections as configuration details for this runtime.
+    :return:
+    """
     # Video Source Selection
     video_source = input(f"Which camera would you like to use? > ")
 
