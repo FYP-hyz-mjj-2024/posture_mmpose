@@ -151,7 +151,7 @@ def videoDemo(src: Union[str, int],
             # Update framerate
             now: float = time.time()
             frame_rate = 1 / (now - runtime_params["time_last_record_framerate"] + np.finfo(np.float32).eps)
-            runtime_params["time_time_last_record_framerate"] = now
+            runtime_params["time_last_record_framerate"] = now
 
             # Update frame announcing time
             # "time_last_announce_face" of the last inference person of this frame.
