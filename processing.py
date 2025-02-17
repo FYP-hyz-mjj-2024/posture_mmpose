@@ -78,8 +78,8 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     # Prevent the disturbance from rect rendering to object detection.
     ori_frame = copy.deepcopy(frame)
 
-    # The array of announced faces.
-    announced_face_frames = []
+    # Announce Faces.
+    announced_face_frame = None
 
     # Person is out of frame.
     if state == kcfg.TO_BE_CLASSIFIED:
@@ -186,7 +186,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         # TODO: Face Announcing API
         if time.time() - time_last_announce_face > face_announce_interval:
             time_last_announce_face = time.time()
-            announced_face_frames.append(face_frame)
+            announced_face_frame = face_frame
 
         render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
@@ -202,7 +202,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     return {
         "performance": (t_mlp, t_yolo),
         "time_last_announce_face": time_last_announce_face,
-        "announced_face_frames": announced_face_frames
+        "announced_face_frame": announced_face_frame
     }
 
 

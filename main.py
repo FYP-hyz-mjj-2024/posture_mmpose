@@ -130,7 +130,7 @@ def videoDemo(src: Union[str, int],
             # {
             #   "performance": (t_mlp, t_yolo),
             #   "time_last_announce_face": time_last_announce_face,
-            #   "announced_face_frames": announced_face_frames
+            #   "announced_face_frame": announced_face_frames
             #   }
             # A list of above struct
             response_list = [
@@ -189,8 +189,12 @@ def videoDemo(src: Union[str, int],
 
             yieldVideoFeed(frame, title="Pedestrian Cell Phone Usage Detection", ws=websocket_obj)
 
-            if websocket_obj is not None and len(response_list[-1]["announced_face_frames"]) > 0:
-                announceFaceFrame(response_list[-1]["announced_face_frames"], ws=websocket_obj)
+            # Announce face frames
+            announced_face_frames = [
+                response["announced_face_frame"] for response in response_list
+                if response["announced_face_frame"] is not None]
+            if websocket_obj is not None and len(announced_face_frames) > 0:
+                announceFaceFrame(announced_face_frames, ws=websocket_obj)
 
         if websocket_obj is not None:
             time.sleep(0.005)
@@ -265,7 +269,7 @@ package_phone_detector = {
     "phone_detector_model": phone_detector,
     "phone_detector_func": detectPhone,
     "self_trained": use_trained_yolo,
-    "face_announce_interval": 5
+    "face_announce_interval": 2
 }
 
 runtime_save_hf_path = "data/yolo_dataset_runtime/"
