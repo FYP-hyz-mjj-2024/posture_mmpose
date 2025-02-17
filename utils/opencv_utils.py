@@ -167,7 +167,7 @@ def announceFaceFrame(face_frames, ws) -> None:
         return
 
     print("Announcing Face.")
-    ws.send(json.dumps({'announced_frames': encoded_frames, 'timestamp': str("{:.3f}".format(float(time.time())))}))
+    ws.send(json.dumps({'announced_face_frames': encoded_frames, 'timestamp': str("{:.3f}".format(float(time.time())))}))
 
 
 def init_websocket(server_url) -> Union[websocket.WebSocket, None]:

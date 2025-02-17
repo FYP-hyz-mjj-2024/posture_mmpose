@@ -180,7 +180,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         face_center = keypoints[0][:2]  # Face center
 
         # Face Subframe
-        face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
+        face_frame, face_xyxy = cropFrame(ori_frame, face_center, face_hw)
         face_detect_str = "Face"
 
         # TODO: Face Announcing API
