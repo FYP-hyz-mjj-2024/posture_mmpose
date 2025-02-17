@@ -151,6 +151,25 @@ def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:
         ws.send(json.dumps({'frameBase64': jpeg_base64, 'timestamp': str("{:.3f}".format(float(time.time())))}))
 
 
+def announceFaceFrame(face_frames, ws) -> None:
+    encoded_frames = []
+    for frame in face_frames:
+        try:
+            _, jpeg_encoded = cv2.imencode('.jpg', frame)
+            jpeg_bytes = jpeg_encoded.tobytes()
+            jpeg_base64 = base64.b64encode(jpeg_bytes).decode('utf-8')
+            encoded_frames.append(jpeg_base64)
+        except Exception as e:
+            print(f"Failed to announce face. Error: {e}")
+
+    if len(encoded_frames) <= 0:
+        print("Failed to announce face as the list of encoded frames is empty.")
+        return
+
+    print("Announcing Face.")
+    ws.send(json.dumps({'announced_frames': encoded_frames, 'timestamp': str("{:.3f}".format(float(time.time())))}))
+
+
 def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
     """
     Initialize a websocket object using the url of the server.

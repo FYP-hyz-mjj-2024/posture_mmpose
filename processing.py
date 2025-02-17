@@ -78,6 +78,9 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     # Prevent the disturbance from rect rendering to object detection.
     ori_frame = copy.deepcopy(frame)
 
+    # The array of announced faces.
+    announced_face_frames = []
+
     # Person is out of frame.
     if state == kcfg.TO_BE_CLASSIFIED:
         if np.sum(keypoints[:13, 2] < 0.3) >= 5:
@@ -172,17 +175,18 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
     if state == kcfg.USING:  # TODO: face_detection model
         # Crop Face
-        face_len = int((keypoints[4][0] - keypoints[3][0]) * 1.1)   # Edge length of the face sub-frame
+        face_len = abs(int((keypoints[4][0] - keypoints[3][0]) * 1.1))   # Edge length of the face sub-frame
         face_hw = (face_len, face_len)  # Dimensions of the face sub-frame.
         face_center = keypoints[0][:2]  # Face center
 
         # Face Subframe
         face_frame, face_xyxy = cropFrame(frame, face_center, face_hw)
-        face_detect_str = ""
+        face_detect_str = "Face"
 
         # TODO: Face Announcing API
         if time.time() - time_last_announce_face > face_announce_interval:
             time_last_announce_face = time.time()
+            announced_face_frames.append(face_frame)
 
         render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
@@ -195,7 +199,11 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
     # Overall frame of pedestrian. Color display result.
     render_detection_rectangle(frame, display_str, xyxy, color=color)
-    return {"performance": (t_mlp, t_yolo), "time_last_announce_face": time_last_announce_face}
+    return {
+        "performance": (t_mlp, t_yolo),
+        "time_last_announce_face": time_last_announce_face,
+        "announced_face_frames": announced_face_frames
+    }
 
 
 def classify3D(classifier_model: MLP3d,
