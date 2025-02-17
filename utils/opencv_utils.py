@@ -163,7 +163,7 @@ def announceFaceFrame(face_frames, ws) -> None:
             print(f"Failed to announce face. Error: {e}")
 
     if len(encoded_frames) <= 0:
-        print("Failed to announce face as the list of encoded frames is empty.")
+        print("Failed to announce face. Error: The list of encoded frames is empty.")
         return
 
     print(f"Announcing {len(encoded_frames)} face(s).")
