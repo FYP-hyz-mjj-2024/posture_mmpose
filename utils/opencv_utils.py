@@ -166,7 +166,7 @@ def announceFaceFrame(face_frames, ws) -> None:
         print("Failed to announce face as the list of encoded frames is empty.")
         return
 
-    print("Announcing Face.")
+    print(f"Announcing {len(encoded_frames)} face(s).")
     ws.send(json.dumps({'announced_face_frames': encoded_frames, 'timestamp': str("{:.3f}".format(float(time.time())))}))
 
 
