@@ -17,7 +17,7 @@ from step01_annotate_image_mmpose.annotate_image import processOneImage, renderT
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
-from utils.opencv_utils import yieldVideoFeed, init_websocket, getUserConsoleConfig, render_ui_text
+from utils.opencv_utils import yieldVideoFeed, init_websocket, getUserConsoleConfig, render_ui_text, announceFaceFrame
 from utils.plot_report import plot_report
 from processing import processOnePerson, classify, classify3D, detectPhone, global_device_name, global_device
 
@@ -127,7 +127,11 @@ def videoDemo(src: Union[str, int],
                 kpt_thr=mcfg.kpt_thr)
         else:
             # perf_state: performance and state.
-            # {"performance": (t_mlp, t_yolo), "time_last_announce_face": time_last_announce_face}
+            # {
+            #   "performance": (t_mlp, t_yolo),
+            #   "time_last_announce_face": time_last_announce_face,
+            #   "announced_face_frames": announced_face_frames
+            #   }
             # A list of above struct
             response_list = [
                 processOnePerson(frame=frame,
@@ -184,6 +188,9 @@ def videoDemo(src: Union[str, int],
                            order=2)
 
             yieldVideoFeed(frame, title="Pedestrian Cell Phone Usage Detection", ws=websocket_obj)
+
+            if websocket_obj is not None and len(response_list[-1]["announced_face_frames"]) > 0:
+                announceFaceFrame(response_list[-1]["announced_face_frames"], ws=websocket_obj)
 
         if websocket_obj is not None:
             time.sleep(0.005)
