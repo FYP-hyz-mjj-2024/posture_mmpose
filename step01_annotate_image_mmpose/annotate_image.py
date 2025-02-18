@@ -2,20 +2,18 @@
 import copy
 import itertools
 import os
-import time
 from typing import List, Union, Tuple, Dict, Any
 
 # Packages
 import cv2
-import mmpose.structures
 import numpy as np
-from mmdet.models import RTMDet
-from mmpose.models import TopdownPoseEstimator
-from mmpose.visualization import PoseLocalVisualizer
 from numpy import ndarray
 from tqdm import tqdm
 
 # MMPose
+from mmdet.models import RTMDet
+from mmpose.models import TopdownPoseEstimator
+from mmpose.visualization import PoseLocalVisualizer
 import mmcv
 from mmpose.apis import (
     inference_topdown,
@@ -27,7 +25,6 @@ from mmpose.utils import adapt_mmdet_pipeline, register_all_modules
 
 try:
     from mmdet.apis import inference_detector, init_detector
-
     has_mmdet = True
 except (ImportError, ModuleNotFoundError):
     has_mmdet = False
@@ -40,10 +37,10 @@ from utils.parse_file_name import parseFileName
 register_all_modules()
 
 
-def getMMPoseEssentials(det_config: str=mcfg.det_config,
-                        det_chkpt: str=mcfg.det_checkpoint,
-                        pose_config: str=mcfg.pose_config,
-                        pose_chkpt: str=mcfg.pose_checkpoint) -> Tuple[RTMDet, TopdownPoseEstimator, PoseLocalVisualizer]:
+def getMMPoseEssentials(det_config: str = mcfg.det_config,
+                        det_chkpt: str = mcfg.det_checkpoint,
+                        pose_config: str = mcfg.pose_config,
+                        pose_chkpt: str = mcfg.pose_checkpoint) -> Tuple[RTMDet, TopdownPoseEstimator, PoseLocalVisualizer]:
     """
     Get essential detectors and visualizers of MMPose.getMMPose.
 
@@ -91,9 +88,11 @@ def processVideosInDir(video_dir: str,
                        skip_interval: int = 10,
                        mode: str = None) -> List[Dict[str, Union[str, np.ndarray]]]:
     """
-    Convert all the videos gathered from a given directory.
+    Convert all the .mp4 video files into lists of 2-channel 3-d features.
+
     "kas" = key-angle-score
-    :param video_dir: Directory to the video.
+
+    :param video_dir: Directory where the videos are stored.
     :param bbox_detector_model: MMPose boundary box detector model.
     :param pose_estimator_model: MMPose pose estimation model.
     :param detection_target_list: List of detection targets.
@@ -135,6 +134,19 @@ def processOneVideo(video_path: str,
                     detection_targets: Union[List[List[Union[Tuple[str, str], str]]], ndarray],
                     skip_interval: int = 10,
                     mode: str = None) -> ndarray:
+    """
+    Use RTMPose pose estimation to convert a video into a list of features.
+    A feature is defaulted to a 2-channel 3-d structure (4d). This means that
+    the output of this function would be 5-dimensional.
+
+    :param video_path: Path to a specific .mp4 video file.
+    :param bbox_detector_model: MMPose boundary box detector model.
+    :param pose_estimator_model: MMPose pose estimation model.
+    :param detection_targets: List of detection targets.
+    :param skip_interval: Skip interval of frame sampling.
+    :param mode: Convolution mode. Deprecated with default value of "mjj".
+    :return: Default to a list 2-channel 3-d structures. (n_frame, input_channels=2, depth=7, height=12, width=11)
+    """
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Cannot find {video_path}")
@@ -158,6 +170,8 @@ def processOneVideo(video_path: str,
             pbar.update(skip_interval)
 
             landmarks, _, data_samples = processOneImage(frame, bbox_detector_model, pose_estimator_model)
+
+            # Here, each person will be translated into 2-channel 3-d structure.
             one_person = translateOneLandmarks(detection_targets, landmarks[0], mode)
 
             key_angels_scores.append(one_person)
@@ -188,16 +202,16 @@ def processOneImage(img: Union[str, np.ndarray],
     data_samples --> pred_instances --> [keypoints, keypoint_scores, bboxes]
 
     :param img: The image.
-    :param bbox_detector_model: The model to retrieve boundary boxes.
-    :param pose_estimator_model: The model to estimate a person's pose, i.e., retrieve key points.
+    :param bbox_detector_model: MMPose boundary box detector model.
+    :param pose_estimator_model: MMPose pose estimation model, the model to estimate a person's pose,
+                                 i.e., retrieve key points.
     :param bbox_threshold: The threshold of IoU where the boundary boxes will be recorded into the list.
 
-    Returns:
+    :returns:
 
-    - keypoints_list: 3-layered list. First layer: Num of people. Second layer: Num of keypoints. Third Layer: Num of
-    values in a keypoint, i.e., x, y and score.
+    - keypoints_list: 3-layered list. (num_people, num_keypoints, num_values=3), values: [x, y, score]
 
-    - xyxy_list: 2-layered list. First layer: Num of people. Second layer: xmin, xmax, ymin, ymax of one bbox.
+    - xyxy_list: 2-layered list. (num_people, xyxy), xyxy: [xmin, xmax, ymin,ymax] of bbox.
 
     - data_samples: Raw data samples from mmpose for visualization.
     """
@@ -263,7 +277,8 @@ def translateOneLandmarks(targets: List,
                           landmarks: ndarray,
                           mode: str = None) -> List[Union[float, Any]]:
     """
-    This is the 2nd information layer. This function translates the raw landmarks data from the first information layer
+    This is the 2nd information layer.
+    This function translates the raw landmarks data from the first information layer
     into a composited set of data in the form of an array or a cube.
 
     From the keypoints list, extract the most confident person in the image. Then, convert the
@@ -288,6 +303,7 @@ def translateOneLandmarks(targets: List,
         return kas_one_person
 
     elif mode == 'mjj':
+        # Fold the angles into the targeted 2-channel 3-d struct.
         angles = copy.deepcopy(targets)
         scores = copy.deepcopy(targets)
         for i, j, k in itertools.product(range(len(angles)), range(len(angles[0])), range(len(angles[0][0]))):
@@ -298,18 +314,6 @@ def translateOneLandmarks(targets: List,
                 targets[i][j][k][1],
             )
         return [angles, scores]
-
-
-# def saveFeatureMatToNPY(mat: np.ndarray, _save_path: str) -> None:
-#     """
-#     Save the feature matrix into a npy file, under the given path.
-#     :param mat:
-#     :param _save_path:
-#     :return:
-#     """
-#     # Shape: (num_people, num_features)
-#     feature_matrix = np.array(mat)
-#     np.save(_save_path, feature_matrix)
 
 
 def renderTheResults(img: Union[str, np.ndarray],
@@ -346,12 +350,14 @@ def renderTheResults(img: Union[str, np.ndarray],
 
 
 if __name__ == "__main__":
-    # solution_mode = 'hyz'
     solution_mode = 'mjj'
     video_folder = "../data/blob/videos"
 
     # Initialize MMPose essentials
-    detector, pose_estimator, visualizer = getMMPoseEssentials()
+    detector, pose_estimator, visualizer = getMMPoseEssentials(det_config=mcfg.det_config_train,
+                                                               det_chkpt=mcfg.det_checkpoint_train,
+                                                               pose_config=mcfg.pose_config_train,
+                                                               pose_chkpt=mcfg.pose_checkpoint_train)
 
     # Save the feature matrices.
     named_feature_mats = processVideosInDir(video_dir=video_folder,
@@ -361,8 +367,8 @@ if __name__ == "__main__":
                                             skip_interval=10,
                                             mode=solution_mode)
 
+    save_rt = "../data/train/1dnpy/" if solution_mode == "hyz" else "../data/train/3dnpy/"
     for name_mat in named_feature_mats:
-        save_rt = "../data/train/1dnpy/" if solution_mode == "hyz" else "../data/train/3dnpy/"
         save_path = save_rt + name_mat['name'] + ".npy"
         matrix = name_mat['feature_matrix']
         np.save(save_path, matrix)

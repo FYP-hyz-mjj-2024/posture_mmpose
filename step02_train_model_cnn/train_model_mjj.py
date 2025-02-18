@@ -2,9 +2,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
-from sklearn.model_selection import train_test_split
 
 # Utilities
 import os
@@ -23,6 +22,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.ba
 
 
 def getNPY(npy_dir, test_ratio=0.5):
+    """
+    Retrieve dataset.
+    :param npy_dir: Directory that stores all the .npy files, where each file is a list of features.
+    :param test_ratio: Ratio of test data.
+    :return: [npy_U_train, npy_N_train], [npy_U_test, npy_N_test]
+    """
 
     if test_ratio < 0 or test_ratio > 1:
         raise ValueError("Test ratio should be between 0 and 1.")
@@ -66,6 +71,17 @@ def train_and_evaluate(model,
                        optimizer,
                        num_epochs=100,
                        early_stop_params=None):
+    """
+    Train and evaluate the posture recognition model.
+    :param model: Model instance.
+    :param train_loader: Train data loader.
+    :param valid_loader: Validation data loader.
+    :param criterion: Loss function.
+    :param optimizer: Gradient descent optimizer.
+    :param num_epochs: Maximum epoch number.
+    :param early_stop_params: Optional dictionary of early-stop params.
+    :return: Tuple of train_losses, valid_losses, overfit_factors, log_strs.
+    """
 
     # Record Losses
     train_losses = []
@@ -189,7 +205,7 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     Save information
     """
     # Logging
-    time_str = str(time.time()).replace(".", "")
+    time_str = time.strftime("%Y%m%d-%H%M%S")
     log_root = f"../logs/training_performance_log/{time_str}/"
     train_log_path = os.path.join(log_root, "train_log.txt")
     if os.path.exists(log_root):
