@@ -11,6 +11,9 @@ import base64
 import json
 import websocket
 
+# Local
+from .decorations import CONSOLE_COLORS as CC
+
 color_bgr = {
     "green": (0, 255, 0),
     "orange": (51, 140, 232),
@@ -180,8 +183,11 @@ def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
         ws.connect(server_url)
         return ws
     except ConnectionRefusedError as e:
-        print(f"Connection to WebSocked Failed. The server might be closed. Error: {e}\n"
-              f"If you are using local mode, you can ignore this error.")
+        print(f"{CC['yellow']}"
+              f"Warning: Failed to connect to WebSocket server as it might be closed.\n"
+              f"Error: {e}\n"
+              f"Fallback: Use local mode instead.\n"
+              f"{CC['reset']}")
         return None
 
 

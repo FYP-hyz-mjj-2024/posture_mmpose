@@ -18,13 +18,14 @@ import copy
 from tqdm import tqdm
 import time
 from datetime import datetime
-from typing import Union
+from typing import Union, Dict
 
 # Utilities
 import cv2
 import numpy as np
 import torch
 from ultralytics import YOLO
+from pynput import mouse
 
 # Locals
 from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials
@@ -35,7 +36,7 @@ from step02_train_model_cnn.train_model_mjj import MLP3d
 from utils.opencv_utils import yieldVideoFeed, init_websocket, getUserConsoleConfig, render_ui_text, announceFaceFrame
 from utils.plot_report import plot_report
 from processing import processOnePerson, classify, classify3D, detectPhone, global_device_name, global_device
-from utils.decorations import BANNER
+from utils.decorations import BANNER, CONSOLE_COLORS as CC
 
 
 def videoDemo(src: Union[str, int],
@@ -59,6 +60,27 @@ def videoDemo(src: Union[str, int],
     :return: None.
     """
 
+    def toggle_runtime_handframes_save(x, y, button, pressed):
+        """
+        (Callback Registration)
+        
+        The callback function for mouse-clicking that toggles the saving path
+        of the runtime hand frames. The targeted path value will be set to None
+        at the beginning of each frame. This function, if invoked, will assign
+        this none-valued variable the provided saving path, which will toggle
+        further process to save the hand frames at this frame.
+        :param x: x position of mouse.
+        :param y: y position of mouse.
+        :param button: Which button is pressed on the mouse.
+        :param pressed: Whether is pressed on the mouse.
+        :return: None.
+        """
+        if not pressed or button != mouse.Button.x2:
+            return
+        nonlocal runtime_params
+        runtime_params["path_runtime_handframes"] = runtime_save_handframes_path
+        print(f"{CC['green']}Saved runtime handframes at {time.strftime('%Y-%m-%d %H:%M:%S')}.{CC['reset']}")
+
     # Extract mmpose tools from package.
     bbox_detector_model = pkg_mmpose["bbox_detector_model"]
     pose_estimator_model = pkg_mmpose["pose_estimator_model"]
@@ -77,7 +99,7 @@ def videoDemo(src: Union[str, int],
     # Runtime parameters.
     # These parameters will be constantly changing.
     t_program_start = time.time()
-    runtime_params = {
+    runtime_params: Dict[str, Union[float, str, None]] = {
         "time_last_record_framerate": t_program_start,
         "time_last_announce_face": t_program_start,
         "path_runtime_handframes": None,
@@ -89,6 +111,11 @@ def videoDemo(src: Union[str, int],
         "mlp": [],
         "yolo": []
     }
+
+    # If local, listen to mouse click event.
+    if websocket_obj is None:
+        listener = mouse.Listener(on_click=toggle_runtime_handframes_save)
+        listener.start()
 
     # Clear all runtime yolo dataset images
     if runtime_save_handframes_path is not None:
@@ -110,13 +137,13 @@ def videoDemo(src: Union[str, int],
 
         # Key op detection
         key = cv2.waitKey(5) & 0xFF
-        runtime_params["path_runtime_handframes"] = None
-
         if key == 27:
             break
-        elif websocket_obj is None and (key == 82 or key == 114):
-            # Press R or r to save hand frames at run time.
-            runtime_params["path_runtime_handframes"] = runtime_save_handframes_path
+
+        # Reset the hand frame path.
+        # If mouse toggled below this, this var will be set to a str value.
+        if runtime_params["path_runtime_handframes"] is not None:
+            runtime_params["path_runtime_handframes"] = None
 
         t_start_frame = time.time()
         keypoints_list, xyxy_list, data_samples = processOneImage(frame,
