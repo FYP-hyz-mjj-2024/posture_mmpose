@@ -1,5 +1,6 @@
 # Basic
 import os
+import copy
 from tqdm import tqdm
 import time
 from datetime import datetime
@@ -133,8 +134,14 @@ def videoDemo(src: Union[str, int],
             #   "announced_face_frame": announced_face_frames
             #   }
             # A list of above struct
+
+            # Copy content of the un-rendered frame.
+            # Prevent intervention with object detection.
+            ori_frame = copy.deepcopy(frame)
+
             response_list = [
                 processOnePerson(frame=frame,
+                                 original_frame=ori_frame,
                                  keypoints=keypoints,
                                  xyxy=xyxy,
                                  detection_target_list=detection_target_list,
@@ -195,6 +202,8 @@ def videoDemo(src: Union[str, int],
                 if response["announced_face_frame"] is not None]
             if websocket_obj is not None and len(announced_face_frames) > 0:
                 announceFaceFrame(announced_face_frames, ws=websocket_obj)
+
+            del ori_frame
 
         if websocket_obj is not None:
             time.sleep(0.005)

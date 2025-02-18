@@ -25,6 +25,7 @@ global_device = torch.device(global_device_name)
 
 
 def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
+                     original_frame: np.ndarray,
                      keypoints: np.ndarray,     # shape: (17, 3)
                      xyxy: np.ndarray,          # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
@@ -32,10 +33,11 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                      pkg_phone_detector,
                      runtime_parameters,  # Save runtime handframes, crop face frame, etc.
                      device_name: str = "cpu",
-                     mode: str = None) -> Dict[str, Union[Tuple[float, float], float]]:
+                     mode: str = None) -> Dict[str, Union[Tuple[float, float], float, np.ndarray]]:
     """
     In each frame, process the assigned pedestrian. Use a state machine to perform two-layer detection.
     :param frame: Frame array. Shape (height, weight, channels=3).
+    :param original_frame: The original frame that's never rendered anything on.
     :param keypoints: Array key points, each being a list of x, y and confidence score. Shape: (17, 3).
     :param xyxy: The list of bounding box diagonal coordinates. Shape: (4,).
     :param detection_target_list: List of detection targets.
@@ -76,7 +78,6 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
     # Content copy of the frame
     # Prevent the disturbance from rect rendering to object detection.
-    ori_frame = copy.deepcopy(frame)
 
     # Announce Faces.
     announced_face_frame = None
@@ -135,10 +136,10 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
         if np.linalg.norm(lhand_center - rhand_center) > 0.21 * bbox_w:
             # Coordinate of left & right hand's cropped frame
-            lh_frame_xyxy = cropFrame(ori_frame, lhand_center, hand_hw)
-            rh_frame_xyxy = cropFrame(ori_frame, rhand_center, hand_hw)
+            lh_frame_xyxy = cropFrame(original_frame, lhand_center, hand_hw)
+            rh_frame_xyxy = cropFrame(original_frame, rhand_center, hand_hw)
         else:
-            lh_frame_xyxy = cropFrame(ori_frame, (lhand_center + rhand_center) // 2, hand_hw)
+            lh_frame_xyxy = cropFrame(original_frame, (lhand_center + rhand_center) // 2, hand_hw)
             rh_frame_xyxy = None
 
         # TODO: Here, if both is None, the list will be empty. Need more error handling!
@@ -180,7 +181,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         face_center = keypoints[0][:2]  # Face center
 
         # Face Subframe
-        face_frame, face_xyxy = cropFrame(ori_frame, face_center, face_hw)
+        face_frame, face_xyxy = cropFrame(original_frame, face_center, face_hw)
         face_detect_str = "Face"
 
         # TODO: Face Announcing API
@@ -189,9 +190,6 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             announced_face_frame = face_frame
 
         render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
-
-    # Remove utility frame.
-    del ori_frame
 
     # Get display color and string
     color = kcfg.state_display_type[state]["color"]
