@@ -119,10 +119,17 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     if state == kcfg.NOT_USING:
         pass
     elif state == kcfg.SUSPICIOUS and phone_detector_model is not None:
-        bbox_w, bbox_h = xyxy[2]-xyxy[0], xyxy[3]-xyxy[1]
+        # Pedestrian's bounding box size.
+        bbox_w, bbox_h = abs(xyxy[2]-xyxy[0]), abs(xyxy[3]-xyxy[1])
 
         # Crop two hands.
-        hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))      # Only relate to width of bbox
+        if bbox_w / (frame.shape[1] + np.finfo(np.float32).eps) < 0.6:
+            # Body is far, make relate to bbox.
+            hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))
+        else:
+            # Body takes up too much space, restrict hand frame size.
+            hand_hw = (int(frame.shape[1] * 0.45), int(frame.shape[1] * 0.45))
+
         """Height and width (sequence matter) of the bounding box."""
 
         # Landmark index of left & right hand: 9, 10
