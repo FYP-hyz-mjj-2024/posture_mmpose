@@ -153,20 +153,8 @@ def videoDemo(src: Union[str, int],
         performance["mmpose"].append(time.time() - t_start_frame)
 
         if estim_results_visualizer is not None:
-            renderTheResults(frame, data_samples, estim_results_visualizer, show_interval=.001)
             # MMPose Logic
-            estim_results_visualizer.add_datasample(
-                'result',
-                frame,
-                data_sample=data_samples,
-                draw_gt=False,
-                draw_heatmap=mcfg.draw_heatmap,
-                draw_bbox=mcfg.draw_bbox,
-                show_kpt_idx=mcfg.show_kpt_idx,
-                skeleton_style=mcfg.skeleton_style,
-                show=mcfg.show,
-                wait_time=0.01,
-                kpt_thr=mcfg.kpt_thr)
+            renderTheResults(frame, data_samples, estim_results_visualizer, show_interval=.001)
         else:
             # perf_state: performance and state.
             # {
