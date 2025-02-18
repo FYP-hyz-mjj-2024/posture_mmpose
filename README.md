@@ -98,31 +98,38 @@ This is highly-likely a windows-only problem, considering macOS has its own gcc.
 similar errors, please don't hesitate to propose an issue.
 
 #### 2.3 Checkpoint & Configuration Files
-&emsp; Checkpoint files are essential to this project, yet they are too big to upload to github. 
+Checkpoint files are essential to this project, yet they are too big to upload to github. 
 There are two kinds of files: Checkpoint files and config files for both boundary detection and pose estimation.
 
 Please download all of them by clicking these links:
 
-> You no longer need to manually download config `.py` files, since they have been re-included into the GitHub repo.
+**`.py` Files (No need to manually download)**
+> You no longer need to manually download config `.py` files, since they have been re-included into the GitHub repo,
+> in [model_config/configs](model_config/configs). 
+> However, you can still choose to download them from URLs listed below.
 
 - config files (`.py`):
   - det config (boundary detection): https://github.com/open-mmlab/mmpose/blob/dev-1.x/projects/rtmpose/rtmdet/person/rtmdet_nano_320-8xb32_coco-person.py
   - pose config (pose estimation): https://github.com/open-mmlab/mmpose/blob/dev-1.x/projects/rtmpose/rtmpose/body_2d_keypoint/rtmpose-t_8xb256-420e_coco-256x192.py
-After downloading from the browser, please move them into `model_config/configs/`. You may need to create this
+
+After downloading from the browser, please move them into [model_config/configs/](model_config/configs/). You may need to create this
 folder first.
 
-> The following downloading method is too slow in efficiency. We have put all the available configurations in our google drive.
-> Google Drive Link: https://drive.google.com/drive/folders/1Jsjhnrq4tJselSn-zU-yulNmpRycgSu2?usp=sharing.
-> Please put them in `model_config/checkpoints/`, where the contents in this folder are ignored.
+**`.pth` Files**
+
+> The following downloading method is too slow in efficiency. We have put all the available configurations in our 
+> Google Drive. Link: https://drive.google.com/drive/folders/1Jsjhnrq4tJselSn-zU-yulNmpRycgSu2?usp=sharing.
+> Please download ALL of them and put them in `model_config/checkpoints/`, where the contents in this folder are ignored.
 
 - checkpoint files (`.pth`):
   - det checkpoint: https://download.openmmlab.com/mmpose/v1/projects/rtmpose/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth
   - pose checkpoint: https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192-cfc8f33d_20230126.pth
-After downloading from the browser, please move them into `model_config/checkpoints/`. You may need to create this
+
+After downloading from the browser, please move them into [model_config/checkpoints/](model_config/checkpoints/). You may need to create this
 folder first.
 
 ### 3. Regular Packages
-Run the following command to install regular packages.
+Run the following command to install regular required packages.
 
 For windows:
 ```shell
