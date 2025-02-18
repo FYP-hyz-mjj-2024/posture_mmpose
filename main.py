@@ -28,8 +28,7 @@ from ultralytics import YOLO
 from pynput import mouse
 
 # Locals
-from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials
-from step01_annotate_image_mmpose.annotate_image import processOneImage, renderTheResults
+from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, processOneImage, renderTheResults
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
