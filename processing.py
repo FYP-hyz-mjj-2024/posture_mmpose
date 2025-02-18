@@ -1,8 +1,7 @@
 # Basic
 import os
-import copy
 import time
-from typing import List, Union, Tuple, Dict, Optional
+from typing import List, Union, Tuple, Dict
 
 # Simple package
 import cv2

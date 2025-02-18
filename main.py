@@ -1,3 +1,17 @@
+# Author Copyright
+# Copyright (c) 2024-2025 Huang Yanzhen, Mai Jiajun, Bob Zhang. All rights reserved.
+
+# Third-party Library Usage
+# This project uses the ultralytics library for YOLO11 object detection.
+# ultralytics is licensed under the AGPL-3.0 License. Source: https://github.com/ultralytics/ultralytics.
+# This project uses the ultralytics library as-is, without any modifications to its source code.
+# The license text can be found in the following locations:
+# - Local Copy: LICENSES/AGPL_ultralytics/LICENSE.txt.
+# - Source Repository: https://github.com/ultralytics/ultralytics/blob/main/LICENSE.
+#
+# You should have received a copy of the AGPL-3.0 License along with this project. If not, see:
+# https://www.gnu.org/licenses/agpl-3.0.html
+
 # Basic
 import os
 import copy

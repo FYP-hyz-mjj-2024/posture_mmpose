@@ -4,6 +4,13 @@ Copyright 2024-2025 Huang Yanzhen, Mai Jiajun, Bob Zhang. All rights reserved.
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
 
+    This project uses the following third-party libraries that are licensed
+    under different terms:
+
+    - ultralytics (YOLO11 object detection library) - AGPL-3.0 License
+      Source: https://github.com/ultralytics/ultralytics
+      License: https://opensource.org/licenses/AGPL-3.0
+
    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
    1. Definitions.
