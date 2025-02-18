@@ -156,17 +156,21 @@ def videoDemo(src: Union[str, int],
             # MMPose Logic
             renderTheResults(frame, data_samples, estim_results_visualizer, show_interval=.001)
         else:
-            # perf_state: performance and state.
-            # {
-            #   "performance": (t_mlp, t_yolo),
-            #   "time_last_announce_face": time_last_announce_face,
-            #   "announced_face_frame": announced_face_frames
-            #   }
-            # A list of above struct
-
             # Copy content of the un-rendered frame.
             # Prevent intervention with object detection.
             ori_frame = copy.deepcopy(frame)
+
+            '''
+            response_list: A list of responses from a series of processOnePerson functions.
+            The length of the list is the number of person inferred.
+            
+            Structure of a single response:
+            {
+                "performance": (t_mlp, t_yolo),
+                "time_last_announce_face": time_last_announce_face      # float, response from the same runtime param
+                "announced_face_frame": announced_face_frame            # announced face frame of this person or None
+            }
+            '''
 
             response_list = [
                 processOnePerson(frame=frame,

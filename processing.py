@@ -69,7 +69,10 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     t_yolo = 0
 
     # Global variables:
+    # Runtime: Change along with state machine.
     classifier_result_str = ""      # Classification result (in numeric percentage)
+    # Constant
+    face_center = keypoints[0][:2]
     phone_frame_size = yolo_input_size if self_trained else 640     # Yolo input frame size
     phone_index = 0 if self_trained else 67     # Phone index of model
 
@@ -118,7 +121,10 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     # Object detection.
     if state == kcfg.NOT_USING:
         pass
-    elif state == kcfg.SUSPICIOUS and phone_detector_model is not None:
+    elif state == kcfg.SUSPICIOUS:
+        '''
+        Phase 1: Retrieve hand centers and their distances to the face center.
+        '''
         # Pedestrian's bounding box size.
         bbox_w, bbox_h = abs(xyxy[2]-xyxy[0]), abs(xyxy[3]-xyxy[1])
 
@@ -126,34 +132,56 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         if bbox_w / (frame.shape[1] + np.finfo(np.float32).eps) < 0.6:
             # Body is far, make relate to bbox.
             hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))
+            """Height and width (sequence matter) of the bounding box."""
         else:
             # Body takes up too much space, restrict hand frame size.
             hand_hw = (int(frame.shape[1] * 0.45), int(frame.shape[1] * 0.45))
-
-        """Height and width (sequence matter) of the bounding box."""
+            """Height and width (sequence matter) of the bounding box."""
 
         # Landmark index of left & right hand: 9, 10
-        lhand_center, rhand_center = keypoints[9][:2], keypoints[10][:2]
+        lwrist_center, rwrist_center = keypoints[9][:2], keypoints[10][:2]
 
         # Landmark of left & right elbow: 7 & 8
         # Vectors for left & right arm.
         l_arm_vect, r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
-        lhand_center += l_arm_vect * 0.8
-        rhand_center += r_arm_vect * 0.8
+        lhand_center = lwrist_center + l_arm_vect * 0.8
+        rhand_center = rwrist_center + r_arm_vect * 0.8
 
-        # TODO: Calculate which hand is closer to the face. Use that hand as primary hand.
+        # Distances from two hands to the face center.
+        lhand_face_dist = np.inf if lhand_center is None else np.linalg.norm(lwrist_center - face_center)
+        rhand_face_dist = np.inf if rhand_center is None else np.linalg.norm(rhand_center - face_center)
 
-        # If two hands are close to each other, merge them together. Mount on the left hand.
+        del lwrist_center, rwrist_center, l_arm_vect, r_arm_vect
+
+        '''
+        Phase 2: Decide the primary hand with respect to distances to face.
+        '''
+        # Are two hands close enough?
         if np.linalg.norm(lhand_center - rhand_center) > 0.21 * bbox_w:
             # Coordinate of left & right hand's cropped frame
-            lh_frame_xyxy = cropFrame(original_frame, lhand_center, hand_hw)
-            rh_frame_xyxy = cropFrame(original_frame, rhand_center, hand_hw)
-        else:
-            lh_frame_xyxy = cropFrame(original_frame, (lhand_center + rhand_center) // 2, hand_hw)
-            rh_frame_xyxy = None
+            lhand_frame_xyxy = cropFrame(original_frame, lhand_center, hand_hw)
+            rhand_frame_xyxy = cropFrame(original_frame, rhand_center, hand_hw)
 
+            # If the wrist of one hand is closer to face, that hand is the primary.
+            # The other is secondary.
+            prmhand_frame_xyxy, sndhand_frame_xyxy = (
+                (lhand_frame_xyxy, rhand_frame_xyxy)
+                if lhand_face_dist < rhand_face_dist
+                else (rhand_frame_xyxy, lhand_frame_xyxy)
+            )
+        else:
+            # Two hands are close enough, merge together to be the primary. The secondary is None.
+            prmhand_frame_xyxy = cropFrame(original_frame, (lhand_center + rhand_center) // 2, hand_hw)
+            sndhand_frame_xyxy = None
+
+        del lhand_face_dist, rhand_face_dist
+
+        '''
+        Phase 3: YOLO inference primary first. If not detected, inference secondary.
+        '''
+        # YOLO inference.
         start_yolo = time.time()
-        for hand_frame_xyxy in [lh_frame_xyxy, rh_frame_xyxy]:
+        for hand_frame_xyxy in [prmhand_frame_xyxy, sndhand_frame_xyxy]:
 
             if hand_frame_xyxy is None or not isinstance(hand_frame_xyxy, Tuple):
                 # Guard 1: Make subframe_xyxy expandable to frame & xyxy.
@@ -197,6 +225,8 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                 break
 
         t_yolo = time.time() - start_yolo
+
+        del prmhand_frame_xyxy, sndhand_frame_xyxy
 
     if state == kcfg.USING:  # TODO: face_detection model
         # Crop Face
