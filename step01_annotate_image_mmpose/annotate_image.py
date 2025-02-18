@@ -1,10 +1,10 @@
-# Built-in
+# Basic
+import os
 import copy
 import itertools
-import os
 from typing import List, Union, Tuple, Dict, Any
 
-# Packages
+# Utilities
 import cv2
 import numpy as np
 from numpy import ndarray

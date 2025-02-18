@@ -6,16 +6,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm
-from torch.utils.data import Dataset, DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
 # Model testing
-from sklearn.metrics import (confusion_matrix, accuracy_score,
-                            precision_score, recall_score,
-                            f1_score, roc_auc_score,
-                            roc_curve, auc, precision_recall_curve,
-                            average_precision_score)
+from sklearn.metrics import (confusion_matrix, roc_auc_score,
+                             roc_curve, precision_recall_curve,
+                             average_precision_score)
 from sklearn.metrics import ConfusionMatrixDisplay
-from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

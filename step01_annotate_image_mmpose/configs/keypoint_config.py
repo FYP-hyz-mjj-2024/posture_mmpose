@@ -197,27 +197,27 @@ USING = 32
 NOT_USING = 128
 
 state_display_type = {
-    TO_BE_CLASSIFIED : {
+    TO_BE_CLASSIFIED: {
         "color": "gray",
         "str": "-"
     },
-    OUT_OF_FRAME : {
+    OUT_OF_FRAME: {
         "color": "gray",
         "str": "Out of frame"
     },
-    BACKSIDE : {
+    BACKSIDE: {
         "color": "gray",
         "str": "Back"
     },
-    SUSPICIOUS : {
+    SUSPICIOUS: {
         "color": "orange",
         "str": "?"
     },
-    USING : {
+    USING: {
         "color": "red",
         "str": "+"
     },
-    NOT_USING : {
+    NOT_USING: {
         "color": "green",
         "str": "-"
     },
@@ -279,6 +279,7 @@ def get_cube_angles(use_str: bool = True, num: int = 13) -> List[List[List[Any]]
     return o_indices
 
 # ===================================================== #
+
 
 if __name__ == "__main__":
     angles1 = get_full_angles(use_str=False)
