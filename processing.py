@@ -134,6 +134,9 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         lhand_center += l_arm_vect * 0.8
         rhand_center += r_arm_vect * 0.8
 
+        # TODO: Calculate which hand is closer to the face. Use that hand as primary hand.
+
+        # If two hands are close to each other, merge them together. Mount on the left hand.
         if np.linalg.norm(lhand_center - rhand_center) > 0.21 * bbox_w:
             # Coordinate of left & right hand's cropped frame
             lh_frame_xyxy = cropFrame(original_frame, lhand_center, hand_hw)
@@ -145,13 +148,13 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         start_yolo = time.time()
         for hand_frame_xyxy in [lh_frame_xyxy, rh_frame_xyxy]:
 
-            if hand_frame_xyxy is None:
+            if hand_frame_xyxy is None or not isinstance(hand_frame_xyxy, Tuple):
                 # Guard 1: Make subframe_xyxy expandable to frame & xyxy.
                 continue
 
             subframe, subframe_xyxy = hand_frame_xyxy
 
-            if subframe is None or subframe_xyxy is None:
+            if subframe is None or subframe_xyxy is None or len(hand_frame_xyxy) <= 0:
                 # Guard 2: If expandable, any of them shouldn't be None.
                 print(f"{CC['yellow']}Pedestrian too close to detect.{CC['reset']}")
                 continue
