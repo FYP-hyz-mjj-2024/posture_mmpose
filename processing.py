@@ -17,6 +17,7 @@ from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
 from step03_yolo_phone_detection.dvalue import yolo_input_size
 from utils.opencv_utils import render_detection_rectangle, cropFrame
+from utils.decorations import CONSOLE_COLORS as CC
 
 # Hardware devices
 global_device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
@@ -141,15 +142,25 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             lh_frame_xyxy = cropFrame(original_frame, (lhand_center + rhand_center) // 2, hand_hw)
             rh_frame_xyxy = None
 
-        # TODO: Here, if both is None, the list will be empty. Need more error handling!
-        hand_frames_xyxy = [f for f in [lh_frame_xyxy, rh_frame_xyxy] if f is not None]
+        start_yolo = time.time()
+        for hand_frame_xyxy in [lh_frame_xyxy, rh_frame_xyxy]:
 
-        for subframe, subframe_xyxy in hand_frames_xyxy:
-            start_yolo = time.time()
+            if hand_frame_xyxy is None:
+                # Guard 1: Make subframe_xyxy expandable to frame & xyxy.
+                continue
+
+            subframe, subframe_xyxy = hand_frame_xyxy
+
+            if subframe is None or subframe_xyxy is None:
+                # Guard 2: If expandable, any of them shouldn't be None.
+                print(f"{CC['yellow']}Pedestrian too close to detect.{CC['reset']}")
+                continue
+
+            # Error Handling: subframe may be None.
+            # In this case, phone_detect_signal is default to 0.
             phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
                                                       device=device_name, threshold=0.3,
                                                       frame_size=phone_frame_size, cell_phone_index=phone_index)
-            t_yolo = time.time() - start_yolo
 
             if phone_detect_signal == 2:
                 state = kcfg.USING
@@ -159,6 +170,8 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                 phone_display_str = "-"
                 phone_display_color = "green"
 
+            # Error Handling: subframe_xyxy may be None.
+            # In this case, the rectangle will not be drawn.
             render_detection_rectangle(frame, phone_display_str, subframe_xyxy, color=phone_display_color)
 
             if runtime_save_handframes_path is not None:
@@ -173,6 +186,8 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             if phone_detect_signal == 2:
                 break
 
+        t_yolo = time.time() - start_yolo
+
     if state == kcfg.USING:  # TODO: face_detection model
         # Crop Face
         face_len = abs(int((keypoints[4][0] - keypoints[3][0]) * 1.1))   # Edge length of the face sub-frame
@@ -184,11 +199,12 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         face_detect_str = "Face"
 
         # TODO: Face Announcing API
-        if time.time() - time_last_announce_face > face_announce_interval:
-            time_last_announce_face = time.time()
-            announced_face_frame = face_frame
+        if face_frame is not None and face_xyxy is not None:    # In case that corrupted detection happens
+            if time.time() - time_last_announce_face > face_announce_interval:
+                time_last_announce_face = time.time()
+                announced_face_frame = face_frame
 
-        render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
+            render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
     # Get display color and string
     color = kcfg.state_display_type[state]["color"]
@@ -253,7 +269,13 @@ def detectPhone(model: YOLO, frame: np.ndarray,
     :param cell_phone_index: Index of cell phone in YOLO inference result.
     :return: Detection result.
     """
-    resized_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    try:
+        resized_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    except cv2.error:
+        print(f"{CC['yellow']}"
+              f"Error in detectPhone: Failed reading frame at this point, skipping to the next frame."
+              f"{CC['reset']}")
+        return 0
     resized_frame = resized_frame.resize((frame_size, frame_size))    # YOLO Image size
     resized_frame = np.asarray(resized_frame)
 

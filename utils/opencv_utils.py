@@ -53,6 +53,14 @@ def render_detection_rectangle(frame, text: str, xyxy: List[float], color: str):
     :returns: None.
     """
 
+    if xyxy is None:
+        print(f"{CC['yellow']}"
+              f"Error in render_detection_rectangle: "
+              f"Coordinates of two vertex xyxy is None."
+              f"Skipping to the next frame."
+              f"{CC['reset']}")
+        return
+
     # Label Text
     cv2.putText(
         frame,
@@ -193,7 +201,7 @@ def init_websocket(server_url) -> Union[websocket.WebSocket, None]:
 
 def cropFrame(frame: np.ndarray,
               ct_xy: np.ndarray,
-              crop_hw: Tuple[int, int]) -> Union[Tuple[np.ndarray, List], None]:
+              crop_hw: Tuple[int, int]) -> Union[Tuple[np.ndarray, List], Tuple[None, None]]:
     """
     Crop out sub-frames from a large frame.
     :param frame: The frame.
@@ -206,7 +214,7 @@ def cropFrame(frame: np.ndarray,
     ch, cw = crop_hw
 
     if not (0 <= x <= fw and 0 <= y <= fh):
-        return None
+        return None, None
 
     xs = np.array([x - (cw // 2), x + (cw // 2)]).astype(np.int32)
     ys = np.array([y - (ch // 2), y + (ch // 2)]).astype(np.int32)
