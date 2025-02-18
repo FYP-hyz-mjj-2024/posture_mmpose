@@ -1,10 +1,22 @@
 # A Posture Analysis Model to Detect Cell-Phone Usages
 
-# Personnel
-- Group Members: Mai Jiajun, Huang Yanzhen
-- Supervisor: Prof. Bob Yibo Zhang
+## Personnel
+- **Group Members:** [Mai Jiajun](https://github.com/SpinningMai), [Huang Yanzhen](https://github.com/YanzhenHuang)
+- **Supervisor:** Prof. Bob Zhang
+
+## License
+This repository contains components licensed under different licenses.
+The full texts are available in the [LICENSES](LICENSES) directory.
+
+| Component   | License Type | License                                                                          | Source                                     |
+|-------------|--------------|----------------------------------------------------------------------------------|--------------------------------------------|
+| Open-MMLab  | Apache-2.0   | [LICENSES/Apache_Open-MMLab/LICENSE.txt](LICENSES/Apache_Open-MMLab/LICENSE.txt) | https://github.com/open-mmlab              |
+| ultralytics | AGPL-3.0     | [LICENSES/AGPL_ultralytics/LICENSE.txt](LICENSES/AGPL_ultralytics/LICENSE.txt)   | https://github.com/ultralytics/ultralytics |
 
 ## Configure Project
+
+> A quick start: The entry of this project is [main.py](main.py). Come back and run this file
+> when you are done configuring.
 
 ### Step 0. Conda
 &emsp; Please make sure that you are under the conda environment. If you are not, please do the following in the 
