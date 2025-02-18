@@ -21,6 +21,7 @@ from step02_train_model_cnn.train_model_mjj import MLP3d
 from utils.opencv_utils import yieldVideoFeed, init_websocket, getUserConsoleConfig, render_ui_text, announceFaceFrame
 from utils.plot_report import plot_report
 from processing import processOnePerson, classify, classify3D, detectPhone, global_device_name, global_device
+from utils.decorations import BANNER
 
 
 def videoDemo(src: Union[str, int],
@@ -214,6 +215,8 @@ def videoDemo(src: Union[str, int],
 
 
 if __name__ == '__main__':
+    # Display the nice banner
+    print(BANNER)
     # Configuration
     is_remote, video_source, use_mmpose_visualizer, use_trained_yolo = getUserConsoleConfig()
 else:
