@@ -77,7 +77,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     phone_index = 0 if self_trained else 67     # Phone index of model
 
     # Entry state of the state machine
-    state = kcfg.TO_BE_CLASSIFIED
+    _state = kcfg.TO_BE_CLASSIFIED  # Private param within the state machine.
 
     # Content copy of the frame
     # Prevent the disturbance from rect rendering to object detection.
@@ -86,22 +86,22 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     announced_face_frame = None
 
     # Person is out of frame.
-    if state == kcfg.TO_BE_CLASSIFIED:
+    if _state == kcfg.TO_BE_CLASSIFIED:
         if np.sum(keypoints[:13, 2] < 0.3) >= 5:
-            state = kcfg.OUT_OF_FRAME
+            _state = kcfg.OUT_OF_FRAME
 
     # Person shows backside.
-    if state == kcfg.TO_BE_CLASSIFIED:
+    if _state == kcfg.TO_BE_CLASSIFIED:
         l_shoulder_x, r_shoulder_x = keypoints[5][0], keypoints[6][0]
         l_shoulder_s, r_shoulder_s = keypoints[5][2], keypoints[6][2]  # score
         backside_ratio = (l_shoulder_x - r_shoulder_x) / (xyxy[2] - xyxy[0])  # shoulder_x_diff / width_diff
         if r_shoulder_s > 0.3 and l_shoulder_s > 0.3 and backside_ratio < -0.2:  # backside_threshold = -0.2
             _num_value = ((r_shoulder_s + l_shoulder_s) / 2.0 + 1.0) / 2.0
             classifier_result_str = f"{_num_value:.2f}"
-            state = kcfg.BACKSIDE
+            _state = kcfg.BACKSIDE
 
     # Still in starting state after filtering.
-    if state == kcfg.TO_BE_CLASSIFIED:
+    if _state == kcfg.TO_BE_CLASSIFIED:
         # Translation of one person's landmarks to targeted key points.
         kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
 
@@ -111,17 +111,17 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
         # Adjust states according to posture recognition results.
         if posture_signal == 0:
-            state = kcfg.NOT_USING
+            _state = kcfg.NOT_USING
         elif posture_signal == 1:
-            state = kcfg.SUSPICIOUS
+            _state = kcfg.SUSPICIOUS
         else:
             raise ValueError(f"Invalid posture signal {posture_signal}.")
         t_mlp = time.time() - start_mlp
 
     # Object detection.
-    if state == kcfg.NOT_USING:
+    if _state == kcfg.NOT_USING:
         pass
-    elif state == kcfg.SUSPICIOUS:
+    elif _state == kcfg.SUSPICIOUS:
         '''
         Phase 1: Retrieve hand centers and their distances to the face center.
         '''
@@ -138,20 +138,28 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             hand_hw = (int(frame.shape[1] * 0.45), int(frame.shape[1] * 0.45))
             """Height and width (sequence matter) of the bounding box."""
 
-        # Landmark index of left & right hand: 9, 10
-        lwrist_center, rwrist_center = keypoints[9][:2], keypoints[10][:2]
-
+        # Landmark index of left & right wrists: 9, 10
         # Landmark of left & right elbow: 7 & 8
+        lwrist_coord, rwrist_coord = keypoints[9][:2], keypoints[10][:2]
+        lelbow_coord, relbow_coord = keypoints[7][:2], keypoints[8][:2]
+
         # Vectors for left & right arm.
-        l_arm_vect, r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
-        lhand_center = lwrist_center + l_arm_vect * 0.8
-        rhand_center = rwrist_center + r_arm_vect * 0.8
+        l_arm_vect, r_arm_vect = lwrist_coord - lelbow_coord, rwrist_coord - relbow_coord
+
+        # Coordinates of left & right hand center.
+        lhand_center = lwrist_coord + l_arm_vect * 0.8
+        rhand_center = rwrist_coord + r_arm_vect * 0.8
 
         # Distances from two hands to the face center.
-        lhand_face_dist = np.inf if lhand_center is None else np.linalg.norm(lwrist_center - face_center)
-        rhand_face_dist = np.inf if rhand_center is None else np.linalg.norm(rhand_center - face_center)
+        lhand_face_dist = (np.inf if (
+                face_center is None or lwrist_coord is None or lelbow_coord is None
+        ) else np.linalg.norm(lwrist_coord - face_center))
 
-        del lwrist_center, rwrist_center, l_arm_vect, r_arm_vect
+        rhand_face_dist = (np.inf if (
+                face_center is None or lwrist_coord is None or lelbow_coord is None
+        ) else np.linalg.norm(rwrist_coord - face_center))
+
+        del lwrist_coord, rwrist_coord, lelbow_coord, relbow_coord, l_arm_vect, r_arm_vect
 
         '''
         Phase 2: Decide the primary hand with respect to distances to face.
@@ -189,7 +197,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
             subframe, subframe_xyxy = hand_frame_xyxy
 
-            if subframe is None or subframe_xyxy is None or len(hand_frame_xyxy) <= 0:
+            if len(hand_frame_xyxy) <= 0 or subframe is None or subframe_xyxy is None:
                 # Guard 2: If expandable, any of them shouldn't be None.
                 print(f"{CC['yellow']}Pedestrian too close to detect.{CC['reset']}")
                 continue
@@ -201,7 +209,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                                                       frame_size=phone_frame_size, cell_phone_index=phone_index)
 
             if phone_detect_signal == 2:
-                state = kcfg.USING
+                _state = kcfg.USING
                 phone_display_str = "phone"
                 phone_display_color = "red"
             else:
@@ -228,7 +236,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
         del prmhand_frame_xyxy, sndhand_frame_xyxy
 
-    if state == kcfg.USING:  # TODO: face_detection model
+    if _state == kcfg.USING:  # TODO: face_detection model
         # Crop Face
         face_len = abs(int((keypoints[4][0] - keypoints[3][0]) * 1.1))   # Edge length of the face sub-frame
         face_hw = (face_len, face_len)  # Dimensions of the face sub-frame.
@@ -238,7 +246,6 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         face_frame, face_xyxy = cropFrame(original_frame, face_center, face_hw)
         face_detect_str = "Face"
 
-        # TODO: Face Announcing API
         if face_frame is not None and face_xyxy is not None:    # In case that corrupted detection happens
             if time.time() - time_last_announce_face > face_announce_interval:
                 time_last_announce_face = time.time()
@@ -247,8 +254,8 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
     # Get display color and string
-    color = kcfg.state_display_type[state]["color"]
-    display_str = f"{kcfg.state_display_type[state]['str']} {classifier_result_str}"
+    color = kcfg.state_display_type[_state]["color"]
+    display_str = f"{kcfg.state_display_type[_state]['str']} {classifier_result_str}"
 
     # Overall frame of pedestrian. Color display result.
     render_detection_rectangle(frame, display_str, xyxy, color=color)
