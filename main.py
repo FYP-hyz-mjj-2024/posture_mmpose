@@ -237,8 +237,6 @@ def videoDemo(src: Union[str, int],
 
             yieldVideoFeed(frame, title="Pedestrian Cell Phone Usage Detection", ws=websocket_obj)
 
-
-
             if websocket_obj is not None and len(announced_face_frames) > 0:
                 announceFaceFrame(announced_face_frames, ws=websocket_obj)
                 print(f"{CC['green']}Face announced at {time.strftime('%Y-%m-%d %H:%M:%S')}.{CC['reset']}")
