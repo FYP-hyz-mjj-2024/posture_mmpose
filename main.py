@@ -167,7 +167,6 @@ def videoDemo(src: Union[str, int],
             Structure of a single response:
             {
                 "performance": (t_mlp, t_yolo),
-                "time_last_announce_face": time_last_announce_face      # float, response from the same runtime param
                 "announced_face_frame": announced_face_frame            # announced face frame of this person or None
             }
             '''
@@ -200,7 +199,16 @@ def videoDemo(src: Union[str, int],
             # Update frame announcing time
             # "time_last_announce_face" of the last inference person of this frame.
             # May not be changed if no face in this frame is announced.
-            runtime_params["time_last_announce_face"] = response_list[-1]["time_last_announce_face"]
+
+            # Announce face frames
+            announced_face_frames = [
+                response["announced_face_frame"] for response in response_list
+                if response["announced_face_frame"] is not None     # Don't delete "is not None"
+            ]
+
+            # Update
+            if len(announced_face_frames) > 0:
+                runtime_params["time_last_announce_face"] = time.time()
 
             # Frame rate
             render_ui_text(frame=frame,
@@ -212,7 +220,7 @@ def videoDemo(src: Union[str, int],
 
             # Current Time
             render_ui_text(frame=frame,
-                           text=f"Time: {time.strftime('%Y%m%d %H:%M:%S')}",
+                           text=f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}",
                            frame_wh=(_set_video_w, _set_video_h),
                            margin_wh=(_margin_w, _margin_h),
                            align="left",
@@ -221,7 +229,7 @@ def videoDemo(src: Union[str, int],
             # Last announce face time (LAFT).
             render_ui_text(frame=frame,
                            text=f"LAFT: "
-                                f"{datetime.fromtimestamp(runtime_params['time_last_announce_face']).strftime('%Y%m%d %H:%M:%S')}",
+                                f"{datetime.fromtimestamp(runtime_params['time_last_announce_face']).strftime('%Y-%m-%d %H:%M:%S')}",
                            frame_wh=(_set_video_w, _set_video_h),
                            margin_wh=(_margin_w, _margin_h),
                            align="left",
@@ -229,12 +237,11 @@ def videoDemo(src: Union[str, int],
 
             yieldVideoFeed(frame, title="Pedestrian Cell Phone Usage Detection", ws=websocket_obj)
 
-            # Announce face frames
-            announced_face_frames = [
-                response["announced_face_frame"] for response in response_list
-                if response["announced_face_frame"] is not None]
+
+
             if websocket_obj is not None and len(announced_face_frames) > 0:
                 announceFaceFrame(announced_face_frames, ws=websocket_obj)
+                print(f"{CC['green']}Face announced at {time.strftime('%Y-%m-%d %H:%M:%S')}.{CC['reset']}")
 
             del ori_frame
 
@@ -313,7 +320,7 @@ package_phone_detector = {
     "phone_detector_model": phone_detector,
     "phone_detector_func": detectPhone,
     "self_trained": use_trained_yolo,
-    "face_announce_interval": 2
+    "face_announce_interval": 5
 }
 
 runtime_save_hf_path = "data/yolo_dataset_runtime/"

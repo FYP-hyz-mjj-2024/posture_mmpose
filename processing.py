@@ -63,6 +63,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     # Runtime options
     runtime_save_handframes_path = runtime_parameters["path_runtime_handframes"]
     time_last_announce_face = runtime_parameters["time_last_announce_face"]
+    time_frame_start = runtime_parameters["time_last_record_framerate"]     # Constant for all people in this frame
 
     # Performance
     t_mlp = 0
@@ -159,7 +160,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                 face_center is None or lwrist_coord is None or lelbow_coord is None
         ) else np.linalg.norm(rwrist_coord - face_center))
 
-        del lwrist_coord, rwrist_coord, lelbow_coord, relbow_coord, l_arm_vect, r_arm_vect
+        # del lwrist_coord, rwrist_coord, lelbow_coord, relbow_coord, l_arm_vect, r_arm_vect
 
         '''
         Phase 2: Decide the primary hand with respect to distances to face.
@@ -182,7 +183,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             prmhand_frame_xyxy = cropFrame(original_frame, (lhand_center + rhand_center) // 2, hand_hw)
             sndhand_frame_xyxy = None
 
-        del lhand_face_dist, rhand_face_dist
+        # del lhand_face_dist, rhand_face_dist
 
         '''
         Phase 3: YOLO inference primary first. If not detected, inference secondary.
@@ -234,7 +235,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
 
         t_yolo = time.time() - start_yolo
 
-        del prmhand_frame_xyxy, sndhand_frame_xyxy
+        # del prmhand_frame_xyxy, sndhand_frame_xyxy
 
     if _state == kcfg.USING:  # TODO: face_detection model
         # Crop Face
@@ -247,8 +248,9 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         face_detect_str = "Face"
 
         if face_frame is not None and face_xyxy is not None:    # In case that corrupted detection happens
-            if time.time() - time_last_announce_face > face_announce_interval:
-                time_last_announce_face = time.time()
+            # Diff between time of this frame and last announce face time is over the interval.
+            # Note: For all person (one call of this function), time_frame_start is all the same.
+            if time_frame_start - time_last_announce_face > face_announce_interval:
                 announced_face_frame = face_frame
 
             render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
@@ -261,7 +263,6 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
     render_detection_rectangle(frame, display_str, xyxy, color=color)
     return {
         "performance": (t_mlp, t_yolo),
-        "time_last_announce_face": time_last_announce_face,
         "announced_face_frame": announced_face_frame
     }
 
