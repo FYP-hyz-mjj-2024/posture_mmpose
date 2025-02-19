@@ -119,7 +119,7 @@ def videoDemo(src: Union[str, int],
     if runtime_save_handframes_path is not None:
         print(f"Clearing all previous runtime hand frames in dir {runtime_save_handframes_path}...")
         files = [f for f in os.listdir(runtime_save_handframes_path)
-                 if os.path.isfile(os.path.join(runtime_save_handframes_path, f))]
+                 if f != ".gitkeep" and os.path.isfile(os.path.join(runtime_save_handframes_path, f))]
         if len(files) > 0:
             for file in tqdm(files):
                 file_path = os.path.join(runtime_save_handframes_path, file)
