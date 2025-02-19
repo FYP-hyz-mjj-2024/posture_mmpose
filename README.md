@@ -1,4 +1,5 @@
-# A Posture Analysis Model to Detect Cell-Phone Usages
+# Pedestrian Cell Phone Usage Detection
+Alias: **YOU FOCUS YOUR WALK**
 
 ## Personnel
 - **Group Members:** [Mai Jiajun](https://github.com/SpinningMai), [Huang Yanzhen](https://github.com/YanzhenHuang)
@@ -8,10 +9,10 @@
 This repository contains components licensed under different licenses.
 The full texts are available in the [LICENSES](LICENSES) directory.
 
-| Component   | License Type | License                                                                          | Source                                     |
-|-------------|--------------|----------------------------------------------------------------------------------|--------------------------------------------|
-| Open-MMLab  | Apache-2.0   | [LICENSES/Apache_Open-MMLab/LICENSE.txt](LICENSES/Apache_Open-MMLab/LICENSE.txt) | https://github.com/open-mmlab              |
-| ultralytics | AGPL-3.0     | [LICENSES/AGPL_ultralytics/LICENSE.txt](LICENSES/AGPL_ultralytics/LICENSE.txt)   | https://github.com/ultralytics/ultralytics |
+| Component   | Type       | LICENSE File (Local)                                                             | Source (with License)                      |
+|-------------|------------|----------------------------------------------------------------------------------|--------------------------------------------|
+| Open-MMLab  | Apache-2.0 | [LICENSES/Apache_Open-MMLab/LICENSE.txt](LICENSES/Apache_Open-MMLab/LICENSE.txt) | https://github.com/open-mmlab              |
+| ultralytics | AGPL-3.0   | [LICENSES/AGPL_ultralytics/LICENSE.txt](LICENSES/AGPL_ultralytics/LICENSE.txt)   | https://github.com/ultralytics/ultralytics |
 
 ## Configure Project
 
