@@ -78,7 +78,6 @@ def videoDemo(src: Union[str, int],
             return
         nonlocal runtime_params
         runtime_params["path_runtime_handframes"] = runtime_save_handframes_path
-        print(f"{CC['green']}Saved runtime handframes at {time.strftime('%Y-%m-%d %H:%M:%S')}.{CC['reset']}")
 
     # Extract mmpose tools from package.
     bbox_detector_model = pkg_mmpose["bbox_detector_model"]

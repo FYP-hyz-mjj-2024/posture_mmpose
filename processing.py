@@ -176,27 +176,27 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         '''
         Phase 3: YOLO inference primary first. If not detected, inference secondary.
         '''
-        # YOLO inference.
         start_yolo = time.time()
         for hand_frame_xyxy in [prmhand_frame_xyxy, sndhand_frame_xyxy]:
 
+            # 3.0 Filter out undetectable cases.
             if hand_frame_xyxy is None or not isinstance(hand_frame_xyxy, Tuple):
-                # Guard 1: Make subframe_xyxy expandable to frame & xyxy.
+                # 3.0.1 Guard 1: Make subframe_xyxy expandable to frame & xyxy.
                 continue
 
             subframe, subframe_xyxy = hand_frame_xyxy
 
             if len(hand_frame_xyxy) <= 0 or subframe is None or subframe_xyxy is None:
-                # Guard 2: If expandable, any of them shouldn't be None.
+                # 3.0.2 Guard 2: If expandable, any of them shouldn't be None.
                 print(f"{CC['yellow']}Pedestrian too close to detect.{CC['reset']}")
                 continue
 
-            # Error Handling: subframe may be None.
-            # In this case, phone_detect_signal is default to 0.
+            # 3.1 Yolo inference signal.
             phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
                                                       device=device_name, threshold=0.3,
                                                       frame_size=phone_frame_size, cell_phone_index=phone_index)
 
+            # 3.2 Render hand frames based on the signal.
             if phone_detect_signal == 2:
                 _state = kcfg.USING
                 phone_display_str = "phone"
@@ -205,53 +205,54 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                 phone_display_str = "-"
                 phone_display_color = "green"
 
-            # Error Handling: subframe_xyxy may be None.
-            # In this case, the rectangle will not be drawn.
             render_detection_rectangle(frame, phone_display_str, subframe_xyxy, color=phone_display_color)
 
+            # 3.3 Press mouse to save supplementary dataset on the go.
             if runtime_save_handframes_path is not None:
                 try:
                     image_file_name = f"{time.strftime('%Y%m%d-%H%M%S')}_runtime.png"
                     save_path = os.path.join(runtime_save_handframes_path, image_file_name)
                     cv2.imwrite(save_path, subframe)
+                    print(f"{CC['green']}"
+                          f"Saved runtime handframes at {time.strftime('%Y-%m-%d %H:%M:%S')}."
+                          f"{CC['reset']}")
                 except Exception as e:
                     print(f"Failed to save current hand frame. Exception{e}")
 
-            # If one hand is already holding a phone, don't detect another.
+            # If the primary hand is already holding a phone, don't detect another.
             if phone_detect_signal == 2:
                 break
 
         t_yolo = time.time() - start_yolo
 
-        # del prmhand_frame_xyxy, sndhand_frame_xyxy
-
     if _state == kcfg.USING:  # TODO: face_detection model
-        # Crop Face
+        # Face cropping parameters.
         face_len = abs(int((keypoints[4][0] - keypoints[3][0]) * 1.1))   # Edge length of the face sub-frame
         face_hw = (face_len, face_len)  # Dimensions of the face sub-frame.
-        face_center = keypoints[0][:2]  # Face center
 
-        # Face Subframe
+        # Face subframe and xyxy.
         face_frame, face_xyxy = cropFrame(original_frame, face_center, face_hw)
         face_detect_str = "Face"
 
-        if face_frame is not None and face_xyxy is not None:    # In case that corrupted detection happens
-            # Diff between time of this frame and last announce face time is over the interval.
-            # Note: For all person (one call of this function), time_frame_start is all the same.
+        if face_frame is not None and face_xyxy is not None:    # In case pedestrian is out of frame.
+            # Diff between time of this frame and last announce face time is longer than the interval.
+            # Note: For all person in a single frame (i.e., each call of this function), time_frame_start is all same.
             if time_frame_start - time_last_announce_face > face_announce_interval:
                 announced_face_frame = face_frame
 
             render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
 
-    # Get display color and string
+    # End of state machine. The _state is finalized.
+    # Get display color and string according to _state.
     color = kcfg.state_display_type[_state]["color"]
     display_str = f"{kcfg.state_display_type[_state]['str']} {classifier_result_str}"
 
-    # Overall frame of pedestrian. Color display result.
+    # Render inference results for this specific person onto the frame.
     render_detection_rectangle(frame, display_str, xyxy, color=color)
+
     return {
         "performance": (t_mlp, t_yolo),
-        "announced_face_frame": announced_face_frame
+        "announced_face_frame": announced_face_frame,   # np.ndarray or None, depending on the interval.
     }
 
 
