@@ -126,64 +126,52 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         '''
         Phase 1: Retrieve hand centers and their distances to the face center.
         '''
-        # Pedestrian's bounding box size.
+        # 1.1 Crop two hands.
+        # 1.1.1 Pedestrian's bounding box size.
         bbox_w, bbox_h = abs(xyxy[2]-xyxy[0]), abs(xyxy[3]-xyxy[1])
 
-        # Crop two hands.
         if bbox_w / (frame.shape[1] + np.finfo(np.float32).eps) < 0.6:
-            # Body is far, make relate to bbox.
+            # 1.1.2 Body is far, make hand frame width & height relate to bbox width.
             hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))
             """Height and width (sequence matter) of the bounding box."""
         else:
-            # Body takes up too much space, restrict hand frame size.
+            # 1.1.3 Body takes up too much space, restrict hand frame size to 0.45 * frame width.
             hand_hw = (int(frame.shape[1] * 0.45), int(frame.shape[1] * 0.45))
             """Height and width (sequence matter) of the bounding box."""
 
-        # Landmark index of left & right wrists: 9, 10
-        # Landmark of left & right elbow: 7 & 8
+        # 1.2 L & R wrists: 9, 10; L & R elbows: 7, 8.
         lwrist_coord, rwrist_coord = keypoints[9][:2], keypoints[10][:2]
         lelbow_coord, relbow_coord = keypoints[7][:2], keypoints[8][:2]
 
-        # Vectors for left & right arm.
+        # 1.3 L & R arm vectors.
         l_arm_vect, r_arm_vect = lwrist_coord - lelbow_coord, rwrist_coord - relbow_coord
 
-        # Coordinates of left & right hand center.
+        # 1.4 L & R hand center coordinates.
         lhand_center = lwrist_coord + l_arm_vect * 0.8
         rhand_center = rwrist_coord + r_arm_vect * 0.8
 
-        # Distances from two hands to the face center.
-        lhand_face_dist = (np.inf if (
-                face_center is None or lwrist_coord is None or lelbow_coord is None
-        ) else np.linalg.norm(lwrist_coord - face_center))
-
-        rhand_face_dist = (np.inf if (
-                face_center is None or lwrist_coord is None or lelbow_coord is None
-        ) else np.linalg.norm(rwrist_coord - face_center))
-
-        # del lwrist_coord, rwrist_coord, lelbow_coord, relbow_coord, l_arm_vect, r_arm_vect
+        # 1.5 L & R wrist to face center distances.
+        lhand_face_dist = np.linalg.norm(lwrist_coord - face_center)
+        rhand_face_dist = np.linalg.norm(rwrist_coord - face_center)
 
         '''
         Phase 2: Decide the primary hand with respect to distances to face.
         '''
-        # Are two hands close enough?
         if np.linalg.norm(lhand_center - rhand_center) > 0.21 * bbox_w:
-            # Coordinate of left & right hand's cropped frame
+            # Data structure: [frame: np.ndarray, frame_xyxy:List[int]]
             lhand_frame_xyxy = cropFrame(original_frame, lhand_center, hand_hw)
             rhand_frame_xyxy = cropFrame(original_frame, rhand_center, hand_hw)
 
-            # If the wrist of one hand is closer to face, that hand is the primary.
-            # The other is secondary.
+            # 2.1 If the wrist of one hand is closer to face, that hand is the primary. The other is secondary.
             prmhand_frame_xyxy, sndhand_frame_xyxy = (
                 (lhand_frame_xyxy, rhand_frame_xyxy)
                 if lhand_face_dist < rhand_face_dist
                 else (rhand_frame_xyxy, lhand_frame_xyxy)
             )
         else:
-            # Two hands are close enough, merge together to be the primary. The secondary is None.
+            # 2.2 If two hands are close enough, merge together to be the primary. The secondary is None.
             prmhand_frame_xyxy = cropFrame(original_frame, (lhand_center + rhand_center) // 2, hand_hw)
             sndhand_frame_xyxy = None
-
-        # del lhand_face_dist, rhand_face_dist
 
         '''
         Phase 3: YOLO inference primary first. If not detected, inference secondary.
