@@ -62,14 +62,17 @@ data/test/img/
 data/train/img_from_video/*
 data/yolo_dataset/*
 data/yolo_dataset_runtime/*
+!data/yolo_dataset_runtime/.gitkeep
 data/blob/videos/*
 data/blob/yolo_videos/*
 data/yolo/*
-logs
+logs/*
+!logs/.gitkeep
 
 # MMPose config files
 #*.pth
-model_config/checkpoints
+model_config/checkpoints/*
+!model_config/checkpoints/.gitkeep
 
 # Custom files
 runs/
