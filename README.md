@@ -14,6 +14,8 @@ The full texts are available in the [LICENSES](LICENSES) directory.
 | Open-MMLab  | Apache-2.0 | [LICENSES/Apache_Open-MMLab/LICENSE.txt](LICENSES/Apache_Open-MMLab/LICENSE.txt) | https://github.com/open-mmlab              |
 | ultralytics | AGPL-3.0   | [LICENSES/AGPL_ultralytics/LICENSE.txt](LICENSES/AGPL_ultralytics/LICENSE.txt)   | https://github.com/ultralytics/ultralytics |
 
+More credits and copyrights info about ultralycis is in [main.py](main.py).
+
 ## Configure Project
 
 > A quick start: The entry of this project is [main.py](main.py). Come back and run this file
