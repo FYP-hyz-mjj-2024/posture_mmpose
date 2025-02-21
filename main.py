@@ -157,7 +157,7 @@ def videoDemo(src: Union[str, int],
         else:
             # Copy content of the un-rendered frame.
             # Prevent intervention with object detection.
-            ori_frame = copy.deepcopy(frame)
+            ori_frame = copy.deepcopy(frame)        # BGR format.
 
             '''
             response_list: A list of responses from a series of processOnePerson functions.

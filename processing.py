@@ -25,8 +25,8 @@ global_device_name = "cuda" if torch.cuda.is_available() else "mps" if torch.bac
 global_device = torch.device(global_device_name)
 
 
-def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
-                     original_frame: np.ndarray,
+def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
+                     original_frame: np.ndarray,    # shape:
                      keypoints: np.ndarray,     # shape: (17, 3)
                      xyxy: np.ndarray,          # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
@@ -178,14 +178,14 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
         Phase 3: YOLO inference primary first. If not detected, inference secondary.
         '''
         start_yolo = time.time()
-        for hand_frame_xyxy in [prmhand_frame_xyxy, sndhand_frame_xyxy]:
+        for idx, hand_frame_xyxy in enumerate([prmhand_frame_xyxy, sndhand_frame_xyxy]):
 
             # 3.0 Filter out undetectable cases.
             if hand_frame_xyxy is None or not isinstance(hand_frame_xyxy, Tuple):
                 # 3.0.1 Guard 1: Make subframe_xyxy expandable to frame & xyxy.
                 continue
 
-            subframe, subframe_xyxy = hand_frame_xyxy
+            subframe, subframe_xyxy = hand_frame_xyxy   # subframe: BGR
 
             if len(hand_frame_xyxy) <= 0 or subframe is None or subframe_xyxy is None:
                 # 3.0.2 Guard 2: If expandable, any of them shouldn't be None.
@@ -196,7 +196,10 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             try:
                 subframe = resizeFrameToSquare(frame=subframe,
                                                edge_length=phone_frame_size,
-                                               ratio_threshold=0.5625)     # 9 / 16
+                                               ratio_threshold=0.01)     # 9 / 16
+
+                # Convert BGR subframe to RGB for YOLO inference.
+                subframe = cv2.cvtColor(subframe, cv2.COLOR_BGR2RGB)
 
                 phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
                                                           device=device_name, threshold=0.3,
@@ -211,10 +214,10 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
             # 3.2 Render hand frames based on the signal.
             if phone_detect_signal == 2:
                 _state = kcfg.USING
-                phone_display_str = "phone"
+                phone_display_str = f"{idx} Phone"
                 phone_display_color = "red"
             else:
-                phone_display_str = "-"
+                phone_display_str = f"{idx} -"
                 phone_display_color = "green"
 
             render_detection_rectangle(frame, phone_display_str, subframe_xyxy, color=phone_display_color)
@@ -224,7 +227,7 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                 try:
                     image_file_name = f"{time.strftime('%Y%m%d-%H%M%S')}_runtime.png"
                     save_path = os.path.join(runtime_save_handframes_path, image_file_name)
-                    cv2.imwrite(save_path, subframe)
+                    cv2.imwrite(save_path, cv2.cvtColor(subframe, cv2.COLOR_BGR2RGB))
                     print(f"{CC['green']}"
                           f"Saved runtime handframes at {time.strftime('%Y-%m-%d %H:%M:%S')}."
                           f"{CC['reset']}")

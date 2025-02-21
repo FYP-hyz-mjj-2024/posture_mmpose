@@ -46,7 +46,7 @@ def render_detection_rectangle(frame, text: str, xyxy: List[float], color: str):
     """
     Render a common YOLO detection rectangle onto a frame with opencv.
 
-    :param frame: The video/stream frame to render onto.
+    :param frame: The video/stream frame to render onto in BGR format.
     :param text: The description of the detection target, e.g. detection label.
     :param xyxy: The coordinates of the rectangle (x1, y1, x2, y2).
     :param color: The color string.
@@ -87,7 +87,7 @@ def render_ui_text(frame, text: str,
                    align: str, order: int):
     """
     Render text on image frame as UI.
-    :param frame: Image frame.
+    :param frame: The video/stream frame to render onto in BGR format.
     :param text: Text content.
     :param frame_wh: Frame size.
     :param margin_wh: Frame margin size.
@@ -146,7 +146,7 @@ def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:
     """
     Yield the video frame. Either using local mode, which will invoke an
     opencv imshow window, or use the HTTP Streaming to the server.
-    :param frame_to_yield: The video frame.
+    :param frame_to_yield: The video frame in BGR format.
     :param title: The title of the local window.
     :param ws: The websocket object initialized with server_url.
     """
@@ -261,7 +261,7 @@ def resizeFrameToSquare(frame: np.ndarray,
         # Resize original frame to let longer edge to be frame_size.
         scale = edge_length / max(w, h)
         new_h, new_w = int(h * scale), int(w * scale)
-        _resized_frame = cv2.resize(frame, (new_w, new_h))      # Why does open-cv do this :(
+        _resized_frame = cv2.resize(frame, (new_w, new_h))
 
         # Initialize a black frame.
         resized_frame = np.zeros((edge_length, edge_length, 3), dtype=_resized_frame.dtype)
