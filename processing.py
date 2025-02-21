@@ -196,7 +196,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
             try:
                 subframe = resizeFrameToSquare(frame=subframe,
                                                edge_length=phone_frame_size,
-                                               ratio_threshold=0.01)     # 9 / 16
+                                               ratio_threshold=0.5625)     # 9 / 16
 
                 # Convert BGR subframe to RGB for YOLO inference.
                 subframe = cv2.cvtColor(subframe, cv2.COLOR_BGR2RGB)
@@ -316,7 +316,7 @@ def detectPhone(model: YOLO, frame: np.ndarray,
     """
     Infers the cropped hand frame of a pedestrian and use a YOLO model to detect the existence of a cell-phone.
     :param model: YOLO model of arbitrary variant.
-    :param frame: Frame array in shape [height, width, channels].
+    :param frame: Frame array in shape [height, width, channels], in RGB format.
     :param device: Device string to use for inference.
     :param threshold: Minimum confidence of phone detection to output a positive result.
     :param cell_phone_index: Index of cell phone in YOLO inference result.
