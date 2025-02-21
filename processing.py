@@ -1,6 +1,7 @@
 # Basic
 import os
 import time
+import copy
 from typing import List, Union, Tuple, Dict
 
 # Simple package
@@ -16,7 +17,7 @@ from step01_annotate_image_mmpose.configs import keypoint_config as kcfg
 from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model_mjj import MLP3d
 from step03_yolo_phone_detection.dvalue import yolo_input_size
-from utils.opencv_utils import render_detection_rectangle, cropFrame
+from utils.opencv_utils import render_detection_rectangle, cropFrame, resizeFrameToSquare
 from utils.decorations import CONSOLE_COLORS as CC
 
 # Hardware devices
@@ -192,9 +193,20 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                 continue
 
             # 3.1 Yolo inference signal.
-            phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
-                                                      device=device_name, threshold=0.3,
-                                                      frame_size=phone_frame_size, cell_phone_index=phone_index)
+            try:
+                subframe = resizeFrameToSquare(frame=subframe,
+                                               edge_length=phone_frame_size,
+                                               ratio_threshold=0.5625)     # 9 / 16
+
+                phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
+                                                          device=device_name, threshold=0.3,
+                                                          cell_phone_index=phone_index)
+
+            except (cv2.error, IOError) as e:     # frame could possibly be none.
+                print(f"{CC['yellow']}"
+                      f"Error in detectPhone: Failed reading frame at this point, skipping to the next frame."
+                      f"{CC['reset']}")
+                phone_detect_signal = 0
 
             # 3.2 Render hand frames based on the signal.
             if phone_detect_signal == 2:
@@ -217,7 +229,9 @@ def processOnePerson(frame: np.ndarray,         # shape: (H, W, 3)
                           f"Saved runtime handframes at {time.strftime('%Y-%m-%d %H:%M:%S')}."
                           f"{CC['reset']}")
                 except Exception as e:
-                    print(f"Failed to save current hand frame. Exception{e}")
+                    print(f"{CC['yellow']}"
+                          f"Failed to save current hand frame. Exception: {e}"
+                          f"{CC['reset']}")
 
             # If the primary hand is already holding a phone, don't detect another.
             if phone_detect_signal == 2:
@@ -295,30 +309,19 @@ def classify3D(classifier_model: MLP3d,
 
 def detectPhone(model: YOLO, frame: np.ndarray,
                 device: str = 'cpu', threshold: float = 0.2,
-                frame_size: int = 640, cell_phone_index: int = 0):
+                cell_phone_index: int = 0):
     """
     Infers the cropped hand frame of a pedestrian and use a YOLO model to detect the existence of a cell-phone.
     :param model: YOLO model of arbitrary variant.
     :param frame: Frame array in shape [height, width, channels].
     :param device: Device string to use for inference.
     :param threshold: Minimum confidence of phone detection to output a positive result.
-    :param frame_size: Yolo input frame size width,
     :param cell_phone_index: Index of cell phone in YOLO inference result.
     :return: Detection result.
     """
-    try:
-        resized_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-    except cv2.error:
-        print(f"{CC['yellow']}"
-              f"Error in detectPhone: Failed reading frame at this point, skipping to the next frame."
-              f"{CC['reset']}")
-        return 0
-    resized_frame = resized_frame.resize((frame_size, frame_size))    # YOLO Image size
-    resized_frame = np.asarray(resized_frame)
-
-    # Move image frame to tensor
-    tensor_frame = torch.from_numpy(resized_frame).float() / 255.0
-    tensor_frame = tensor_frame.permute(2, 0, 1).unsqueeze(0).to(device)
+    # Move resized frame to tensor
+    tensor_frame = torch.from_numpy(frame).float() / 255.0
+    tensor_frame = tensor_frame.permute(2, 0, 1).unsqueeze(0).to(device)    # Add a "batch" dimension
 
     # Model inference result.
     results_tmp = model(tensor_frame)
@@ -329,9 +332,10 @@ def detectPhone(model: YOLO, frame: np.ndarray,
         return 0    # Not using phone
 
     # 67 is the index of "cell phone" in the non-tuned model
+    # "Are there any cell phones found?"
     results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == cell_phone_index]
 
-    # 2 stands for positive now
+    # 2 stands for positive, 0 stands for negative
     return 2 if any(results_conf > threshold) else 0
 
 # ================================= #

@@ -204,8 +204,8 @@ def cropFrame(frame: np.ndarray,
               crop_hw: Tuple[int, int]) -> Union[Tuple[np.ndarray, List], Tuple[None, None]]:
     """
     Crop out sub-frames from a large frame.
-    :param frame: The frame.
-    :param ct_xy: Center (x,y) coordinates.
+    :param frame: The original frame to be cropped.
+    :param ct_xy: Center (x,y) coordinates of the sub-frame.
     :param crop_hw: Sub-frame size of (height, width).
     :return:
     """
@@ -225,3 +225,53 @@ def cropFrame(frame: np.ndarray,
     xyxy = [xs[0], ys[0], xs[1], ys[1]]
 
     return frame[ys[0]:ys[1], xs[0]:xs[1], :], xyxy
+
+
+def resizeFrameToSquare(frame: np.ndarray,
+                        edge_length: int,
+                        ratio_threshold: float = 9 / 16) -> np.ndarray:
+    """
+    Resize a captured frame into a square shape, according to the requirements
+    of a YOLO11 input. If the frame height and width exceeds the ratio threshold,
+    then use the crop method. Otherwise, use the stretch-to-resize method.
+    :param frame: The original frame to be resized.
+    :param edge_length: Length of the square edge in pixels.
+    :param ratio_threshold: Ratio threshold where the cropping method is decided.
+    :return:
+    """
+    # Parameter constraints.
+    if not (0 < ratio_threshold <= 1):
+        raise ValueError("resizeFrameToSquare Failed: Ratio threshold should be in (0, 1].")
+
+    if edge_length <= 0:
+        raise ValueError(f"resizeFrameToSquare Failed: "
+                         f"Edge length should be larger than 0. Inputted value:{edge_length}.")
+
+    # IO constraints.
+    h, w = frame.shape[:2]
+
+    if h <= 0 or w <= 0:
+        raise IOError(f"resizeFrameToSquare Failed: "
+                      f"Original size of frame is invalid. size: (h={h},w={w}).")
+
+    if ratio_threshold < (h / w) < 1 / ratio_threshold:
+        # Aspect ratio is in a reasonable range.
+        resized_frame = cv2.resize(frame, (edge_length, edge_length))
+    else:
+        # Resize original frame to let longer edge to be frame_size.
+        scale = edge_length / max(w, h)
+        new_h, new_w = int(h * scale), int(w * scale)
+        _resized_frame = cv2.resize(frame, (new_w, new_h))      # Why does open-cv do this :(
+
+        # Initialize a black frame.
+        resized_frame = np.zeros((edge_length, edge_length, 3), dtype=_resized_frame.dtype)
+
+        # Put the scaled original frame into center.
+        start_h = round(edge_length / 2 - new_h / 2)
+        end_h = start_h + new_h
+        start_w = round(edge_length / 2 - new_w / 2)
+        end_w = start_w + new_w
+
+        resized_frame[start_h:end_h, start_w:end_w, :] = _resized_frame
+
+    return resized_frame
