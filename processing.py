@@ -27,7 +27,7 @@ global_device = torch.device(global_device_name)
 
 def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                      original_frame: np.ndarray,    # shape:
-                     keypoints: np.ndarray,     # shape: (17, 3)
+                     keypoints: np.ndarray,         # shape: (13, 3)
                      xyxy: np.ndarray,          # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      pkg_classifier,
@@ -37,9 +37,10 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                      mode: str = None) -> Dict[str, Union[Tuple[float, float], float, np.ndarray]]:
     """
     In each frame, process the assigned pedestrian. Use a state machine to perform two-layer detection.
-    :param frame: Frame array. Shape (height, weight, channels=3).
-    :param original_frame: The original frame that's never rendered anything on.
-    :param keypoints: Array key points, each being a list of x, y and confidence score. Shape: (17, 3).
+    :param frame: Frame array. Shape (height, weight, channels=3). BGR format.
+    :param original_frame: The original copy of frame that's never rendered anything on. BGR format.
+    :param keypoints: A list of key upper-body key points, each being a list of x, y and confidence
+                      score. Shape: (13, 3).
     :param xyxy: The list of bounding box diagonal coordinates. Shape: (4,).
     :param detection_target_list: List of detection targets.
     :param pkg_classifier: Package object for posture recognition.
