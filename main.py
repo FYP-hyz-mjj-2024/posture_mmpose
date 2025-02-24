@@ -324,12 +324,13 @@ def main(default_config):
                                  websocket_obj=ws)
 
     # Performance Report
-    plot_report(
-        arrays=np.array(list(demo_performance.values()))[:, 1:],
-        labels=["RTMPose", "posture", "yolo"],
-        config={"title": "Frame Computation Time", "x_name": "Frame Number", "y_name": "Time (s)"},
-        plot_mean=True
-    )
+    if not user_config["is_remote"]:
+        plot_report(
+            arrays=np.array(list(demo_performance.values()))[:, 1:],
+            labels=["RTMPose", "posture", "yolo"],
+            config={"title": "Frame Computation Time", "x_name": "Frame Number", "y_name": "Time (s)"},
+            plot_mean=True
+        )
 
 
 if __name__ == "__main__":

@@ -150,9 +150,8 @@ def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:
     :param title: The title of the local window.
     :param ws: The websocket object initialized with server_url.
     """
-    if ws is None:
+    if ws is not None:
         cv2.imshow(title, frame_to_yield)
-    else:
         # JPEG encode, convert to bytes
         _, jpeg_encoded = cv2.imencode('.jpg', frame_to_yield)
         jpeg_bytes = jpeg_encoded.tobytes()
@@ -160,6 +159,9 @@ def yieldVideoFeed(frame_to_yield, title="", ws=None) -> None:
 
         # Send request
         ws.send(json.dumps({'frameBase64': jpeg_base64, 'timestamp': str("{:.3f}".format(float(time.time())))}))
+
+    # No matter send to remote or not, leave a local copy.
+    cv2.imshow(title, frame_to_yield)
 
 
 def announceFaceFrame(face_frames, ws) -> None:
