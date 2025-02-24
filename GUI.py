@@ -2,13 +2,18 @@ import tkinter as tk
 from tkinter import ttk
 
 default_user_config = {
-    "video_source": ("0", "Video source (Camera Index/File Path)", "User Options"),
+    "video_source": ("0", "Video source (Camera Index/File Path)"),
     "is_remote": (True, "Push video to remote?"),
     "websocket_url": ("ws://localhost:8976", "Remote source URL"),
     "face_announce_interval": (5, "Face announce interval?"),
-    "use_mmpose_visualizer": (False, "Use MMPOSE visualizer?", "Developer Options"),
+    "use_mmpose_visualizer": (False, "Use MMPOSE visualizer?"),
     "use_trained_yolo": (True, "Use self-trained YOLO model?"),
     "generate_report": (False, "Generate report?"),
+}
+
+gui_separator = {
+    "video_source": "User Options",
+    "use_mmpose_visualizer": "Developer Options"
 }
 
 dtype_to_tk = {
@@ -45,10 +50,11 @@ def getUserGuiConfig(default_config):
     tk_vars = {}
     user_config = {}
 
-    for name, (default_value, desc, *separator_title) in default_config.items():
-        if separator_title:
+    for name, (default_value, desc) in default_config.items():
+        # Separator
+        if name in gui_separator:
             if desc is not None:
-                separator_title = tk.Label(root, text=separator_title[0], font=("TkDefaultFont", 8, "bold"))
+                separator_title = tk.Label(root, text=gui_separator[name], font=("TkDefaultFont", 8, "bold"))
                 separator_title.pack(anchor=tk.W, pady=(10, 0))
             separator = ttk.Separator(root, orient="horizontal")
             separator.pack(fill="x", pady=0)
@@ -74,9 +80,13 @@ def getUserGuiConfig(default_config):
         else:
             raise ValueError(f"Invalid configuration datatype '{type(default_value)}'.")
 
+    # Separator before button
+    separator = ttk.Separator(root, orient="horizontal")
+    separator.pack(fill="x", pady=(10, 0))
+
     # Submit Button
     submit_button = tk.Button(root, text="Start", command=on_submit)
-    submit_button.pack(pady=20)
+    submit_button.pack(pady=(10, 0))
 
     root.mainloop()
 
