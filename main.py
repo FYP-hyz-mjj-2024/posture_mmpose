@@ -45,6 +45,7 @@ def videoDemo(src: Union[str, int],
               runtime_save_handframes_path: str,
               device_name: str = global_device_name,
               mode: str = None,
+              generate_report: bool = False,
               websocket_obj=None):
     """
     Overall demonstration function of this project. Uses live video.
@@ -185,7 +186,7 @@ def videoDemo(src: Union[str, int],
             ]
 
             # Performance Record
-            if websocket_obj is None:
+            if generate_report:
                 mlp_yolo_times = np.array([res["performance"] for res in response_list])
                 performance["mlp"].append(np.sum(mlp_yolo_times[:, 0]))
                 performance["yolo"].append(np.sum(mlp_yolo_times[:, 1]))
@@ -236,6 +237,7 @@ def videoDemo(src: Union[str, int],
 
             yieldVideoFeed(frame, title="Pedestrian Cell Phone Usage Detection", ws=websocket_obj)
 
+            # Only announce face when connected to remote
             if websocket_obj is not None and len(announced_face_frames) > 0:
                 announceFaceFrame(announced_face_frames, ws=websocket_obj)
                 print(f"{CC['green']}Face announced at {time.strftime('%Y-%m-%d %H:%M:%S')}.{CC['reset']}")
@@ -305,7 +307,7 @@ def main(default_config):
         "phone_detector_model": phone_detector,
         "phone_detector_func": detectPhone,
         "self_trained": user_config["use_trained_yolo"],
-        "face_announce_interval": 5
+        "face_announce_interval": user_config["face_announce_interval"]
     }
 
     runtime_save_hf_path = "data/yolo_dataset_runtime/"
@@ -321,10 +323,11 @@ def main(default_config):
                                  # Configs
                                  device_name=global_device_name,
                                  mode="mjj",
+                                 generate_report=user_config["generate_report"],
                                  websocket_obj=ws)
 
     # Performance Report
-    if not user_config["is_remote"]:
+    if user_config["generate_report"]:
         plot_report(
             arrays=np.array(list(demo_performance.values()))[:, 1:],
             labels=["RTMPose", "posture", "yolo"],

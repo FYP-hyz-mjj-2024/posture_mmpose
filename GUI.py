@@ -3,20 +3,36 @@ import tkinter as tk
 default_user_config = {
     "is_remote": (False, "Push video to remote?"),
     "video_source": ("0", "Video source?"),
+    "face_announce_interval": (5, "Face announce interval?"),
     "use_mmpose_visualizer": (False, "Use MMPOSE visualizer?"),
     "use_trained_yolo": (True, "Use self-trained YOLO model?"),
+    "generate_report": (False, "Generate report?"),
+}
+
+dtype_to_tk = {
+    bool: "var",
+    str: "entry",
+    int: "spinbox"
 }
 
 
 def getUserGuiConfig(default_config):
+    """
+    Get user configuration from a GUI panel.
+    :param default_config:  Dictionary of default configurations.
+    :return: Possibly modified user configuration.
+    """
 
     def on_submit():
+        """
+        Invoked call-back when the submit button is hit.
+        :return: None.
+        """
         nonlocal default_config, tk_vars, user_config
-        for var_key, (var_value, _) in default_config.items():
-            if isinstance(var_value, bool):
-                user_config[var_key] = tk_vars[f"{var_key}_var"].get()
-            else:
-                user_config[var_key] = tk_vars[f"{var_key}_entry"].get()
+        for config_name, (config_value, _) in default_config.items():
+            user_config[config_name] = type(config_value)(     # Force convert to target type.
+                tk_vars[f"{config_name}_{dtype_to_tk[type(config_value)]}"].get()  # Suffix is determined by type
+            )
         root.quit()
 
     # Init main window
@@ -27,22 +43,28 @@ def getUserGuiConfig(default_config):
     tk_vars = {}
     user_config = {}
 
-    for key, (default_value, desc) in default_config.items():
+    for name, (default_value, desc) in default_config.items():
 
         if isinstance(default_value, bool):
             var = tk.BooleanVar(value=default_value)
-            tk_vars[f"{key}_var"] = var
+            tk_vars[f"{name}_{dtype_to_tk[bool]}"] = var
             tk.Checkbutton(root, text=desc, variable=var).pack(anchor=tk.W)
 
         elif isinstance(default_value, str):
             entry = tk.Entry(root, width=30)
             entry.insert(0, default_value)
-            tk_vars[f"{key}_entry"] = entry
+            tk_vars[f"{name}_{dtype_to_tk[str]}"] = entry
             tk.Label(root, text=desc).pack(anchor=tk.W)
             entry.pack(anchor=tk.W)
 
+        elif isinstance(default_value, int):
+            spinbox = tk.Spinbox(root, from_=default_value, to=20, width=5, increment=1)
+            tk_vars[f"{name}_{dtype_to_tk[int]}"] = spinbox
+            tk.Label(root, text=desc).pack(anchor=tk.W)
+            spinbox.pack(anchor=tk.W)
+
         else:
-            raise ValueError("Invalid configuration.")
+            raise ValueError(f"Invalid configuration datatype '{type(default_value)}'.")
 
     # Submit Button
     submit_button = tk.Button(root, text="Start", command=on_submit)
@@ -56,4 +78,4 @@ def getUserGuiConfig(default_config):
 if __name__ == '__main__':
     config = getUserGuiConfig(default_user_config)
     for key, value in config.items():
-        print(f"{key} - {value}")
+        print(f"{key} - {value}, {type(value)}")
