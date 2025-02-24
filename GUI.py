@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog, filedialog
 
 default_user_config = {
     "is_remote": (False, "Push video to remote?"),
@@ -45,8 +44,10 @@ def getUserGuiConfig(default_config):
         else:
             raise ValueError("Invalid configuration.")
 
+    # Submit Button
     submit_button = tk.Button(root, text="Start", command=on_submit)
     submit_button.pack(pady=20)
+
     root.mainloop()
 
     return user_config
