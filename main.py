@@ -287,7 +287,7 @@ def main(default_config):
     phone_detector = YOLO(yolo_path)
 
     # WebSocket Object
-    ws = init_websocket("ws://localhost:8976") if user_config["is_remote"] else None
+    ws = init_websocket(user_config["websocket_url"]) if user_config["is_remote"] else None
 
     # Packages
     package_mmpose = {

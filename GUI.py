@@ -1,10 +1,12 @@
 import tkinter as tk
+from tkinter import ttk
 
 default_user_config = {
-    "is_remote": (False, "Push video to remote?"),
-    "video_source": ("0", "Video source?"),
+    "video_source": ("0", "Video source (Camera Index/File Path)", "User Options"),
+    "is_remote": (True, "Push video to remote?"),
+    "websocket_url": ("ws://localhost:8976", "Remote source URL"),
     "face_announce_interval": (5, "Face announce interval?"),
-    "use_mmpose_visualizer": (False, "Use MMPOSE visualizer?"),
+    "use_mmpose_visualizer": (False, "Use MMPOSE visualizer?", "Developer Options"),
     "use_trained_yolo": (True, "Use self-trained YOLO model?"),
     "generate_report": (False, "Generate report?"),
 }
@@ -29,7 +31,7 @@ def getUserGuiConfig(default_config):
         :return: None.
         """
         nonlocal default_config, tk_vars, user_config
-        for config_name, (config_value, _) in default_config.items():
+        for config_name, (config_value, _, *extra) in default_config.items():
             user_config[config_name] = type(config_value)(     # Force convert to target type.
                 tk_vars[f"{config_name}_{dtype_to_tk[type(config_value)]}"].get()  # Suffix is determined by type
             )
@@ -43,7 +45,13 @@ def getUserGuiConfig(default_config):
     tk_vars = {}
     user_config = {}
 
-    for name, (default_value, desc) in default_config.items():
+    for name, (default_value, desc, *separator_title) in default_config.items():
+        if separator_title:
+            if desc is not None:
+                separator_title = tk.Label(root, text=separator_title[0], font=("TkDefaultFont", 8, "bold"))
+                separator_title.pack(anchor=tk.W, pady=(10, 0))
+            separator = ttk.Separator(root, orient="horizontal")
+            separator.pack(fill="x", pady=0)
 
         if isinstance(default_value, bool):
             var = tk.BooleanVar(value=default_value)
