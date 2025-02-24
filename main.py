@@ -36,6 +36,7 @@ from utils.opencv_utils import yieldVideoFeed, init_websocket, getUserConsoleCon
 from utils.plot_report import plot_report
 from processing import processOnePerson, classify, classify3D, detectPhone, global_device_name, global_device
 from utils.decorations import BANNER, CONSOLE_COLORS as CC
+from GUI import getUserGuiConfig, default_user_config
 
 
 def videoDemo(src: Union[str, int],
