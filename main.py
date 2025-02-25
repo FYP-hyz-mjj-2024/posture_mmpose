@@ -55,7 +55,8 @@ def videoDemo(src: Union[str, int],
     :param pkg_phone_detector: Tool package of phone detector.
     :param runtime_save_handframes_path: Path to save runtime hand frames.
     :param device_name: Name of hardware, cpu or cuda.
-    :param mode: Mode of convolution: hyz or mjj.
+    :param mode: Mode of convolution: hyz or mjj
+    :param generate_report: Whether to generate a performance report.
     :param websocket_obj: Websocket object.
     :return: None.
     """
