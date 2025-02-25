@@ -202,20 +202,20 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                 # Convert BGR subframe to RGB for YOLO inference.
                 subframe = cv2.cvtColor(subframe, cv2.COLOR_BGR2RGB)
 
-                phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
-                                                          device=device_name, threshold=0.3,
-                                                          cell_phone_index=phone_index)
+                phone_detect_str, phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
+                                                                            device=device_name, threshold=0.3,
+                                                                            cell_phone_index=phone_index)
 
             except (cv2.error, IOError) as e:     # frame could possibly be none.
                 print(f"{CC['yellow']}"
                       f"Error in detectPhone: Failed reading frame at this point, skipping to the next frame."
                       f"{CC['reset']}")
-                phone_detect_signal = 0
+                phone_detect_str, phone_detect_signal = "", 0
 
             # 3.2 Render hand frames based on the signal.
             if phone_detect_signal == 2:
                 _state = kcfg.USING
-                phone_display_str = f"{idx} Phone"
+                phone_display_str = f"{idx} {phone_detect_str}"
                 phone_display_color = "red"
             else:
                 phone_display_str = f"{idx} -"
@@ -333,14 +333,18 @@ def detectPhone(model: YOLO, frame: np.ndarray,
     results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
 
     if not any(results_cls == cell_phone_index):
-        return 0    # Not using phone
+        return "", 0    # Not using phone
 
     # 67 is the index of "cell phone" in the non-tuned model
     # "Are there any cell phones found?"
     results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == cell_phone_index]
 
+    # Detection results
+    detection_result_str = f"Phone: {max(results_conf):.3f}"
+    detection_signal = 2 if any(results_conf > threshold) else 0
+
     # 2 stands for positive, 0 stands for negative
-    return 2 if any(results_conf > threshold) else 0
+    return detection_result_str, detection_signal
 
 # ================================= #
 
