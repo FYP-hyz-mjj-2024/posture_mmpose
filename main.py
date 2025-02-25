@@ -262,6 +262,11 @@ def main(default_config):
     # Get user config using GUI.
     user_config = getUserGuiConfig(default_config)
 
+    # User clicked the "x" on the gui panel.
+    if user_config == {}:
+        print(f"{CC['yellow']}User canceled running.{CC['yellow']}")
+        return
+
     # Initialize MMPose Essentials
     bbox_detector, pose_estimator, visualizer = getMMPoseEssentials()
 
