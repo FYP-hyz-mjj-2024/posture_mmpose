@@ -1,15 +1,18 @@
-# Essentials
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
-
-# Utilities
+# Basics
 import os
 import shutil
 import copy
 import time
+from typing import Union, Tuple, Optional
+
+# Essentials
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+from torch import Tensor
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
 
 # Local
 from utils.parse_file_name import parseFileName
@@ -166,6 +169,40 @@ def train_and_evaluate(model,
     return train_losses, valid_losses, overfit_factors, log_strs
 
 
+class ResPool3d(nn.Module):
+    __constants__ = ['kernel_size', 'stride', 'padding', 'dilation','ceil_mode']
+    ceil_mode: bool
+
+    def __init__(self,
+                 kernel_size: Union[int, Tuple[int, ...]],
+                 stride: Optional[Union[int, Tuple[int, ...]]] = None,
+                 padding: Union[int, Tuple[int, ...]] = 0,
+                 dilation: Union[int, Tuple[int, ...]] = 1,
+                 ceil_mode: bool = False) -> None:
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.stride = stride if (stride is not None) else kernel_size
+        self.padding = padding
+        self.dilation = dilation
+        self.ceil_mode = ceil_mode
+
+    def forward(self, input: Tensor):
+        _max_pooled, indices = F.max_pool3d(input, self.kernel_size, self.stride,
+                                       self.padding, self.dilation, ceil_mode=self.ceil_mode,
+                                       return_indices=True)
+
+        output_shape = input.shape
+
+        # Initialize a blank tensor "canvas" with the same shape as input.
+        output = torch.zeros(output_shape, dtype=input.dtype)
+
+        # Scatter the emphasized value into the blank "canvas".
+        output = output.view(-1).scatter_(0, indices.view(-1), _max_pooled.view(-1)).view(output_shape)
+
+        # Add the emphasized values into the original input tensor.
+        return input + output
+
+
 class MLP3d(nn.Module):
     def __init__(self, input_channel_num, output_class_num):
         super(MLP3d, self).__init__()
@@ -194,13 +231,13 @@ class MLP3d(nn.Module):
             nn.BatchNorm3d(num_features=32),
             self.activation,
 
-            nn.MaxPool3d(kernel_size=self.m_k, stride=self.m_k),
+            ResPool3d(kernel_size=self.m_k, stride=self.m_k, padding=0),
         )
 
         self.fc_layers = nn.Sequential(
             nn.Linear(in_features=2880, out_features=256),
             self.activation,
-            nn.Linear(in_features=256, out_features=output_class_num)
+            nn.Linear(in_features=256, out_features=output_class_num) # TODO
         )
 
     def forward(self, x):
