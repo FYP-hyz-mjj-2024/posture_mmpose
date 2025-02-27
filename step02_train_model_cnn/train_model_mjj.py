@@ -170,7 +170,7 @@ def train_and_evaluate(model,
 
 
 class ResPool3d(nn.Module):
-    __constants__ = ['kernel_size', 'stride', 'padding', 'dilation','ceil_mode']
+    __constants__ = ['kernel_size', 'stride', 'padding', 'dilation', 'ceil_mode']
     ceil_mode: bool
 
     def __init__(self,
@@ -194,7 +194,7 @@ class ResPool3d(nn.Module):
         output_shape = input.shape
 
         # Initialize a blank tensor "canvas" with the same shape as input.
-        output = torch.zeros(output_shape, dtype=input.dtype)
+        output = torch.zeros(output_shape, dtype=input.dtype).to('cuda')
 
         # Scatter the emphasized value into the blank "canvas".
         output = output.view(-1).scatter_(0, indices.view(-1), _max_pooled.view(-1)).view(output_shape)
@@ -208,7 +208,7 @@ class MLP3d(nn.Module):
         super(MLP3d, self).__init__()
         self.k = (3, 5, 5)          # Convolution3D kernel size
         self.m_k = 2                # MaxPool3D kernel stride
-        self.activation = nn.ELU()
+        self.activation = nn.SiLU()
 
         self.conv_layers = nn.Sequential(
             # Conv 1: C=2 -> C=8
@@ -226,26 +226,45 @@ class MLP3d(nn.Module):
             nn.BatchNorm3d(num_features=32),
             self.activation,
 
-            # Conv 4: C=32 -> C=32
-            nn.Conv3d(in_channels=32, out_channels=32, kernel_size=self.k, padding='same'),
-            nn.BatchNorm3d(num_features=32),
-            self.activation,
-
             ResPool3d(kernel_size=self.m_k, stride=self.m_k, padding=0),
         )
 
         self.fc_layers = nn.Sequential(
-            nn.Linear(in_features=2880, out_features=256),
+            nn.Linear(in_features=29568, out_features=7392),
             self.activation,
-            nn.Linear(in_features=256, out_features=output_class_num) # TODO
+
+            nn.Linear(in_features=7392, out_features=1848),
+            self.activation,
+
+            nn.Linear(in_features=1848, out_features=256),
+            self.activation,
+
+            nn.Linear(in_features=256, out_features=output_class_num)   # TODO
         )
 
     def forward(self, x):
         x = self.conv_layers(x)
-        x = x.view(x.size(0), -1)  # 192
+        x = x.view(x.size(0), -1)  # 29568
         x = self.fc_layers(x)
-
         return x
+
+
+def normalize(X):
+    """
+    Normalize data.
+    :param X: 5-D input data. (N, C, D, H, W).
+    :return:
+    """
+    mean_angles = np.mean(X[:, 0, :, :, :])  # No need to divide by 180 since channels are separated.
+    mean_scores = np.mean(X[:, 1, :, :, :])
+
+    std_angles = np.std(X[:, 0, :, :, :])
+    std_scores = np.std(X[:, 1, :, :, :])
+
+    X[:, 0, :, :, :] = (X[:, 0, :, :, :] - mean_angles) / std_angles
+    X[:, 1, :, :, :] = (X[:, 1, :, :, :] - mean_scores) / std_scores
+
+    return X
 
 
 if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
@@ -254,7 +273,7 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     """
     # Logging
     time_str = time.strftime("%Y%m%d-%H%M%S")
-    log_root = f"../logs/training_performance_log/{time_str}/"
+    log_root = f"./logs/{time_str}/"
     train_log_path = os.path.join(log_root, "train_log.txt")
     if os.path.exists(log_root):
         shutil.rmtree(log_root)
@@ -262,56 +281,62 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
 
     # Model Saving
     dataset_source_path = "../data/train/3dnpy"
-    model_save_root = "../data/models/"
+    model_save_root = "./archived_models/"
 
     """
     Prepare data
     """
     # Training data points
     train_data, test_data = getNPY(dataset_source_path, test_ratio=0.3)
+    U_train, N_train = train_data
+    U_test, N_test = test_data
 
-    U_train, N_train = train_data # TODO: why this return form? 2024-01-21 18:11
+    # Get train-evaluate set and test set for both labels.
+    X_train_eval = np.vstack((U_train, N_train))
+    X_test = np.vstack((U_test, N_test))
 
-    # Normalize Data
-    # Using Z-score normalization: mean(mu)=0, std_dev(sigma)=1
-    X = np.vstack((U_train, N_train))
-    X[:, 0, :, :, :] /= 180.0  # Make domain of angle fields into [0, 1]
-    mean_X = np.mean(X)
-    std_dev_X = np.std(X, ddof=1)
-    X = (X - mean_X) / std_dev_X
+    # Normalize train-evaluate data in per-channel manner.
+    X_train_eval = normalize(X_train_eval)
+    X_test = normalize(X_test)
 
     # Result Labels
     y = np.hstack((np.ones(len(U_train)), np.zeros(len(N_train))))  # (n,)
+    y_test = np.hstack((np.ones(len(U_test)), np.zeros(len(N_test))))  # (N, )
 
-    shuffle_indices = np.random.permutation(X.shape[0])
+    # Get shuffle indices for train-evaluate and test.
+    shuffle_indices_train_eval = np.random.permutation(X_train_eval.shape[0])
+    shuffle_indices_test = np.random.permutation(X_test.shape[0])
 
-    X, y = X[shuffle_indices], y[shuffle_indices]
-
-    split_board = int(0.35 * X.shape[0])
-
-    # Train-test split
-    X_train, X_valid = X[split_board:], X[:split_board]
+    # Shuffle and split train-evaluation data.
+    X_train_eval, y = X_train_eval[shuffle_indices_train_eval], y[shuffle_indices_train_eval]
+    split_board = int(0.35 * X_train_eval.shape[0])
+    X_train, X_valid = X_train_eval[split_board:], X_train_eval[:split_board]
     y_train, y_valid = y[split_board:], y[:split_board]
+    X_test, y_test = X_test[shuffle_indices_test], y_test[shuffle_indices_test]
 
+    # Put train and evaluation data into tensor.
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
 
     X_valid_tensor = torch.tensor(X_valid, dtype=torch.float32)
     y_valid_tensor = torch.tensor(y_valid, dtype=torch.long)
 
+    X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
+
     # Tensor Datasets
     train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
     valid_dataset = TensorDataset(X_valid_tensor, y_valid_tensor)
+    test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
 
     # Data Loaders
     train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
     valid_loader = DataLoader(valid_dataset, batch_size=128, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
 
     """
-    Model Training
+    Train
     """
-    input_size = X_train.shape[1]
-    hidden_size = 100
     learning_rate = 5e-6
     num_epochs = 650
 
@@ -334,14 +359,12 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
                                     optimizer,
                                     num_epochs,
                                     early_stop_params={
-                                        "min_delta": 1e-2,
-                                        "patience": 20
+                                        "min_delta": 1e-3,
+                                        "patience": 8
                                     })
 
     model_state = {
         'model_state_dict': model.state_dict(),
-        'mean_X': torch.tensor(mean_X, dtype=torch.float32),
-        'std_dev_X': torch.tensor(std_dev_X, dtype=torch.float32)
     }
 
     model_file_name = f"posture_mmpose_vgg3d_{time_str}.pth"
@@ -354,35 +377,10 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     """
     Test
     """
-    U_test, N_test = test_data
-
     model_essentials = torch.load(os.path.join(model_save_root, model_file_name))
-    # model_essentials = torch.load(f"../data/models/posture_mmpose_vgg3d_17349534273325243.pth")
     model = model_essentials["model_state_dict"]
-    mean = model_essentials["mean_X"].cpu().item()
-    std = model_essentials["std_dev_X"].cpu().item()
-
-    # Normalize Data
-    # Using Z-score normalization: mean(mu)=0, std_dev(sigma)=1
-    X_test = np.vstack((U_test, N_test))
-    X_test[:, ::2] /= 180  # Make domain of angle fields into [0, 1]
-    X_test = (X_test - mean) / std  # (N, C, H, W, D)
 
     # Result Labels
-    y_test = np.hstack((np.ones(len(U_test)), np.zeros(len(N_test)))) # (N, )
-
-    shuffle_indices_test = np.random.permutation(X_test.shape[0])
-    X_test, y_test = X_test[shuffle_indices_test], y_test[shuffle_indices_test]
-
-    X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
-    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
-
-    # Tensor Datasets
-    test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
-
-    # Data Loaders
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
-
     pred_scores, true_labels, pred_labels = get_predictions(ModelClass=MLP3d,
                                                             model_state=model,
                                                             input_size=2,

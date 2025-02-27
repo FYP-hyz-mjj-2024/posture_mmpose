@@ -15,7 +15,7 @@ from ultralytics import YOLO
 from step01_annotate_image_mmpose.annotate_image import translateOneLandmarks
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg
 from step02_train_model_cnn.train_model_hyz import MLP
-from step02_train_model_cnn.train_model_mjj import MLP3d
+from step02_train_model_cnn.train_model_mjj import MLP3d, normalize
 from step03_yolo_phone_detection.dvalue import yolo_input_size
 from utils.opencv_utils import render_detection_rectangle, cropFrame, resizeFrameToSquare
 from utils.decorations import CONSOLE_COLORS as CC
@@ -54,7 +54,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
     # Posture Recognition.
     classifier_model = pkg_classifier["classifier_model"]
     classifier_func = pkg_classifier["classifier_func"]
-    normalize_parameters = pkg_classifier["norm_params"]
+    # normalize_parameters = pkg_classifier["norm_params"]
 
     # Cell Phone Detection
     phone_detector_model = pkg_phone_detector["phone_detector_model"]
@@ -110,7 +110,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
 
         # Posture recognition model inference.  0: Not using, 1: Suspicious.
         start_mlp = time.time()
-        classifier_result_str, posture_signal = classifier_func(classifier_model, normalize_parameters, kas_one_person)
+        classifier_result_str, posture_signal = classifier_func(classifier_model, kas_one_person)
 
         # Adjust states according to posture recognition results.
         if posture_signal == 0:
@@ -275,34 +275,31 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
 
 
 def classify3D(classifier_model: MLP3d,
-               normalize_parameters: Dict[str, float],
                numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
     """
     Use the posture recognition model to classify a pedestrian's pose.
     :param classifier_model: The trained posture recognition model instance.
-    :param normalize_parameters: Model normalize parameters, including the mean and std.
     :param numeric_data: 2-channel 3-d structured posture angle-score data.
     :return: Classification result.
     """
     # Normalize
-    input_data = np.array(numeric_data)
-    input_data[0, :, :, :] /= 180
-    mean_X = normalize_parameters['mean_X']
-    std_dev_X = normalize_parameters['std_dev_X']
-    input_data = (input_data - mean_X) / std_dev_X
+    input_data = np.array([numeric_data])   # Add a "batch" dimension for the model: (N, C, D, H, W)
+    # input_data[0, :, :, :] /= 180
+    # mean_X = normalize_parameters['mean_X']
+    # std_dev_X = normalize_parameters['std_dev_X']
+    # input_data = (input_data - mean_X) / std_dev_X
+    input_data = normalize(input_data)
 
     # Convert to tensor
     input_tensor = torch.tensor(input_data, dtype=torch.float32)
-    input_tensor = input_tensor.permute(0, 3, 1, 2)       # Convert from (Cin, H, W, D) to (Cin, D, H, W)
-    input_tensor = input_tensor.unsqueeze(0).to(global_device)  # Add a "batch" dimension for the model: (N, C, D, H, W)
+    input_tensor = input_tensor.permute(0, 1, 4, 2, 3)       # Convert from (N, C, H, W, D) to (N, C, D, H, W)
+    input_tensor = input_tensor.to(global_device)
 
     with torch.no_grad():
         outputs = classifier_model(input_tensor)
         sg = torch.sigmoid(outputs[0])
-        prediction = int(sg[0] < sg[1] or sg[1] > 0.42)
-        # prediction = torch.argmax(sg, dim=0).item()
+        prediction = sg[1] > sg[0]
 
-    # out0: Conf for "using"; out1: conf for "not using".
     out0, out1 = sg
     # Note: prediction=0 => classify_signal=1 (Using); prediction=1 => classify_signal=0 (Not using).
     classify_signal = 0 if prediction != 1 else 1

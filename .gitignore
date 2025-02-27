@@ -77,13 +77,14 @@ model_config/checkpoints/*
 # Custom files
 runs/
 step01_annotate_image_mmpose/_disabled/
+step02_train_model_cnn/archived_models/*
+!step02_train_model_cnn/archived_models/.gitkeep
+step02_train_model_cnn/logs/*
+!step02_train_model_cnn/logs/.gitkeep
 step03_yolo_phone_detection/pvalue.py
 step03_yolo_phone_detection/non_tuned/*
 step03_yolo_phone_detection/roboflow_dataset_download/*
 step03_yolo_phone_detection/yolo11n.pt
-
-
-
 
 # MacOS
 .DS_Store

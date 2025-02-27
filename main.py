@@ -274,15 +274,11 @@ def main(default_config):
     target_list = kcfg.get_targets(mode="mjj")
 
     # Posture classifier
-    model_state = torch.load('./data/models/posture_mmpose_vgg3d_17349570075562594.pth', map_location=global_device)
+    model_state = torch.load('step02_train_model_cnn/archived_models/posture_mmpose_vgg3d_20250227-225653.pth', map_location=global_device)
     classifier = MLP3d(input_channel_num=2, output_class_num=2)
     classifier.load_state_dict(model_state['model_state_dict'])
     classifier.eval()
     classifier.to(global_device)
-    norm_params = {
-        'mean_X': model_state['mean_X'].item(),
-        'std_dev_X': model_state['std_dev_X'].item()
-    }
     classifier_function = classify3D
 
     # YOLO object detection model
@@ -306,7 +302,7 @@ def main(default_config):
     package_classifier = {
         "classifier_model": classifier,
         "classifier_func": classifier_function,
-        "norm_params": norm_params,
+        # "norm_params": norm_params,
     }
 
     package_phone_detector = {
