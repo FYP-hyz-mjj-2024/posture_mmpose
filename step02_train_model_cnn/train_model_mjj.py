@@ -169,20 +169,31 @@ def train_and_evaluate(model,
 class MLP3d(nn.Module):
     def __init__(self, input_channel_num, output_class_num):
         super(MLP3d, self).__init__()
-        self.k = (3, 5, 5)  # kernel_size
-        self.m_k = 2  # max_pool kernel_size
+        self.k = (3, 5, 5)          # Convolution3D kernel size
+        self.m_k = 2                # MaxPool3D kernel stride
         self.activation = nn.ELU()
 
         self.conv_layers = nn.Sequential(
+            # Conv 1: C=2 -> C=8
             nn.Conv3d(in_channels=input_channel_num, out_channels=8, kernel_size=self.k, padding='same'),
-            self.activation,
-            nn.Conv3d(in_channels=8, out_channels=16, kernel_size=self.k, padding='same'),
+            nn.BatchNorm3d(num_features=8),
             self.activation,
 
+            # Conv 2: C=8 -> C=16
+            nn.Conv3d(in_channels=8, out_channels=16, kernel_size=self.k, padding='same'),
+            nn.BatchNorm3d(num_features=16),
+            self.activation,
+
+            # Conv 3: C=16 -> C=32
             nn.Conv3d(in_channels=16, out_channels=32, kernel_size=self.k, padding='same'),
+            nn.BatchNorm3d(num_features=32),
             self.activation,
+
+            # Conv 4: C=32 -> C=32
             nn.Conv3d(in_channels=32, out_channels=32, kernel_size=self.k, padding='same'),
+            nn.BatchNorm3d(num_features=32),
             self.activation,
+
             nn.MaxPool3d(kernel_size=self.m_k, stride=self.m_k),
         )
 
