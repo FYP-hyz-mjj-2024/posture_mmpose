@@ -110,7 +110,7 @@ def train_and_evaluate(model,
 
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = criterion(outputs, labels) # TODO: May try combination of different losses, 2024-1-21 18:20
+            loss = criterion(outputs, labels, model) # TODO: May try combination of different losses, 2024-1-21 18:20
             loss.backward()
             optimizer.step()
 
@@ -202,6 +202,61 @@ class ResPool3d(nn.Module):
         # Add the emphasized values into the original input tensor.
         return input + output
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, labels):
+        probs = torch.softmax(inputs, dim=-1) # get softmax of 2 classes
+        pt = probs.gather(dim=-1, index=labels.unsqueeze(1)) # get p_t of observed class
+        loss = self.alpha * (1 - pt) ** self.gamma * -torch.log(pt) # calculate focal loss
+
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss
+
+class L2Regularization(nn.Module):
+    def __init__(self, l2_lambda=0.0001):
+        super(L2Regularization, self).__init__()
+        self.l2_lambda = l2_lambda
+
+    def forward(self, _model):
+        _device = next(_model.parameters()).device
+        l2_reg = torch.tensor(0., device=_device)
+        for param in _model.parameters():
+            l2_reg += torch.sum(param ** 2)
+
+        return self.l2_lambda * l2_reg
+
+class WeightedLoss(nn.Module): # TODO: rename the class,  2024-2-28 18:21
+    def __init__(self, w1=0.6, w2=0.3, w3=0.1, focal_alpha = 0.25, focal_gamma=2, l2_lambda=0.0001):
+        super(WeightedLoss, self).__init__()
+        self.w1 = w1
+        self.w2 = w2
+        self.w3 = w3
+        self.focal = FocalLoss(focal_alpha, focal_gamma)
+        self.l2 = L2Regularization(l2_lambda)
+
+    def forward(self, outputs, labels, classifier3d):
+        # BCE with logits
+        unsoftmax_pt = outputs.gather(dim=-1, index=labels.unsqueeze(1)) # get p_t of observed class
+        input_ = unsoftmax_pt.squeeze(1)
+        target_ = labels.to(torch.float32)
+        bce_loss = F.binary_cross_entropy_with_logits(input_, target_)
+        # Focal Loss
+        focal_loss = self.focal(outputs, labels)
+        # L2 Regularization
+        l2_reg = self.l2(classifier3d)
+
+        # Total Loss
+        total_loss = self.w1 * bce_loss + self.w2 * focal_loss + self.w3 * l2_reg
+        return total_loss
 
 class MLP3d(nn.Module):
     def __init__(self, input_channel_num, output_class_num):
@@ -239,7 +294,7 @@ class MLP3d(nn.Module):
             nn.Linear(in_features=1848, out_features=256),
             self.activation,
 
-            nn.Linear(in_features=256, out_features=output_class_num)   # TODO
+            nn.Linear(in_features=256, out_features=output_class_num)
         )
 
     def forward(self, x):
@@ -305,14 +360,14 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
 
     # Get shuffle indices for train-evaluate and test.
     shuffle_indices_train_eval = np.random.permutation(X_train_eval.shape[0])
-    shuffle_indices_test = np.random.permutation(X_test.shape[0])
+    # shuffle_indices_test = np.random.permutation(X_test.shape[0])
 
     # Shuffle and split train-evaluation data.
     X_train_eval, y = X_train_eval[shuffle_indices_train_eval], y[shuffle_indices_train_eval]
     split_board = int(0.35 * X_train_eval.shape[0])
     X_train, X_valid = X_train_eval[split_board:], X_train_eval[:split_board]
     y_train, y_valid = y[split_board:], y[:split_board]
-    X_test, y_test = X_test[shuffle_indices_test], y_test[shuffle_indices_test]
+    # X_test, y_test = X_test[shuffle_indices_test], y_test[shuffle_indices_test]
 
     # Put train and evaluation data into tensor.
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
@@ -341,7 +396,8 @@ if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
     num_epochs = 650
 
     model = MLP3d(input_channel_num=2, output_class_num=2).to(device)
-    criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
+    # criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
+    criterion = WeightedLoss(0.6, 0.3, 0.1)  # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Auto adjust lr prevent o.f.
 
     report_loss = []

@@ -15,7 +15,7 @@ from ultralytics import YOLO
 from step01_annotate_image_mmpose.annotate_image import translateOneLandmarks
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg
 from step02_train_model_cnn.train_model_hyz import MLP
-from step02_train_model_cnn.train_model_mjj import MLP3d, normalize
+from step02_train_model_cnn.train_model import MLP3d, normalize
 from step03_yolo_phone_detection.dvalue import yolo_input_size
 from utils.opencv_utils import render_detection_rectangle, cropFrame, resizeFrameToSquare
 from utils.decorations import CONSOLE_COLORS as CC

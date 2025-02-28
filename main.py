@@ -30,7 +30,7 @@ from pynput import mouse
 # Locals
 from step01_annotate_image_mmpose.annotate_image import getMMPoseEssentials, processOneImage, renderTheResults
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg, mmpose_config as mcfg
-from step02_train_model_cnn.train_model_mjj import MLP3d
+from step02_train_model_cnn.train_model import MLP3d
 from utils.opencv_utils import yieldVideoFeed, init_websocket, render_ui_text, announceFaceFrame
 from utils.plot_report import plot_report
 from processing import processOnePerson, classify3D, detectPhone, global_device_name, global_device
