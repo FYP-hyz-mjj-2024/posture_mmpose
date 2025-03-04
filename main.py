@@ -44,7 +44,6 @@ def videoDemo(src: Union[str, int],
               pkg_phone_detector,
               runtime_save_handframes_path: str,
               device_name: str = global_device_name,
-              mode: str = None,
               generate_report: bool = False,
               websocket_obj=None):
     """
@@ -55,7 +54,6 @@ def videoDemo(src: Union[str, int],
     :param pkg_phone_detector: Tool package of phone detector.
     :param runtime_save_handframes_path: Path to save runtime hand frames.
     :param device_name: Name of hardware, cpu or cuda.
-    :param mode: Mode of convolution: hyz or mjj
     :param generate_report: Whether to generate a performance report.
     :param websocket_obj: Websocket object.
     :return: None.
@@ -181,8 +179,7 @@ def videoDemo(src: Union[str, int],
                                  pkg_classifier=pkg_classifier,
                                  pkg_phone_detector=pkg_phone_detector,
                                  runtime_parameters=runtime_params,
-                                 device_name=device_name,
-                                 mode=mode)
+                                 device_name=device_name)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
             ]
 
@@ -271,7 +268,7 @@ def main(default_config):
     bbox_detector, pose_estimator, visualizer = getMMPoseEssentials()
 
     # List of detection targets
-    target_list = kcfg.get_targets(mode="mjj")
+    target_list = kcfg.get_targets()
 
     # Posture classifier
     model_state = torch.load('step02_train_model_cnn/archived_models/posture_mmpose_vgg3d_20250304-154753.pth', map_location=global_device)
@@ -324,7 +321,6 @@ def main(default_config):
                                  runtime_save_handframes_path=runtime_save_hf_path,
                                  # Configs
                                  device_name=global_device_name,
-                                 mode="mjj",
                                  generate_report=user_config["generate_report"],
                                  websocket_obj=ws)
 

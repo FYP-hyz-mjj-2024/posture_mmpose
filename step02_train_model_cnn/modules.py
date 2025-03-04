@@ -122,12 +122,7 @@ class MCLoss(nn.Module):
         self.l2 = L2Regularization(l2_lambda)
 
     def forward(self, outputs, labels, mlp3d_instance):
-        # BCE with logits
-        # unsoftmax_pt = outputs.gather(dim=-1, index=labels.unsqueeze(1))    # (batch_size=128, 1)
-        # input_ = unsoftmax_pt.squeeze(1)        # (batch_size=128, ) array of ground-truth label prob.
-        # targets_ = labels.to(torch.float32)      # Ground-truth labels
-        # bce_loss = F.binary_cross_entropy_with_logits(input_, targets_)
-
+        # Cross Entropy Loss
         ce_loss = F.cross_entropy(outputs, labels)
 
         # Focal Loss
@@ -164,6 +159,7 @@ class MLP3d(nn.Module):
             nn.BatchNorm3d(num_features=32),
             self.activation,
 
+            # Residual Max-Pooling
             ResPool3d(kernel_size=self.m_k, stride=self.m_k, padding=0),
         )
 

@@ -66,8 +66,7 @@ data/yolo_dataset_runtime/*
 data/blob/videos/*
 data/blob/yolo_videos/*
 data/yolo/*
-logs/*
-!logs/.gitkeep
+
 
 # MMPose config files
 #*.pth

@@ -12,7 +12,6 @@ from ultralytics import YOLO
 # Local packages
 from step01_annotate_image_mmpose.annotate_image import translateOneLandmarks
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg
-from step02_train_model_cnn.train_model_hyz import MLP
 from step02_train_model_cnn.train_model import normalize
 from step03_yolo_phone_detection.dvalue import yolo_input_size
 from utils.opencv_utils import render_detection_rectangle, cropFrame, resizeFrameToSquare
@@ -31,8 +30,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                      pkg_classifier,
                      pkg_phone_detector,
                      runtime_parameters,  # Save runtime handframes, crop face frame, etc.
-                     device_name: str = "cpu",
-                     mode: str = None) -> Dict[str, Union[Tuple[float, float], float, np.ndarray]]:
+                     device_name: str = "cpu") -> Dict[str, Union[Tuple[float, float], float, np.ndarray]]:
     """
     In each frame, process the assigned pedestrian. Use a state machine to perform two-layer detection.
     :param frame: Frame array. Shape (height, weight, channels=3). BGR format.
@@ -45,7 +43,6 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
     :param pkg_phone_detector: Package object for cell-phone detection.
     :param runtime_parameters: Runtime parameters that records various running states of the system.
     :param device_name: Name of the hardware device.
-    :param mode: Solution of different convolutions.
     :return: Evaluated time for posture recognition and object detection at this pedestrian at this frame.
     """
 
@@ -104,7 +101,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
     # Still in starting state after filtering.
     if _state == kcfg.TO_BE_CLASSIFIED:
         # Translation of one person's landmarks to targeted key points.
-        kas_one_person = translateOneLandmarks(detection_target_list, keypoints, mode)
+        kas_one_person = translateOneLandmarks(detection_target_list, keypoints)
 
         # Posture recognition model inference.  0: Not using, 1: Suspicious.
         start_mlp = time.time()
@@ -341,9 +338,8 @@ def detectPhone(model: YOLO, frame: np.ndarray,
     # 2 stands for positive, 0 stands for negative
     return detection_result_str, detection_signal
 
-# ================================= #
 
-
+"""
 def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
              # TODO: lazy tag
              numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
@@ -371,3 +367,4 @@ def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
     classifier_result_str = f"+ {out1:.2f}" if (prediction == 1) else f"- {out0:.2f}"
 
     return classifier_result_str, classify_signal
+"""

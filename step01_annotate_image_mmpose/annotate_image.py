@@ -85,8 +85,7 @@ def processVideosInDir(video_dir: str,
                        bbox_detector_model: RTMDet,
                        pose_estimator_model: TopdownPoseEstimator,
                        detection_target_list: Union[List[List[Union[Tuple[str, str], str]]], ndarray],
-                       skip_interval: int = 10,
-                       mode: str = None) -> List[Dict[str, Union[str, np.ndarray]]]:
+                       skip_interval: int = 10) -> List[Dict[str, Union[str, np.ndarray]]]:
     """
     Convert all the .mp4 video files into lists of 2-channel 3-d features.
 
@@ -97,7 +96,6 @@ def processVideosInDir(video_dir: str,
     :param pose_estimator_model: MMPose pose estimation model.
     :param detection_target_list: List of detection targets.
     :param skip_interval: Interval between sampled frames.
-    :param mode: A single result to be an array or a cube.
     :return:
     """
     named_feature_matrices = []
@@ -120,8 +118,7 @@ def processVideosInDir(video_dir: str,
                                          bbox_detector_model,
                                          pose_estimator_model,
                                          detection_target_list,
-                                         skip_interval,
-                                         mode)
+                                         skip_interval)
         named_feature_matrices.append({"name": file_name_without_extension,
                                        "feature_matrix": feature_matrix})
 
@@ -132,8 +129,7 @@ def processOneVideo(video_path: str,
                     bbox_detector_model: RTMDet,
                     pose_estimator_model: TopdownPoseEstimator,
                     detection_targets: Union[List[List[Union[Tuple[str, str], str]]], ndarray],
-                    skip_interval: int = 10,
-                    mode: str = None) -> ndarray:
+                    skip_interval: int = 10) -> ndarray:
     """
     Use RTMPose pose estimation to convert a video into a list of features.
     A feature is defaulted to a 2-channel 3-d structure (4d). This means that
@@ -144,7 +140,6 @@ def processOneVideo(video_path: str,
     :param pose_estimator_model: MMPose pose estimation model.
     :param detection_targets: List of detection targets.
     :param skip_interval: Skip interval of frame sampling.
-    :param mode: Convolution mode. Deprecated with default value of "mjj".
     :return: Default to a list 2-channel 3-d structures. (n_frame, input_channels=2, depth=7, height=12, width=11)
     """
     cap = cv2.VideoCapture(video_path)
@@ -172,7 +167,7 @@ def processOneVideo(video_path: str,
             landmarks, _, data_samples = processOneImage(frame, bbox_detector_model, pose_estimator_model)
 
             # Here, each person will be translated into 2-channel 3-d structure.
-            one_person = translateOneLandmarks(detection_targets, landmarks[0], mode)
+            one_person = translateOneLandmarks(detection_targets, landmarks[0])
 
             key_angels_scores.append(one_person)
 
@@ -183,12 +178,10 @@ def processOneVideo(video_path: str,
 
     key_angels_scores = np.array(key_angels_scores)
 
-    if mode == 'mjj':
-        key_angels_scores = np.transpose(key_angels_scores, (0, 1, 4, 2, 3))
-        # transpose from shape (n_frame, input_channels, height, width, depth)
+    # transpose from shape (n_frame, input_channels, height, width, depth)
+    key_angels_scores = np.transpose(key_angels_scores, (0, 1, 4, 2, 3))
 
-    # when hyz -> ndarray: (n, 1716) | (n_frame, length)
-    # when mjj -> ndarray: (n, 2, 7, 12, 11) | (n_frame, input_channels, depth, height, width)
+    # ndarray: (n, 2, 7, 12, 11) | (n_frame, input_channels, depth, height, width)
     return key_angels_scores
 
 
@@ -274,46 +267,34 @@ def processOneImage(img: Union[str, np.ndarray],
 
 
 def translateOneLandmarks(targets: List,
-                          landmarks: ndarray,
-                          mode: str = None) -> List[Union[float, Any]]:
+                          landmarks: ndarray) -> List[Union[float, Any]]:
     """
     This is the 2nd information layer.
     This function translates the raw landmarks data from the first information layer
-    into a composited set of data in the form of an array or a cube.
+    into a composited set of data in the form of a 4-d structure.
 
-    From the keypoints list, extract the most confident person in the image. Then, convert the
-    keypoints list of this person into a flattened feature vector.
+    The cube is pre-structured with the "targets" parameter and is filled with actual
+    value with assistance of the "landmarks" parameter. For each angle in "targets",
+    there are two kinds of values to be calculated: Angle Value and Angle Score.
+    These two set of values will be respectively "filled" into two structures suggested
+    by "targets", forming a 2-channel structure, where each channel is a 3-d cube in
+    the structure of "targets".
 
-    :param mode: What type of data. "hyz" -> angles and scores in lines, "mjj" -> angles and scores in cubes.
-    :param landmarks: A list of keypoints set of multiple people, gathered from the image.
-    :param targets: The list/cube of detection targets.
-    :return: A flattened array or cube of feature values.
+    :param targets: Targets of detection angles, i.e., the "structure" of one channel.
+    :param landmarks: A list of keypoints [x, y, conf] gathered with RTMPose.
+    :return: A 2-channel 3-d structure. Two channels: Angle Value, Angle Score.
     """
-    if mode == 'hyz':
-        # Only get the person with the highest detection confidence.
-        kas_one_person = []
-
-        # From keypoints list, get angle-score vector.
-        for target in targets:
-            angle_value, angle_score = calc_keypoint_angle(landmarks, kcfg.keypoint_indexes, target[0], target[1])
-            kas_one_person.append(angle_value)
-            kas_one_person.append(angle_score)
-
-        # Shape=(2m)
-        return kas_one_person
-
-    elif mode == 'mjj':
-        # Fold the angles into the targeted 2-channel 3-d struct.
-        angles = copy.deepcopy(targets)
-        scores = copy.deepcopy(targets)
-        for i, j, k in itertools.product(range(len(angles)), range(len(angles[0])), range(len(angles[0][0]))):
-            angles[i][j][k], scores[i][j][k] = calc_keypoint_angle(
-                landmarks,
-                kcfg.keypoint_indexes,
-                targets[i][j][k][0],
-                targets[i][j][k][1],
-            )
-        return [angles, scores]
+    # Fold the angles into the targeted 2-channel 3-d struct.
+    angles = copy.deepcopy(targets)
+    scores = copy.deepcopy(targets)
+    for i, j, k in itertools.product(range(len(angles)), range(len(angles[0])), range(len(angles[0][0]))):
+        angles[i][j][k], scores[i][j][k] = calc_keypoint_angle(
+            landmarks,
+            kcfg.keypoint_indexes,
+            targets[i][j][k][0],
+            targets[i][j][k][1],
+        )
+    return [angles, scores]
 
 
 def renderTheResults(img: Union[str, np.ndarray],
@@ -350,7 +331,6 @@ def renderTheResults(img: Union[str, np.ndarray],
 
 
 if __name__ == "__main__":
-    solution_mode = 'mjj'
     video_folder = "../data/blob/videos"
 
     # Initialize MMPose essentials
@@ -363,11 +343,10 @@ if __name__ == "__main__":
     named_feature_mats = processVideosInDir(video_dir=video_folder,
                                             bbox_detector_model=detector,
                                             pose_estimator_model=pose_estimator,
-                                            detection_target_list=kcfg.get_targets(solution_mode),
-                                            skip_interval=10,
-                                            mode=solution_mode)
+                                            detection_target_list=kcfg.get_targets(),
+                                            skip_interval=10)
 
-    save_rt = "../data/train/1dnpy/" if solution_mode == "hyz" else "../data/train/3dnpy/"
+    save_rt = "../data/train/3dnpy/"
     for name_mat in named_feature_mats:
         save_path = save_rt + name_mat['name'] + ".npy"
         matrix = name_mat['feature_matrix']

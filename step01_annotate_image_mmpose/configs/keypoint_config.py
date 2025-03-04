@@ -226,28 +226,19 @@ state_display_type = {
 
 # ===================================================== #
 
-def get_targets(mode: str = 'hyz') -> List:
-    _target_list = mode == 'hyz' and get_full_angles() or get_cube_angles(use_str=True)
+def get_targets() -> List:
+    _target_list = get_cube_angles(use_str=True)
     return _target_list
 
 
-def get_full_angles(use_str: bool = True, num: int = 13) -> List[List[Union[Tuple[str, str], str]]]:
-    ls = keypoint_indexes.keys() if use_str else keypoint_indexes.values()
-
-    keys = list(ls)[:num]
-    corner_points = keys  # C_13^1 = 13
-    edge_combinations = list(itertools.combinations(keys, 2))
-
-    # All possible combinations
-    feature_angles = list(itertools.product(edge_combinations, corner_points))
-
-    # Remove trivial
-    feature_angles = [[fa[0], fa[1]] for fa in feature_angles if (fa[1] not in fa[0])]
-
-    return feature_angles
-
-
 def get_cube_angles(use_str: bool = True, num: int = 13) -> List[List[List[Any]]]:
+    """
+    Get the "structure" of one angle channel, using all the non-trivial angles
+    calculated from the given keypoint indexes.
+    :param use_str:
+    :param num: Number of key points.
+    :return:
+    """
     ls = keypoint_indexes.keys() if use_str else keypoint_indexes.values()
 
     keys = list(ls)[:num]
@@ -261,8 +252,8 @@ def get_cube_angles(use_str: bool = True, num: int = 13) -> List[List[List[Any]]
     init = use_str and [('', ''), ''] or [(0, 0), 0]
     o_indices: List[List[List[Any]]] = [[[init for _ in range(depth)] for _ in range(col)] for _ in range(row)]
 
-    i_j_order = [(i, j) for i in range(row) for j in range(i, col)]  # 右上角
-    i_j_order += [(i, j) for j in range(col) for i in range(j + 1, row)]  # 左下角
+    i_j_order = [(i, j) for i in range(row) for j in range(i, col)]         # Upper-right
+    i_j_order += [(i, j) for j in range(col) for i in range(j + 1, row)]    # Lower-left
 
     idx = 0  # idx of sorted_angles
     for k in range(depth):
@@ -277,14 +268,3 @@ def get_cube_angles(use_str: bool = True, num: int = 13) -> List[List[List[Any]]
         # print('')
 
     return o_indices
-
-# ===================================================== #
-
-
-if __name__ == "__main__":
-    angles1 = get_full_angles(use_str=False)
-    angles2 = get_cube_angles(use_str=False)
-
-    # for angle in angles1:
-    #     print(angle)
-    # print(len(angles1))
