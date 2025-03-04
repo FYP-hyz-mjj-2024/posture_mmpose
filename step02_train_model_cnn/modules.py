@@ -6,8 +6,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+from torch.nn import CrossEntropyLoss
+
 
 # Local
+
 
 class ResPool3d(nn.Module):
     """
@@ -120,10 +123,12 @@ class MCLoss(nn.Module):
 
     def forward(self, outputs, labels, mlp3d_instance):
         # BCE with logits
-        unsoftmax_pt = outputs.gather(dim=-1, index=labels.unsqueeze(1))    # (batch_size=128, 1)
-        input_ = unsoftmax_pt.squeeze(1)        # (batch_size=128, ) array of ground-truth label prob.
-        targets_ = labels.to(torch.float32)      # Ground-truth labels
-        bce_loss = F.binary_cross_entropy_with_logits(input_, targets_)
+        # unsoftmax_pt = outputs.gather(dim=-1, index=labels.unsqueeze(1))    # (batch_size=128, 1)
+        # input_ = unsoftmax_pt.squeeze(1)        # (batch_size=128, ) array of ground-truth label prob.
+        # targets_ = labels.to(torch.float32)      # Ground-truth labels
+        # bce_loss = F.binary_cross_entropy_with_logits(input_, targets_)
+
+        ce_loss = F.cross_entropy(outputs, labels)
 
         # Focal Loss
         focal_loss = self.focal(outputs, labels)
@@ -132,7 +137,7 @@ class MCLoss(nn.Module):
         l2_reg = self.l2(mlp3d_instance)
 
         # Total Loss
-        total_loss = self.w1 * bce_loss + self.w2 * focal_loss + self.w3 * l2_reg
+        total_loss = self.w1 * ce_loss + self.w2 * focal_loss + self.w3 * l2_reg
         return total_loss
 
 

@@ -106,7 +106,7 @@ def train_and_evaluate(model,
 
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = criterion(outputs, labels, model) # TODO: May try combination of different losses, 2024-1-21 18:20
+            loss = criterion(outputs, labels, model)
             loss.backward()
             optimizer.step()
 
@@ -120,7 +120,7 @@ def train_and_evaluate(model,
             for inputs, labels in valid_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                loss = criterion(outputs, labels, model)
                 valid_loss += loss.item() * len(inputs)
         valid_losses.append(valid_loss / len(valid_loader))
 
@@ -183,7 +183,7 @@ def normalize(X):
     return X
 
 
-if __name__ == '__main__':  # TODO: compatible with mode 'mjj'
+if __name__ == '__main__':
     """
     Save information
     """
