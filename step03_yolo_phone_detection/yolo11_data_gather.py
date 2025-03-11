@@ -167,6 +167,7 @@ def video2dataset(video_path: str,
         except cv2.error:
             print(f"WARNING: {cv2.error}")
 
+
 def videos2datasets(videos_save_dir: str, dataset_save_dir: str, sample_step_size=10):
     """
     Batch converting videos in a directory into datasets.
