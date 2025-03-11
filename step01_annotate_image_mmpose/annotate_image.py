@@ -118,7 +118,7 @@ def processVideosInDir(video_dir: str,
                                          bbox_detector_model,
                                          pose_estimator_model,
                                          detection_target_list,
-                                         skip_interval)
+                                         skip_interval) # (n, 2, 7, 12, 11) | (n_frame, n_channels, depth, height, width)
         named_feature_matrices.append({"name": file_name_without_extension,
                                        "feature_matrix": feature_matrix})
 
@@ -178,10 +178,10 @@ def processOneVideo(video_path: str,
 
     key_angels_scores = np.array(key_angels_scores)
 
-    # transpose from shape (n_frame, input_channels, height, width, depth)
+    # transpose from shape (n_frame, n_channels, height, width, depth)
     key_angels_scores = np.transpose(key_angels_scores, (0, 1, 4, 2, 3))
 
-    # ndarray: (n, 2, 7, 12, 11) | (n_frame, input_channels, depth, height, width)
+    # ndarray: (n, 2, 7, 12, 11) | (n_frame, n_channels, depth, height, width)
     return key_angels_scores
 
 
@@ -213,8 +213,8 @@ def processOneImage(img: Union[str, np.ndarray],
     # Only keep bboxes above the bbox threshold.
     det_result = inference_detector(bbox_detector_model, img)
     pred_instance = det_result.pred_instances.cpu().numpy()
-    bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1)
-    bboxes = bboxes[np.logical_and(pred_instance.labels == mcfg.det_cat_id, pred_instance.scores > bbox_threshold)]
+    bboxes = np.concatenate((pred_instance.bboxes, pred_instance.scores[:, None]), axis=1) # [n, 4 + 1], xyxy + score
+    bboxes = bboxes[np.logical_and(pred_instance.labels == mcfg.det_cat_id, pred_instance.scores > bbox_threshold)] # TODO: simplify this operation
     bboxes = bboxes[nms(bboxes, mcfg.nms_thr), :4]
 
     # A list of keypoint sets.
@@ -285,8 +285,11 @@ def translateOneLandmarks(targets: List,
     :return: A 2-channel 3-d structure. Two channels: Angle Value, Angle Score.
     """
     # Fold the angles into the targeted 2-channel 3-d struct.
-    angles = copy.deepcopy(targets)
-    scores = copy.deepcopy(targets)
+    # angles = copy.deepcopy(targets)
+    # scores = copy.deepcopy(targets)
+    # WARNING: don't use copy.deepcopy, it is SLOW!!
+    angles = [[[None for _ in sublist] for sublist in inner_list] for inner_list in targets]
+    scores = [[[None for _ in sublist] for sublist in inner_list] for inner_list in targets]
     for i, j, k in itertools.product(range(len(angles)), range(len(angles[0])), range(len(angles[0][0]))):
         angles[i][j][k], scores[i][j][k] = calc_keypoint_angle(
             landmarks,

@@ -46,7 +46,7 @@ def getNPY(npy_dir, test_ratio=0.5):
 
             # Split train & test
             this_test_size = np.floor(this_npy.shape[0] * test_ratio).astype(np.int32)
-            np.random.shuffle(this_npy)
+            # np.random.shuffle(this_npy) # should not shuffle, the testing data shall be the same for each test
             this_npy_test = this_npy[:this_test_size, :]
             this_npy_train = this_npy[this_test_size:, :]
 
@@ -182,6 +182,12 @@ def normalize(X):
 
     return X
 
+def get_data_loader(inputs, labels, batch_size:int, shuffle:bool) -> DataLoader:
+    inputs_tensor = torch.tensor(inputs, dtype=torch.float32)
+    labels_tensor = torch.tensor(labels, dtype=torch.long)
+    tensor_dataset = TensorDataset(inputs_tensor, labels_tensor)
+    loader = DataLoader(tensor_dataset, batch_size=batch_size, shuffle=shuffle)
+    return loader
 
 if __name__ == '__main__':
     """
@@ -208,47 +214,48 @@ if __name__ == '__main__':
     U_test, N_test = test_data
 
     # Get train-evaluate set and test set for both labels.
-    X_train_eval = np.vstack((U_train, N_train))
+    X_train_valid = np.vstack((U_train, N_train))
     X_test = np.vstack((U_test, N_test))
 
     # Normalize train-evaluate data in per-channel manner.
-    X_train_eval = normalize(X_train_eval)
+    X_train_valid = normalize(X_train_valid)
     X_test = normalize(X_test)
 
     # Result Labels
-    y = np.hstack((np.ones(len(U_train)), np.zeros(len(N_train))))  # (n,)
+    y_train_valid = np.hstack((np.ones(len(U_train)), np.zeros(len(N_train))))  # (n,)
     y_test = np.hstack((np.ones(len(U_test)), np.zeros(len(N_test))))  # (N, )
 
     # Get shuffle indices for train-evaluate and test.
-    shuffle_indices_train_eval = np.random.permutation(X_train_eval.shape[0])
-    # shuffle_indices_test = np.random.permutation(X_test.shape[0])
+    shuffle_indices_train_eval = np.random.permutation(X_train_valid.shape[0])
 
     # Shuffle and split train-evaluation data.
-    X_train_eval, y = X_train_eval[shuffle_indices_train_eval], y[shuffle_indices_train_eval]
-    split_board = int(0.35 * X_train_eval.shape[0])
-    X_train, X_valid = X_train_eval[split_board:], X_train_eval[:split_board]
-    y_train, y_valid = y[split_board:], y[:split_board]
-    # X_test, y_test = X_test[shuffle_indices_test], y_test[shuffle_indices_test]
+    X_train_valid, y_train_valid = X_train_valid[shuffle_indices_train_eval], y_train_valid[shuffle_indices_train_eval]
+    split_board = int(0.35 * X_train_valid.shape[0])
+    X_train, X_valid = X_train_valid[split_board:], X_train_valid[:split_board]
+    y_train, y_valid = y_train_valid[split_board:], y_train_valid[:split_board]
 
     # Put train and evaluation data into tensor.
-    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
-    y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-
-    X_valid_tensor = torch.tensor(X_valid, dtype=torch.float32)
-    y_valid_tensor = torch.tensor(y_valid, dtype=torch.long)
-
-    X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
-    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
-
-    # Tensor Datasets
-    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
-    valid_dataset = TensorDataset(X_valid_tensor, y_valid_tensor)
-    test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
-
-    # Data Loaders
-    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-    valid_loader = DataLoader(valid_dataset, batch_size=128, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
+    # X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    # y_train_tensor = torch.tensor(y_train, dtype=torch.long)
+    #
+    # X_valid_tensor = torch.tensor(X_valid, dtype=torch.float32)
+    # y_valid_tensor = torch.tensor(y_valid, dtype=torch.long)
+    #
+    # X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+    # y_test_tensor = torch.tensor(y_test, dtype=torch.long)
+    #
+    # # Tensor Datasets
+    # train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    # valid_dataset = TensorDataset(X_valid_tensor, y_valid_tensor)
+    # test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
+    #
+    # # Data Loaders
+    # _train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    # _valid_loader = DataLoader(valid_dataset, batch_size=128, shuffle=False)
+    # _test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
+    train_loader = get_data_loader(X_train, y_train, batch_size=128, shuffle=True)
+    valid_loader = get_data_loader(X_valid, y_valid, batch_size=128, shuffle=False)
+    test_loader = get_data_loader(X_test, y_test, batch_size=32, shuffle=False)
 
     """
     Train
