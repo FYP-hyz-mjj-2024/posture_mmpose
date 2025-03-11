@@ -156,16 +156,16 @@ def video2dataset(video_path: str,
             if frame_count % step_size == 0:
                 stored_frames.append(target_frame)
 
-
-
     # save
     cap.release()
     video_hex_id = getVideoProperties(video_name, "hex id")
     for i, (frame, _) in tqdm(enumerate(stored_frames), desc=f"Saving {video_path}"):
-        image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        resized_image = image.resize((yolo_input_size, yolo_input_size))
-        resized_image.save(os.path.join(str(dataset_dir), f"{video_hex_id}_fig{i}.jpg"))
-
+        try:
+            image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            resized_image = image.resize((yolo_input_size, yolo_input_size))
+            resized_image.save(os.path.join(str(dataset_dir), f"{video_hex_id}_fig{i}.jpg"))
+        except cv2.error:
+            print(f"WARNING: {cv2.error}")
 
 def videos2datasets(videos_save_dir: str, dataset_save_dir: str, sample_step_size=10):
     """
