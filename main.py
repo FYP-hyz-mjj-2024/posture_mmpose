@@ -217,8 +217,13 @@ def videoDemo(src: Union[str, int],
                            order=0)
 
             # Current Time
+            _cur_time = time.strftime('%Y-%m-%d %H:%M:%S')      # Current time
+            _laf_time = (datetime.fromtimestamp(runtime_params['time_last_announce_face'])
+                         .strftime('%Y-%m-%d %H:%M:%S'))        # Last Announce Face time
+
+            # Render teh two times
             render_ui_text(frame=frame,
-                           text=f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                           text=f"Time: {_cur_time}",
                            frame_wh=(_set_video_w, _set_video_h),
                            margin_wh=(_margin_w, _margin_h),
                            align="left",
@@ -227,7 +232,7 @@ def videoDemo(src: Union[str, int],
             # Last announce face time (LAFT).
             render_ui_text(frame=frame,
                            text=f"LAFT: "
-                                f"{datetime.fromtimestamp(runtime_params['time_last_announce_face']).strftime('%Y-%m-%d %H:%M:%S')}",
+                                f"{_laf_time}",
                            frame_wh=(_set_video_w, _set_video_h),
                            margin_wh=(_margin_w, _margin_h),
                            align="left",
@@ -243,7 +248,7 @@ def videoDemo(src: Union[str, int],
             del ori_frame
 
         if websocket_obj is not None:
-            time.sleep(0.005)
+            time.sleep(0.002)
 
     cap.release()
 
@@ -271,7 +276,8 @@ def main(default_config):
     target_list = kcfg.get_targets()
 
     # Posture classifier
-    model_state = torch.load('step02_train_model_cnn/archived_models/posture_mmpose_vgg3d_20250304-154753.pth', map_location=global_device)
+    model_state = torch.load('step02_train_model_cnn/archived_models/posture_mmpose_vgg3d_20250304-154753.pth',
+                             map_location=global_device)
     classifier = MLP3d(input_channel_num=2, output_class_num=2)
     classifier.load_state_dict(model_state['model_state_dict'])
     classifier.eval()
