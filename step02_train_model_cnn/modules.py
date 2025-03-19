@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import CrossEntropyLoss
 
 
 # Local
@@ -77,8 +76,9 @@ class FocalLoss(nn.Module):
 
     def forward(self, inputs, labels):
         probs = torch.softmax(inputs, dim=-1)                           # get softmax of 2 classes
-        pt = probs.gather(dim=-1, index=labels.unsqueeze(1))            # get p_t of groud-truth label class
-        loss = (self.alpha * ((1 - pt) ** self.gamma)) * (-torch.log(pt))     # calculate focal loss
+        alpha_t = Tensor([[self.alpha] if l == 1 else [1 - self.alpha] for l in labels]).to('cuda')
+        pt = probs.gather(dim=-1, index=labels.unsqueeze(1))            # get p_t of ground-truth label class
+        loss = (alpha_t * ((1 - pt) ** self.gamma)) * (-torch.log(pt))     # calculate focal loss
 
         if self.reduction == 'mean':
             return loss.mean()

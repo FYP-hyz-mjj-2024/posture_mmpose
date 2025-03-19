@@ -44,9 +44,10 @@ def getNPY(npy_dir, test_ratio=0.5):
             npy_info = parseFileName(file, '.npy')
             this_npy = np.load(os.path.join(root, file))
 
-            # Split train & test
+            # Split train_valid & test
             this_test_size = np.floor(this_npy.shape[0] * test_ratio).astype(np.int32)
-            # np.random.shuffle(this_npy) # should not shuffle, the testing data shall be the same for each test
+            # np.random.shuffle(this_npy)
+            # should not shuffle, the testing data shall be the same for each test
             this_npy_test = this_npy[:this_test_size, :]
             this_npy_train = this_npy[this_test_size:, :]
 
@@ -210,11 +211,15 @@ if __name__ == '__main__':
     """
     # Training data points
     train_data, test_data = getNPY(dataset_source_path, test_ratio=0.3)
-    U_train, N_train = train_data
+    U_train_valid, N_train_valid = train_data
     U_test, N_test = test_data
 
+    total_num_of_data = len(U_train_valid) + len(N_train_valid) + len(U_test) + len(N_test)
+    freq_U = (len(U_train_valid) + len(U_test)) / total_num_of_data
+    freq_N = (len(N_train_valid) + len(N_test)) / total_num_of_data
+
     # Get train-evaluate set and test set for both labels.
-    X_train_valid = np.vstack((U_train, N_train))
+    X_train_valid = np.vstack((U_train_valid, N_train_valid))
     X_test = np.vstack((U_test, N_test))
 
     # Normalize train-evaluate data in per-channel manner.
@@ -222,7 +227,7 @@ if __name__ == '__main__':
     X_test = normalize(X_test)
 
     # Result Labels
-    y_train_valid = np.hstack((np.ones(len(U_train)), np.zeros(len(N_train))))  # (n,)
+    y_train_valid = np.hstack((np.ones(len(U_train_valid)), np.zeros(len(N_train_valid))))  # (n,)
     y_test = np.hstack((np.ones(len(U_test)), np.zeros(len(N_test))))  # (N, )
 
     # Get shuffle indices for train-evaluate and test.
@@ -265,12 +270,12 @@ if __name__ == '__main__':
 
     model = MLP3d(input_channel_num=2, output_class_num=2).to(device)
     # criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
-    criterion = MCLoss(0.6, 0.3, 0.1)  # Binary cross entropy loss
+    criterion = MCLoss(0.6, 0.3, 0.1, focal_alpha=freq_N)  # Binary cross entropy loss. Using inverse freq
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Auto adjust lr prevent o.f.
 
     report_loss = []
 
-    preamble = f"Preparing dataset...\nSize of Using: {len(U_train)}, Size of Not Using: {len(N_train)}"
+    preamble = f"Preparing dataset...\nSize of Using: {len(U_train_valid)}, Size of Not Using: {len(N_train_valid)}"
     print(preamble)
 
     (train_losses,
