@@ -86,7 +86,7 @@ def videoDemo(src: Union[str, int],
     estim_results_visualizer = pkg_mmpose["estim_results_visualizer"]
 
     # Determine video size and UI margins according to output source.
-    _set_video_w, _set_video_h = (384, 288) if websocket_obj else (640, 480)
+    _set_video_w, _set_video_h = (600, 400) if websocket_obj else (640, 480)
     _margin_w, _margin_h = (10, 20) if websocket_obj else (20, 40)
 
     # Initialize video source.
