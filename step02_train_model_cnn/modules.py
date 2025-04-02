@@ -67,14 +67,14 @@ class FocalLoss(nn.Module):
     """
     def __init__(self, alpha=0.25, gamma=2, reduction='mean'):
         super(FocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
+        self.alpha = torch.tensor(alpha, device="cuda", dtype=torch.float32)
+        self.gamma = torch.tensor(gamma, device="cuda", dtype=torch.float32)
         self.reduction = reduction
 
         if self.reduction not in ['mean', 'sum']:
             raise ValueError("Reduction method must be 'mean' or 'sum'.")
 
-    def forward(self, inputs, labels):
+    def forward(self, inputs, labels) -> Tensor:
         probs = torch.softmax(inputs, dim=-1)                           # get softmax of 2 classes
         alpha_t = Tensor([[self.alpha] if l == 1 else [1 - self.alpha] for l in labels]).to('cuda')
         pt = probs.gather(dim=-1, index=labels.unsqueeze(1))            # get p_t of ground-truth label class
@@ -95,9 +95,9 @@ class L2Regularization(nn.Module):
     """
     def __init__(self, l2_lambda=0.0001):
         super(L2Regularization, self).__init__()
-        self.l2_lambda = l2_lambda
+        self.l2_lambda = torch.tensor(l2_lambda, device="cuda", dtype=torch.float32)
 
-    def forward(self, _model):
+    def forward(self, _model) -> Tensor:
         _device = next(_model.parameters()).device
 
         # Loss: Square sum of all weights.
@@ -115,13 +115,13 @@ class MCLoss(nn.Module):
     """
     def __init__(self, w1=0.6, w2=0.3, w3=0.1, focal_alpha=0.25, focal_gamma=2, l2_lambda=0.0001):
         super(MCLoss, self).__init__()
-        self.w1 = w1
-        self.w2 = w2
-        self.w3 = w3
+        self.w1 = torch.tensor(w1, device="cuda", dtype=torch.float32)
+        self.w2 = torch.tensor(w2, device="cuda", dtype=torch.float32)
+        self.w3 = torch.tensor(w3, device="cuda", dtype=torch.float32)
         self.focal = FocalLoss(focal_alpha, focal_gamma)
         self.l2 = L2Regularization(l2_lambda)
 
-    def forward(self, outputs, labels, mlp3d_instance):
+    def forward(self, outputs: Tensor, labels: Tensor, mlp3d_instance):
         # Cross Entropy Loss
         ce_loss = F.cross_entropy(outputs, labels)
 
@@ -133,6 +133,7 @@ class MCLoss(nn.Module):
 
         # Total Loss
         total_loss = self.w1 * ce_loss + self.w2 * focal_loss + self.w3 * l2_reg
+
         return total_loss
 
 
