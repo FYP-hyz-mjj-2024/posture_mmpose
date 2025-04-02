@@ -86,7 +86,7 @@ def train_and_evaluate(model,
     # Record Losses
     train_losses = []
     valid_losses = []
-    overfit_factors = []
+    overfit_factors = []    # Deprecated.
     log_strs = [f"Training started. ID of the current model:{id(model)}"]
 
     # Early stopping params
@@ -131,18 +131,6 @@ def train_and_evaluate(model,
         if epoch > 10:
             overfit_factors.append(overfit_factor)
 
-        # These logics are written for displaying purposes only.
-        log_str = (f"Epoch[{str(epoch + 1).zfill(epoch_digit_num)}/{num_epochs}], "
-                   f"Train Loss:{train_losses[-1]:.4f}, "
-                   f"Valid Loss:{valid_losses[-1]:.4f}, "
-                   f"OFF:{' ' if overfit_factor > 0 else ''}{overfit_factor:.4f} | "
-                   f"Cur Optim: {id(current_optimized_model)}, "
-                   f"Min VL: {current_min_test_loss:.4f}, "
-                   f"Num OF epochs: {num_overfit_epochs}")
-
-        log_strs.append(log_str)
-        print(log_str)
-
         # Early-stopping Mechanism
         if early_stop_params is None:
             continue
@@ -154,6 +142,18 @@ def train_and_evaluate(model,
             num_overfit_epochs = max(num_overfit_epochs - 1, 0)
         else:
             num_overfit_epochs += 1
+
+        # Log the training.
+        log_str = (f"Epoch[{str(epoch + 1).zfill(epoch_digit_num)}/{num_epochs}], "
+                   f"Train Loss:{train_losses[-1]:.4f}, "
+                   f"Valid Loss:{valid_losses[-1]:.4f}, "
+                   f"OFF:{' ' if overfit_factor > 0 else ''}{overfit_factor:.4f} | "
+                   f"Cur Optim: {id(current_optimized_model)}, "
+                   f"Min VL: {current_min_test_loss:.4f}, "
+                   f"Num OF epochs: {num_overfit_epochs}")
+
+        log_strs.append(log_str)
+        print(log_str)
 
         # Perform early-stopping
         if num_overfit_epochs > early_stop_params["patience"]:
@@ -183,12 +183,14 @@ def normalize(X):
 
     return X
 
+
 def get_data_loader(inputs, labels, batch_size:int, shuffle:bool) -> DataLoader:
     inputs_tensor = torch.tensor(inputs, dtype=torch.float32)
     labels_tensor = torch.tensor(labels, dtype=torch.long)
     tensor_dataset = TensorDataset(inputs_tensor, labels_tensor)
     loader = DataLoader(tensor_dataset, batch_size=batch_size, shuffle=shuffle)
     return loader
+
 
 if __name__ == '__main__':
     """
@@ -265,8 +267,13 @@ if __name__ == '__main__':
     """
     Train
     """
+    # Training
     learning_rate = 5e-6
     num_epochs = 650
+
+    # Early Stopping
+    patience = 20
+    min_delta = 1e-3
 
     model = MLP3d(input_channel_num=2, output_class_num=2).to(device)
     # criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
@@ -275,7 +282,12 @@ if __name__ == '__main__':
 
     report_loss = []
 
-    preamble = f"Preparing dataset...\nSize of Using: {len(U_train_valid)}, Size of Not Using: {len(N_train_valid)}"
+    train_message = input("Message for this train (notes, purpose, etc.): ")
+    preamble = (f"Operator message: {train_message}\n"
+                f"Using / Not Using: {len(U_train_valid)} / {len(N_train_valid)}\n"
+                f"Max Epochs: {num_epochs}, Patience: {20}, Min Delta: {min_delta}\n"
+                f"Loss Function: {criterion.__class__.__name__}, "
+                f"Learning Rate: {learning_rate}, Focal Alpha: {freq_N}\n")
     print(preamble)
 
     (train_losses,
@@ -288,8 +300,8 @@ if __name__ == '__main__':
                                     optimizer,
                                     num_epochs,
                                     early_stop_params={
-                                        "min_delta": 1e-3,
-                                        "patience": 8
+                                        "min_delta": min_delta,
+                                        "patience": patience
                                     })
 
     model_state = {
