@@ -5,9 +5,9 @@ import copy
 import time
 
 # Essentials
+import numpy as np
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
 
 # Local
 from utils.parse_file_name import parseFileName
@@ -18,6 +18,16 @@ if __name__ == '__main__':
     from performance_inspection import get_predictions, plot_cm, plot_pr, plot_roc_auc
 
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+
+
+# Setup manual cuda & np seed to ensure re-producible model output.
+cuda_seed = 114514
+numpy_seed = 1919810
+np.random.seed(numpy_seed)
+torch.cuda.manual_seed(cuda_seed)
+torch.cuda.manual_seed_all(cuda_seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 
 def getNPY(npy_dir, test_ratio=0.5):
@@ -91,7 +101,7 @@ def train_and_evaluate(model,
 
     # Early stopping params
     current_optimized_model = None
-    current_min_test_loss = np.inf
+    current_min_valid_loss = np.inf
     num_overfit_epochs = 0
 
     # For display purposes only.
@@ -136,8 +146,8 @@ def train_and_evaluate(model,
             continue
 
         # Update early stopping parameters
-        if current_min_test_loss - early_stop_params["min_delta"] > valid_losses[-1]:
-            current_min_test_loss = valid_losses[-1]
+        if current_min_valid_loss - early_stop_params["min_delta"] > valid_losses[-1]:
+            current_min_valid_loss = valid_losses[-1]
             current_optimized_model = copy.deepcopy(model)
             num_overfit_epochs = max(num_overfit_epochs - 1, 0)
         else:
@@ -149,7 +159,7 @@ def train_and_evaluate(model,
                    f"Valid Loss:{valid_losses[-1]:.4f}, "
                    f"OFF:{' ' if overfit_factor > 0 else ''}{overfit_factor:.4f} | "
                    f"Cur Optim: {id(current_optimized_model)}, "
-                   f"Min VL: {current_min_test_loss:.4f}, "
+                   f"Min VL: {current_min_valid_loss:.4f}, "
                    f"Num OF epochs: {num_overfit_epochs}")
 
         log_strs.append(log_str)
@@ -184,7 +194,15 @@ def normalize(X):
     return X
 
 
-def get_data_loader(inputs, labels, batch_size:int, shuffle:bool) -> DataLoader:
+def get_data_loader(inputs, labels, batch_size: int, shuffle: bool) -> DataLoader:
+    """
+    Obtain data loaders from inputs and labels.
+    :param inputs: List of data samples.
+    :param labels: List of labels.
+    :param batch_size: Batch size of training.
+    :param shuffle: Whether to shuffle before output.
+    :return:
+    """
     inputs_tensor = torch.tensor(inputs, dtype=torch.float32)
     labels_tensor = torch.tensor(labels, dtype=torch.long)
     tensor_dataset = TensorDataset(inputs_tensor, labels_tensor)
@@ -216,10 +234,6 @@ if __name__ == '__main__':
     U_train_valid, N_train_valid = train_data
     U_test, N_test = test_data
 
-    total_num_of_data = len(U_train_valid) + len(N_train_valid) + len(U_test) + len(N_test)
-    freq_U = (len(U_train_valid) + len(U_test)) / total_num_of_data
-    freq_N = (len(N_train_valid) + len(N_test)) / total_num_of_data
-
     # Get train-evaluate set and test set for both labels.
     X_train_valid = np.vstack((U_train_valid, N_train_valid))
     X_test = np.vstack((U_test, N_test))
@@ -242,24 +256,6 @@ if __name__ == '__main__':
     y_train, y_valid = y_train_valid[split_board:], y_train_valid[:split_board]
 
     # Put train and evaluation data into tensor.
-    # X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
-    # y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    #
-    # X_valid_tensor = torch.tensor(X_valid, dtype=torch.float32)
-    # y_valid_tensor = torch.tensor(y_valid, dtype=torch.long)
-    #
-    # X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
-    # y_test_tensor = torch.tensor(y_test, dtype=torch.long)
-    #
-    # # Tensor Datasets
-    # train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
-    # valid_dataset = TensorDataset(X_valid_tensor, y_valid_tensor)
-    # test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
-    #
-    # # Data Loaders
-    # _train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-    # _valid_loader = DataLoader(valid_dataset, batch_size=128, shuffle=False)
-    # _test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
     train_loader = get_data_loader(X_train, y_train, batch_size=128, shuffle=True)
     valid_loader = get_data_loader(X_valid, y_valid, batch_size=128, shuffle=False)
     test_loader = get_data_loader(X_test, y_test, batch_size=32, shuffle=False)
@@ -268,7 +264,7 @@ if __name__ == '__main__':
     Train
     """
     # Training
-    learning_rate = 5e-6
+    learning_rate = 2e-6
     num_epochs = 650
 
     # Early Stopping
@@ -286,18 +282,19 @@ if __name__ == '__main__':
                 f"Using / Not Using: {len(U_train_valid)} / {len(N_train_valid)}\n"
                 f"Max Epochs: {num_epochs}, Patience: {patience}, Min Delta: {min_delta}\n"
                 f"Loss Function: {criterion.__class__.__name__}, "
-                f"Learning Rate: {learning_rate}, Focal Alpha: {freq_N}\n")
+                f"Learning Rate: {learning_rate}\n"
+                f"CUDA seed: {cuda_seed}, NumPy seed: {numpy_seed}")
     print(preamble)
 
     (train_losses,
      valid_losses,
      overfit_factors,
-     log_strs) = train_and_evaluate(model,
-                                    train_loader,
-                                    valid_loader,
-                                    criterion,
-                                    optimizer,
-                                    num_epochs,
+     log_strs) = train_and_evaluate(model=model,
+                                    train_loader=train_loader,
+                                    valid_loader=valid_loader,
+                                    criterion=criterion,
+                                    optimizer=optimizer,
+                                    num_epochs=num_epochs,
                                     early_stop_params={
                                         "min_delta": min_delta,
                                         "patience": patience

@@ -276,7 +276,7 @@ def main(default_config):
     target_list = kcfg.get_targets()
 
     # Posture classifier
-    model_state = torch.load('step02_train_model_cnn/archived_models/posture_mmpose_vgg3d_20250403-173838.pth',
+    model_state = torch.load('step02_train_model_cnn/archived_models/posture_mmpose_vgg3d_20250404-000504.pth',
                              map_location=global_device)
     classifier = MLP3d(input_channel_num=2, output_class_num=2)
     classifier.load_state_dict(model_state['model_state_dict'])
