@@ -107,7 +107,7 @@ def train_and_evaluate(model,
 
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = criterion(outputs, labels, model)
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
@@ -121,7 +121,7 @@ def train_and_evaluate(model,
             for inputs, labels in valid_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
-                loss = criterion(outputs, labels, model)
+                loss = criterion(outputs, labels)
                 valid_loss += loss.item() * len(inputs)
         valid_losses.append(valid_loss / len(valid_loader))
 
@@ -272,12 +272,11 @@ if __name__ == '__main__':
     num_epochs = 650
 
     # Early Stopping
-    patience = 20
+    patience = 4
     min_delta = 1e-3
 
     model = MLP3d(input_channel_num=2, output_class_num=2).to(device)
-    # criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
-    criterion = MCLoss(0.6, 0.3, 0.1, focal_alpha=freq_N)  # Binary cross entropy loss. Using inverse freq
+    criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Auto adjust lr prevent o.f.
 
     report_loss = []
@@ -285,7 +284,7 @@ if __name__ == '__main__':
     train_message = input("Message for this train (notes, purpose, etc.): ")
     preamble = (f"Operator message: {train_message}\n"
                 f"Using / Not Using: {len(U_train_valid)} / {len(N_train_valid)}\n"
-                f"Max Epochs: {num_epochs}, Patience: {20}, Min Delta: {min_delta}\n"
+                f"Max Epochs: {num_epochs}, Patience: {patience}, Min Delta: {min_delta}\n"
                 f"Loss Function: {criterion.__class__.__name__}, "
                 f"Learning Rate: {learning_rate}, Focal Alpha: {freq_N}\n")
     print(preamble)
