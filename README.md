@@ -16,6 +16,18 @@ The full texts are available in the [LICENSES](LICENSES) directory.
 
 More credits and copyrights info about ultralycis is in [main.py](main.py).
 
+## Assets
+### Posture Recognition Models
+1. Trained models & training logs are stored under [Google Drive](https://drive.google.com/drive/folders/1DMO_cD-R3kO3tm_UTNezu3rM7ynG_hMj?usp=sharing)
+2. Models that performs well:
+- `posture_mmpose_vgg3d_20250227-225653`
+- `posture_mmpose_vgg3d_20250402-235755`
+- `posture_mmpose_vgg3d_20250403-235411`
+- `posture_mmpose_vgg3d_20250404-000504`
+
+### YOLO Models
+YOLO models are contained in this GitHub repository.
+
 ## Configure Project
 
 > A quick start: The entry of this project is [main.py](main.py). Come back and run this file
