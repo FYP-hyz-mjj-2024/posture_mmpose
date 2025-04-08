@@ -170,7 +170,7 @@ def videoDemo(src: Union[str, int],
             }
             '''
 
-            response_list = (
+            response_list = [
                 processOnePerson(frame=frame,
                                  original_frame=ori_frame,
                                  keypoints=keypoints,
@@ -181,7 +181,7 @@ def videoDemo(src: Union[str, int],
                                  runtime_parameters=runtime_params,
                                  device_name=device_name)
                 for keypoints, xyxy in zip(keypoints_list, xyxy_list)
-            )
+            ]
 
             # Performance Record
             if generate_report:
