@@ -3,7 +3,7 @@
     "yolo dataset": {
       "workspace": "victor-workspace-owmoa",
       "project": "pedestrian-cell-phone-detection",
-      "version": 9,
+      "version": 10,
       "dataset": "yolov11"
     }
   }

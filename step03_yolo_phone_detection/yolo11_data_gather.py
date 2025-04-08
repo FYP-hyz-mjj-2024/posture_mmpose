@@ -125,20 +125,37 @@ def video2dataset(video_path: str,
 
             pbar.update()
 
+            frame_count += 1
+            if frame_count % step_size != 0:
+                continue
+
             # Extract the first person.
             keypoints_list, xyxy_list, _ = processOneImage(frame, bbox_detector, pose_estimator)
             keypoints, xyxy = keypoints_list[0], xyxy_list[0]
 
-            # Hand frame shape.
-            bbox_w, bbox_h = xyxy[2] - xyxy[0], xyxy[3] - xyxy[1]
-            hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))
-            """Height and width (sequence matter) of the bounding box."""
+            # 1.1 Crop two hands.
+            # 1.1.1 Pedestrian's bounding box size.
+            bbox_w, bbox_h = abs(xyxy[2] - xyxy[0]), abs(xyxy[3] - xyxy[1])
 
-            # Hand frame centers.
-            lhand_center, rhand_center = keypoints[9][:2], keypoints[10][:2]
-            l_arm_vect, r_arm_vect = keypoints[9][:2] - keypoints[7][:2], keypoints[10][:2] - keypoints[8][:2]
-            lhand_center += l_arm_vect * 0.8
-            rhand_center += r_arm_vect * 0.8
+            if bbox_w / (frame.shape[1] + np.finfo(np.float32).eps) < 0.6:
+                # 1.1.2 Body is far, make hand frame width & height relate to bbox width.
+                hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))
+                """Height and width (sequence matter) of the bounding box."""
+            else:
+                # 1.1.3 Body takes up too much space, restrict hand frame size to 0.45 * frame width.
+                hand_hw = (int(frame.shape[1] * 0.45), int(frame.shape[1] * 0.45))
+                """Height and width (sequence matter) of the bounding box."""
+
+            # 1.2 L & R wrists: 9, 10; L & R elbows: 7, 8.
+            lwrist_coord, rwrist_coord = keypoints[9][:2], keypoints[10][:2]
+            lelbow_coord, relbow_coord = keypoints[7][:2], keypoints[8][:2]
+
+            # 1.3 L & R arm vectors.
+            l_arm_vect, r_arm_vect = lwrist_coord - lelbow_coord, rwrist_coord - relbow_coord
+
+            # 1.4 L & R hand center coordinates.
+            lhand_center = lwrist_coord + l_arm_vect * 0.8
+            rhand_center = rwrist_coord + r_arm_vect * 0.8
 
             hand_frames_xyxy = [None, None, None]
 
@@ -152,9 +169,7 @@ def video2dataset(video_path: str,
             if target_frame is None:
                 continue
 
-            frame_count += 1
-            if frame_count % step_size == 0:
-                stored_frames.append(target_frame)
+            stored_frames.append(target_frame)
 
     # save
     cap.release()
