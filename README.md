@@ -1,5 +1,7 @@
-# Pedestrian Cell Phone Usage Detection
-Alias: **YOU FOCUS YOUR WALK**
+# Pedestrian Cell Phone Usage Detection - Inference Backend
+> Alias: **YOU FOCUS YOUR WALK**
+
+<img src="https://s2.loli.net/2025/04/15/B5poF4rTwmfhqdX.png" >
 
 ## Personnel
 - **Group Members:** [Mai Jiajun](https://github.com/SpinningMai), [Huang Yanzhen](https://github.com/YanzhenHuang)
@@ -119,6 +121,8 @@ For both boundary detection and pose estimation, there are two kinds of files: C
 Please download all of them by clicking these links:
 
 **`.py` Files** (No longer need manual downloading)
+
+> [!NOTE]
 > You can skip this step, since the config `.py` files have been re-included into the GitHub repo,
 > in [model_config/configs](model_config/configs). 
 > However, you can still choose to download them from URLs listed below.
@@ -131,6 +135,8 @@ After downloading from the browser, please move them into [model_config/configs/
 You may need to create this folder first.
 
 **`.pth` Files**
+
+> [!NOTE]
 > The below downloading method is too slow in efficiency. We have put all the available configurations in our 
 > Google Drive. Link: https://drive.google.com/drive/folders/1Jsjhnrq4tJselSn-zU-yulNmpRycgSu2?usp=sharing.
 > Please download ALL of them and put them in `model_config/checkpoints/`, where the contents in this folder are ignored.
