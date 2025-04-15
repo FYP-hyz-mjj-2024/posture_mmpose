@@ -1,7 +1,7 @@
 # Pedestrian Cell Phone Usage Detection - Inference Backend
 > Alias: **YOU FOCUS YOUR WALK**
 
-<img src="https://s2.loli.net/2025/04/15/B5poF4rTwmfhqdX.png" >
+<img src="https://s2.loli.net/2025/04/15/fgjkbd7pYz295ZX.png" style="display: block; margin:auto;" width="600em">
 
 ## Personnel
 - **Group Members:** [Mai Jiajun](https://github.com/SpinningMai), [Huang Yanzhen](https://github.com/YanzhenHuang)
