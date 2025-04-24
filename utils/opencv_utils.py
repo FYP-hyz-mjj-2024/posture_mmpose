@@ -18,6 +18,7 @@ color_bgr = {
     "green": (0, 255, 0),
     "orange": (51, 140, 232),
     "red": (0, 0, 255),
+    "pink": (93, 57, 240),
     "gray": (155, 155, 155),
     "white": (255, 255, 255)
 }
@@ -42,7 +43,7 @@ detection_rect_styles = {
 }
 
 
-def render_detection_rectangle(frame, text: str, xyxy: List[float], color: str):
+def render_detection_rectangle(frame, text: str, xyxy: Union[List[float], np.ndarray], color: str):
     """
     Render a common YOLO detection rectangle onto a frame with opencv.
 

@@ -214,7 +214,7 @@ state_display_type = {
         "str": "?"
     },
     USING: {
-        "color": "red",
+        "color": "pink",
         "str": "+"
     },
     NOT_USING: {

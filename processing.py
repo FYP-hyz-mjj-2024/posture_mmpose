@@ -184,63 +184,66 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                 # 3.0.1 Guard 1: Make subframe_xyxy expandable to frame & xyxy.
                 continue
 
-            subframe, subframe_xyxy = hand_frame_xyxy   # subframe: BGR
+            hand_frame, hand_xyxy = hand_frame_xyxy   # hand_frame: BGR
 
-            if len(hand_frame_xyxy) <= 0 or subframe is None or subframe_xyxy is None:
-                # 3.0.2 Guard 2: If expandable, any of them shouldn't be None.
+            if len(hand_frame_xyxy) <= 0 or hand_frame is None or hand_xyxy is None:
+                # 3.0.2 Guard 2: hand_frame_xyxy is expandable, and any of its content shouldn't be None.
                 print(f"{CC['yellow']}Pedestrian too close to detect.{CC['reset']}")
                 continue
 
-            # 3.1 Yolo inference signal.
+            # 3.1 Let YOLO infer and get result.
+            # Default result.
+            phone_detect_str, phone_relative_xyxy, subframe_wh, hand_display_color = "", None, (0, 0), "green"
             try:
                 # Record subframe size (this value won't change even if subframe is resized).
-                subframe_wh = abs(subframe_xyxy[2] - subframe_xyxy[0]), abs(subframe_xyxy[3] - subframe_xyxy[1])
+                subframe_wh = abs(hand_xyxy[2] - hand_xyxy[0]), abs(hand_xyxy[3] - hand_xyxy[1])
 
                 # Resize subframe to YOLO required size.
-                subframe = resizeFrameToSquare(frame=subframe,
-                                               edge_length=phone_frame_size,
-                                               ratio_threshold=0.5625)     # 9 / 16
+                hand_frame = resizeFrameToSquare(frame=hand_frame,
+                                                 edge_length=phone_frame_size,
+                                                 ratio_threshold=0.5625)     # 9 / 16
 
                 # Convert BGR subframe to RGB for YOLO inference.
-                subframe = cv2.cvtColor(subframe, cv2.COLOR_BGR2RGB)
+                hand_frame = cv2.cvtColor(hand_frame, cv2.COLOR_BGR2RGB)
 
                 # Detection string and the relative bbox xyxy of cell phone.
-                phone_detect_str, phone_relative_xyxy = phone_detector_func(phone_detector_model, subframe,
+                phone_detect_str, phone_relative_xyxy = phone_detector_func(phone_detector_model, hand_frame,
                                                                             device=device_name, threshold=0.3,
                                                                             cell_phone_index=phone_index)
+
+            except (cv2.error, IOError, TypeError) as e:     
+                # hand_frame and hand_xyxy could possibly be mal-shaped, which is undetectable.
+                # Simply fall-out to undetected state.
+                print(f"{CC['yellow']}"
+                      f"Error in detectPhone: Failed inferring hand frame at this point, skipping to the next frame.\n"
+                      f"{e}"
+                      f"{CC['reset']}")
+
+            # 3.2 Render hand frames and YOLO inference frame based on the signal.
+            if phone_relative_xyxy is not None:
+                _state = kcfg.USING     # Trigger state change.
+                hand_display_color = kcfg.state_display_type[_state]["color"]
 
                 # Convert the relative cell phone xyxy to the absolute one.
                 phone_absolute_xyxy = relativeToAbsolute(
                     from_mother_wh=(phone_frame_size, phone_frame_size),
                     to_mother_wh=subframe_wh,
                     from_child_xyxy=phone_relative_xyxy,
-                    to_mother_xy=subframe_xyxy[:2]
+                    to_mother_xy=hand_xyxy[:2]
                 )
 
                 # Render the YOLO inference of cell phone.
-                render_detection_rectangle(frame, phone_detect_str, phone_absolute_xyxy, color="red")
+                render_detection_rectangle(frame, phone_detect_str, phone_absolute_xyxy, color=hand_display_color)
 
-            except (cv2.error, IOError, TypeError) as e:     # frame could possibly be none.
-                print(f"{CC['yellow']}"
-                      f"Error in detectPhone: Failed reading frame at this point, skipping to the next frame."
-                      f"{CC['reset']}")
-                phone_detect_str, phone_relative_xyxy = "", None
-
-            # 3.2 Render hand frames based on the signal.
-            if phone_relative_xyxy is not None:
-                _state = kcfg.USING
-                phone_display_color = "red"
-            else:
-                phone_display_color = "green"
-
-            render_detection_rectangle(frame, f"Hand {idx}", subframe_xyxy, color=phone_display_color)
+            # Render the hand frame.
+            render_detection_rectangle(frame, f"Hand {idx}", hand_xyxy, color=hand_display_color)
 
             # 3.3 Press mouse to save supplementary dataset on the go.
             if runtime_save_handframes_path is not None:
                 try:
                     image_file_name = f"{time.strftime('%Y%m%d-%H%M%S')}_runtime.png"
                     save_path = os.path.join(runtime_save_handframes_path, image_file_name)
-                    cv2.imwrite(save_path, cv2.cvtColor(subframe, cv2.COLOR_BGR2RGB))
+                    cv2.imwrite(save_path, cv2.cvtColor(hand_frame, cv2.COLOR_BGR2RGB))
                     print(f"{CC['green']}"
                           f"Saved runtime handframes at {time.strftime('%Y-%m-%d %H:%M:%S')}."
                           f"{CC['reset']}")
@@ -256,13 +259,14 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
         t_yolo = time.time() - start_yolo
 
     if _state == kcfg.USING:
-        # Face cropping parameters.
-        face_len = max(abs(int((keypoints[4][0] - keypoints[3][0]) * 1.1)), 0.3 * bbox_w)   # Edge length of the face sub-frame
+        # Edge length of the face sub-frame
+        face_len = max(abs(int((keypoints[4][0] - keypoints[3][0]) * 1.1)), 0.3 * bbox_w)
         face_hw = (face_len, face_len)  # Dimensions of the face sub-frame.
 
         # Face subframe and xyxy.
         face_frame, face_xyxy = cropFrame(original_frame, face_center, face_hw)
         face_detect_str = "Face"
+        face_display_color = kcfg.state_display_type[_state]["color"]
 
         if face_frame is not None and face_xyxy is not None:    # In case pedestrian is out of frame.
             # Diff between time of this frame and last announce face time is longer than the interval.
@@ -270,7 +274,8 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
             if time_frame_start - time_last_announce_face > face_announce_interval:
                 announced_face_frame = face_frame
 
-            render_detection_rectangle(frame, face_detect_str, face_xyxy, color="red")
+            # Render face frame.
+            render_detection_rectangle(frame, face_detect_str, face_xyxy, color=face_display_color)
 
     # End of state machine. The _state is finalized.
     # Get display color and string according to _state.
@@ -296,10 +301,6 @@ def classify3D(classifier_model,
     """
     # Normalize
     input_data = np.array([numeric_data])   # Add a "batch" dimension for the model: (N, C, D, H, W)
-    # input_data[0, :, :, :] /= 180
-    # mean_X = normalize_parameters['mean_X']
-    # std_dev_X = normalize_parameters['std_dev_X']
-    # input_data = (input_data - mean_X) / std_dev_X
     input_data = normalize(input_data)
 
     # Convert to tensor
