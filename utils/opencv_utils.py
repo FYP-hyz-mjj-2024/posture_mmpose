@@ -280,7 +280,7 @@ def resizeFrameToSquare(frame: np.ndarray,
     return resized_frame
 
 
-def relativeToAbsolute(from_mother_wh, to_mother_wh, from_child_xyxy, to_mother_xy=(0,0)):
+def relativeToAbsolute(from_mother_wh, to_mother_wh, from_child_xyxy, to_mother_xy=(0, 0)):
     """
     Calculate the absolute xyxy from a relative xyxy. Principle:
 
@@ -292,7 +292,7 @@ def relativeToAbsolute(from_mother_wh, to_mother_wh, from_child_xyxy, to_mother_
     :param to_mother_wh: Width and height of the "to" mother frame.
     :param from_child_xyxy: Xyxy of the "from" child frame w.r.t. to the "from" mother frame.
     :param to_mother_xy: Top-left corner of the "to" mother frame.
-    :return:
+    :return: Absolute xyxy of the child frame.
     """
 
     """
