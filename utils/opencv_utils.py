@@ -277,3 +277,51 @@ def resizeFrameToSquare(frame: np.ndarray,
         resized_frame[start_h:end_h, start_w:end_w, :] = _resized_frame
 
     return resized_frame
+
+
+def relativeToAbsolute(from_mother_wh, to_mother_wh, from_child_xyxy, to_mother_xy=(0,0)):
+    """
+    Calculate the absolute xyxy from a relative xyxy. Principle:
+
+    `from_x / from_mother_w = to_x / to_mother_w`
+
+    `=> to_x = (to_mother_w / from_mother_w) * from_x`
+
+    :param from_mother_wh: Width and height of the "from" mother frame.
+    :param to_mother_wh: Width and height of the "to" mother frame.
+    :param from_child_xyxy: Xyxy of the "from" child frame w.r.t. to the "from" mother frame.
+    :param to_mother_xy: Top-left corner of the "to" mother frame.
+    :return:
+    """
+
+    """
+    See this to comprehend what it does.
+    ┌─m────────────────────┐           ┌─m──────┐   \n
+    │      ┌─c───────┐     │           │        │   \n
+    │      │         │     │           │   ┌c┐  │   \n
+    │      └─────────┘     │           │   │ │  │   \n
+    │                      │    ───>   │   └─┘  │   \n
+    │                      │           │        │   \n
+    └──────────────────────┘           │        │   \n
+                                       └────────┘   \n
+    """
+
+    # Width & height of the "from" child.
+    from_child_wh = abs(from_child_xyxy[2] - from_child_xyxy[0]), abs(from_child_xyxy[3] - from_child_xyxy[1])
+
+    # Top-left corner of the "to" child.
+    to_child_xy = [(to_size / (from_size + np.finfo(np.float32).eps)) * from_child_xyxy[i]
+                   for i, (from_size, to_size) in enumerate(zip(from_mother_wh, to_mother_wh))]
+
+    # Width & height of the "to" child.
+    to_child_wh = [(to_size / (from_size + np.finfo(np.float32).eps)) * from_child_wh[i]
+                   for i, (from_size, to_size) in enumerate(zip(from_mother_wh, to_mother_wh))]
+
+    # "from" child's top-left corner should bias along with the "to" mother's top-left corner.
+    to_child_xy = [v1 + v2 for v1, v2 in zip(to_child_xy, to_mother_xy)]
+
+    # Xyxy of the "to" child.
+    to_child_xyxy = to_child_xy + [v1 + v2 for v1, v2 in zip(to_child_xy, to_child_wh)]
+
+    return to_child_xyxy
+

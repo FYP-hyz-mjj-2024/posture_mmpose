@@ -65,6 +65,7 @@ data/yolo_dataset_runtime/*
 !data/yolo_dataset_runtime/.gitkeep
 data/blob/videos/*
 data/blob/yolo_videos/*
+data/blob/test/*
 data/yolo/*
 
 

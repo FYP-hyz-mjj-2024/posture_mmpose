@@ -14,7 +14,7 @@ from step01_annotate_image_mmpose.annotate_image import translateOneLandmarks
 from step01_annotate_image_mmpose.configs import keypoint_config as kcfg
 from step02_train_model_cnn.train_model import normalize
 from step03_yolo_phone_detection.dvalue import yolo_input_size
-from utils.opencv_utils import render_detection_rectangle, cropFrame, resizeFrameToSquare
+from utils.opencv_utils import render_detection_rectangle, cropFrame, resizeFrameToSquare, relativeToAbsolute
 from utils.decorations import CONSOLE_COLORS as CC
 
 # Hardware devices
@@ -83,6 +83,9 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
     # Announce Faces.
     announced_face_frame = None
 
+    # Bounding box size.
+    bbox_w, bbox_h = abs(xyxy[2] - xyxy[0]), abs(xyxy[3] - xyxy[1])
+
     # Person is out of frame.
     if _state == kcfg.TO_BE_CLASSIFIED:
         if np.sum(keypoints[:13, 2] < 0.3) >= 5:
@@ -125,7 +128,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
         '''
         # 1.1 Crop two hands.
         # 1.1.1 Pedestrian's bounding box size.
-        bbox_w, bbox_h = abs(xyxy[2]-xyxy[0]), abs(xyxy[3]-xyxy[1])
+
 
         if bbox_w / (frame.shape[1] + np.finfo(np.float32).eps) < 0.6:
             # 1.1.2 Body is far, make hand frame width & height relate to bbox width.
@@ -190,6 +193,10 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
 
             # 3.1 Yolo inference signal.
             try:
+                # Record subframe size (this value won't change even if subframe is resized).
+                subframe_wh = abs(subframe_xyxy[2] - subframe_xyxy[0]), abs(subframe_xyxy[3] - subframe_xyxy[1])
+
+                # Resize subframe to YOLO required size.
                 subframe = resizeFrameToSquare(frame=subframe,
                                                edge_length=phone_frame_size,
                                                ratio_threshold=0.5625)     # 9 / 16
@@ -197,26 +204,36 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                 # Convert BGR subframe to RGB for YOLO inference.
                 subframe = cv2.cvtColor(subframe, cv2.COLOR_BGR2RGB)
 
-                phone_detect_str, phone_detect_signal = phone_detector_func(phone_detector_model, subframe,
+                # Detection string and the relative bbox xyxy of cell phone.
+                phone_detect_str, phone_relative_xyxy = phone_detector_func(phone_detector_model, subframe,
                                                                             device=device_name, threshold=0.3,
                                                                             cell_phone_index=phone_index)
 
-            except (cv2.error, IOError) as e:     # frame could possibly be none.
+                # Convert the relative cell phone xyxy to the absolute one.
+                phone_absolute_xyxy = relativeToAbsolute(
+                    from_mother_wh=(phone_frame_size, phone_frame_size),
+                    to_mother_wh=subframe_wh,
+                    from_child_xyxy=phone_relative_xyxy,
+                    to_mother_xy=subframe_xyxy[:2]
+                )
+
+                # Render the YOLO inference of cell phone.
+                render_detection_rectangle(frame, phone_detect_str, phone_absolute_xyxy, color="red")
+
+            except (cv2.error, IOError, TypeError) as e:     # frame could possibly be none.
                 print(f"{CC['yellow']}"
                       f"Error in detectPhone: Failed reading frame at this point, skipping to the next frame."
                       f"{CC['reset']}")
-                phone_detect_str, phone_detect_signal = "", 0
+                phone_detect_str, phone_relative_xyxy = "", None
 
             # 3.2 Render hand frames based on the signal.
-            if phone_detect_signal == 2:
+            if phone_relative_xyxy is not None:
                 _state = kcfg.USING
-                phone_display_str = f"{idx} {phone_detect_str}"
                 phone_display_color = "red"
             else:
-                phone_display_str = f"{idx} -"
                 phone_display_color = "green"
 
-            render_detection_rectangle(frame, phone_display_str, subframe_xyxy, color=phone_display_color)
+            render_detection_rectangle(frame, f"Hand {idx}", subframe_xyxy, color=phone_display_color)
 
             # 3.3 Press mouse to save supplementary dataset on the go.
             if runtime_save_handframes_path is not None:
@@ -233,14 +250,14 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                           f"{CC['reset']}")
 
             # If the primary hand is already holding a phone, don't detect another.
-            if phone_detect_signal == 2:
+            if phone_relative_xyxy is not None:
                 break
 
         t_yolo = time.time() - start_yolo
 
-    if _state == kcfg.USING:  # TODO: face_detection model
+    if _state == kcfg.USING:
         # Face cropping parameters.
-        face_len = abs(int((keypoints[4][0] - keypoints[3][0]) * 1.1))   # Edge length of the face sub-frame
+        face_len = max(abs(int((keypoints[4][0] - keypoints[3][0]) * 1.1)), 0.3 * bbox_w)   # Edge length of the face sub-frame
         face_hw = (face_len, face_len)  # Dimensions of the face sub-frame.
 
         # Face subframe and xyxy.
@@ -325,46 +342,25 @@ def detectPhone(model: YOLO, frame: np.ndarray,
     results_cls = results_tensor.boxes.cls.cpu().numpy().astype(np.int32)
 
     if not any(results_cls == cell_phone_index):
-        return "", 0    # Not using phone
+        # No bbox with class of cell phone.
+        return "", None
 
-    # 67 is the index of "cell phone" in the non-tuned model
-    # "Are there any cell phones found?"
-    results_conf = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == cell_phone_index]
+    # If the code run into here, there must be a cell phone.
+    # P.S. 67 is the index of "cell phone" in the non-tuned model
+    result_confs = results_tensor.boxes.conf.cpu().numpy().astype(np.float32)[results_cls == cell_phone_index]
+    relative_xyxys = results_tensor.boxes.data.cpu().numpy().astype(np.float32)[results_cls == cell_phone_index]
 
-    # Detection results
-    detection_result_str = f"Phone: {max(results_conf):.3f}"
-    detection_signal = 2 if any(results_conf > threshold) else 0
+    # Find the most confident detection of cell phone.
+    max_conf_index = np.argmax(result_confs)
+    result_conf = result_confs[max_conf_index]
 
-    # 2 stands for positive, 0 stands for negative
-    return detection_result_str, detection_signal
+    # If even the most confident one is lower than the threshold,
+    # regard it as "no phone" as well.
+    if result_conf < threshold:
+        return "", None
 
+    # The detection is confident enough, report.
+    detection_result_str = f"Phone: {max(result_confs):.3f}"
+    relative_xyxy = relative_xyxys[max_conf_index]
 
-"""
-def classify(classifier_model: List[Union[MLP, Dict[str, float]]],
-             # TODO: lazy tag
-             numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
-    model, params = classifier_model
-
-    # Normalize Data
-    input_data = np.array(numeric_data).reshape(1, -1)
-    input_data[:, ::2] /= 180
-    mean_X = params['mean_X']
-    std_dev_X = params['std_dev_X']
-    input_data = (input_data - mean_X) / std_dev_X
-    input_tensor = torch.tensor(input_data, dtype=torch.float32)
-    input_tensor = input_tensor.view(input_data.shape[0], 6, -1)
-
-    # a = input_data.shape
-
-    with torch.no_grad():
-        outputs = model(input_tensor)
-        sg = torch.sigmoid(outputs[0])
-        prediction = int(sg[0] < sg[1] or sg[1] > 0.48)
-        # prediction = torch.argmax(sg, dim=0).item()
-
-    out0, out1 = sg
-    classify_signal = 1 if prediction != 1 else 0
-    classifier_result_str = f"+ {out1:.2f}" if (prediction == 1) else f"- {out0:.2f}"
-
-    return classifier_result_str, classify_signal
-"""
+    return detection_result_str, relative_xyxy
