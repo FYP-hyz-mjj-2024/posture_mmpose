@@ -266,7 +266,6 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
         # Face subframe and xyxy.
         face_frame, face_xyxy = cropFrame(original_frame, face_center, face_hw)
         face_detect_str = "Face"
-        face_display_color = kcfg.state_display_type[_state]["color"]
 
         if face_frame is not None and face_xyxy is not None:    # In case pedestrian is out of frame.
             # Diff between time of this frame and last announce face time is longer than the interval.
@@ -275,7 +274,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                 announced_face_frame = face_frame
 
             # Render face frame.
-            render_detection_rectangle(frame, face_detect_str, face_xyxy, color=face_display_color)
+            render_detection_rectangle(frame, face_detect_str, face_xyxy, color="white")
 
     # End of state machine. The _state is finalized.
     # Get display color and string according to _state.
