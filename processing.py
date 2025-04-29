@@ -23,17 +23,18 @@ global_device = torch.device(global_device_name)
 
 
 def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
-                     original_frame: np.ndarray,    # shape:
+                     original_frame: np.ndarray,    # shape: same as frame
                      keypoints: np.ndarray,         # shape: (13, 3)
-                     xyxy: np.ndarray,          # shape: (4,)
+                     xyxy: np.ndarray,              # shape: (4,)
                      detection_target_list: List[List[Union[Tuple[str, str], str]]],  # {list: 858}
                      pkg_classifier,
                      pkg_phone_detector,
                      runtime_parameters,  # Save runtime handframes, crop face frame, etc.
                      device_name: str = "cpu") -> Dict[str, Union[Tuple[float, float], float, np.ndarray]]:
     """
-    In each frame, process the assigned pedestrian. Use a state machine to perform two-layer detection.
-    :param frame: Frame array. Shape (height, weight, channels=3). BGR format.
+    Infer one pedestrian. Use a state machine to perform two-layer detection, and yield the rendered result
+    to the destination source.
+    :param frame: One video frame in array. Shape (height, weight, channels=3). BGR format.
     :param original_frame: The original copy of frame that's never rendered anything on. BGR format.
     :param keypoints: A list of key upper-body key points, each being a list of x, y and confidence
                       score. Shape: (13, 3).
@@ -76,9 +77,6 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
 
     # Entry state of the state machine
     _state = kcfg.TO_BE_CLASSIFIED  # Private param within the state machine.
-
-    # Content copy of the frame
-    # Prevent the disturbance from rect rendering to object detection.
 
     # Announce Faces.
     announced_face_frame = None
@@ -127,9 +125,6 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
         Phase 1: Retrieve hand centers and their distances to the face center.
         '''
         # 1.1 Crop two hands.
-        # 1.1.1 Pedestrian's bounding box size.
-
-
         if bbox_w / (frame.shape[1] + np.finfo(np.float32).eps) < 0.6:
             # 1.1.2 Body is far, make hand frame width & height relate to bbox width.
             hand_hw = (int(bbox_w * 0.7), int(bbox_w * 0.7))
@@ -296,7 +291,7 @@ def classify3D(classifier_model,
     Use the posture recognition model to classify a pedestrian's pose.
     :param classifier_model: The trained posture recognition model instance.
     :param numeric_data: 2-channel 3-d structured posture angle-score data.
-    :return: Classification result.
+    :return: Classification result string and the binary classification signal.
     """
     # Normalize
     input_data = np.array([numeric_data])   # Add a "batch" dimension for the model: (N, C, D, H, W)
@@ -313,7 +308,6 @@ def classify3D(classifier_model,
         prediction = sg[1] > sg[0]
 
     out0, out1 = sg
-    # Note: prediction=0 => classify_signal=1 (Using); prediction=1 => classify_signal=0 (Not using).
     classify_signal = 0 if prediction != 1 else 1
     classifier_result_str = f"{out1:.2f}" if (prediction == 1) else f"{out0:.2f}"
 
@@ -330,7 +324,7 @@ def detectPhone(model: YOLO, frame: np.ndarray,
     :param device: Device string to use for inference.
     :param threshold: Minimum confidence of phone detection to output a positive result.
     :param cell_phone_index: Index of cell phone in YOLO inference result.
-    :return: Detection result.
+    :return: Detection result string and cell phone's relative xyxy.
     """
     # Move resized frame to tensor
     tensor_frame = torch.from_numpy(frame).float() / 255.0
@@ -361,6 +355,6 @@ def detectPhone(model: YOLO, frame: np.ndarray,
 
     # The detection is confident enough, report.
     detection_result_str = f"Phone: {max(result_confs):.3f}"
-    relative_xyxy = relative_xyxys[max_conf_index]
+    relative_xyxy = relative_xyxys[max_conf_index][:4]
 
     return detection_result_str, relative_xyxy
