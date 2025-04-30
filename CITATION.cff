@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+title: Inference Backend of Pedestrian Cell Phone Usage Detection System
+abstract: "Inference Backend of You Focus Your Walk. Pedestrian cell phone usage detection system integrating RTMPose, Self-trained CNN (with self-designed feature structures) and YOLO11."
+authors:
+  - family-names: Huang
+    given-names: Yanzhen
+  - family-names: Mai
+    given-names: Jiajun
+keywords:
+  - Pattern Recognition
+  - Object Detection
+license: Apache-2.0
+message: "If you use this software, please cite it using the metadata from this file."
+repository-code: "https://github.com/FYP-hyz-mjj-2024/posture_mmpose"
