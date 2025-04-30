@@ -105,9 +105,10 @@ def videoDemo(src: Union[str, int],
 
     # Record Performance
     performance = {
-        "mmpose": [],
-        "mlp": [],
-        "yolo": []
+        "Total Time": [],
+        "RTMPose": [],
+        "posture": [],
+        "phoneDet": []
     }
 
     # If local, listen to mouse click event.
@@ -148,8 +149,8 @@ def videoDemo(src: Union[str, int],
                                                                   bbox_detector_model,
                                                                   pose_estimator_model,
                                                                   bbox_threshold=mcfg.bbox_thr)
-
-        performance["mmpose"].append(time.time() - t_start_frame)
+        if generate_report:
+            performance["RTMPose"].append(time.time() - t_start_frame)
 
         if estim_results_visualizer is not None:
             # MMPose Logic
@@ -186,8 +187,10 @@ def videoDemo(src: Union[str, int],
             # Performance Record
             if generate_report:
                 mlp_yolo_times = np.array([res["performance"] for res in response_list])
-                performance["mlp"].append(np.sum(mlp_yolo_times[:, 0]))
-                performance["yolo"].append(np.sum(mlp_yolo_times[:, 1]))
+                performance["posture"].append(np.sum(mlp_yolo_times[:, 0]))
+                performance["phoneDet"].append(np.sum(mlp_yolo_times[:, 1]))
+
+            performance["Total Time"].append(time.time() - t_start_frame)
 
             # Update framerate
             now: float = time.time()
@@ -342,7 +345,7 @@ def main(default_config):
     if user_config["generate_report"]:
         plot_report(
             arrays=np.array(list(demo_performance.values()))[:, 1:],
-            labels=["RTMPose", "posture", "yolo"],
+            labels=["Total Time", "RTMPose", "posture", "phoneDet"],
             config={"title": "Frame Computation Time", "x_name": "Frame Number", "y_name": "Time (s)"},
             plot_mean=True
         )
