@@ -62,12 +62,12 @@ def getNPY(npy_dir, test_ratio=0.5):
             this_npy_train = this_npy[this_test_size:, :]
 
             if npy_info['label'].startswith('U'):
-                npy_U_train = this_npy if npy_U_train is None else np.vstack((npy_U_train, this_npy_train))
-                npy_U_test = this_npy if npy_U_test is None else np.vstack((npy_U_test, this_npy_test))
+                npy_U_train = this_npy_train if npy_U_train is None else np.vstack((npy_U_train, this_npy_train))
+                npy_U_test = this_npy_test if npy_U_test is None else np.vstack((npy_U_test, this_npy_test))
 
             elif npy_info['label'].startswith('N'):
-                npy_N_train = this_npy if npy_N_train is None else np.vstack((npy_N_train, this_npy_train))
-                npy_N_test = this_npy if npy_N_test is None else np.vstack((npy_N_test, this_npy_test))
+                npy_N_train = this_npy_train if npy_N_train is None else np.vstack((npy_N_train, this_npy_train))
+                npy_N_test = this_npy_test if npy_N_test is None else np.vstack((npy_N_test, this_npy_test))
             else:
                 raise Exception("Wrong label retrieved.")
 
