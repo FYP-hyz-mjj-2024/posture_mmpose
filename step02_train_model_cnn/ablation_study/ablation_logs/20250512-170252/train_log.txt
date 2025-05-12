@@ -1,0 +1,79 @@
+Training started. ID of the current model:3069720457856
+Epoch[001/650], Train Loss:81.4200, Valid Loss:76.3883, OFF: 1.0000 | Cur Optim: 3069720458720, Min VL: 76.3883, Num OF epochs: 0
+Epoch[002/650], Train Loss:71.3064, Valid Loss:65.3455, OFF: 1.0000 | Cur Optim: 3069720458336, Min VL: 65.3455, Num OF epochs: 0
+Epoch[003/650], Train Loss:60.4910, Valid Loss:55.4263, OFF: 1.0000 | Cur Optim: 3069720458624, Min VL: 55.4263, Num OF epochs: 0
+Epoch[004/650], Train Loss:52.3431, Valid Loss:49.7216, OFF: 1.0000 | Cur Optim: 3069720458336, Min VL: 49.7216, Num OF epochs: 0
+Epoch[005/650], Train Loss:47.9684, Valid Loss:46.3796, OFF: 1.0000 | Cur Optim: 3069720458624, Min VL: 46.3796, Num OF epochs: 0
+Epoch[006/650], Train Loss:45.1845, Valid Loss:44.4028, OFF: 1.0000 | Cur Optim: 3068880164032, Min VL: 44.4028, Num OF epochs: 0
+Epoch[007/650], Train Loss:43.1306, Valid Loss:42.5071, OFF: 1.0000 | Cur Optim: 3069720458720, Min VL: 42.5071, Num OF epochs: 0
+Epoch[008/650], Train Loss:41.3361, Valid Loss:41.1441, OFF: 1.0000 | Cur Optim: 3068881583552, Min VL: 41.1441, Num OF epochs: 0
+Epoch[009/650], Train Loss:39.8431, Valid Loss:39.6415, OFF: 1.0000 | Cur Optim: 3068881582304, Min VL: 39.6415, Num OF epochs: 0
+Epoch[010/650], Train Loss:38.3347, Valid Loss:38.3215, OFF: 1.0000 | Cur Optim: 3068881583024, Min VL: 38.3215, Num OF epochs: 0
+Epoch[011/650], Train Loss:36.9381, Valid Loss:37.2132, OFF: 1.0000 | Cur Optim: 3068881583552, Min VL: 37.2132, Num OF epochs: 0
+Epoch[012/650], Train Loss:35.7996, Valid Loss:36.2488, OFF:-1.0000 | Cur Optim: 3068880165520, Min VL: 36.2488, Num OF epochs: 0
+Epoch[013/650], Train Loss:34.8564, Valid Loss:35.5426, OFF:-1.0000 | Cur Optim: 3068881744176, Min VL: 35.5426, Num OF epochs: 0
+Epoch[014/650], Train Loss:33.8566, Valid Loss:34.5805, OFF:-0.9999 | Cur Optim: 3068881744752, Min VL: 34.5805, Num OF epochs: 0
+Epoch[015/650], Train Loss:32.9884, Valid Loss:33.9507, OFF:-0.9997 | Cur Optim: 3068881744176, Min VL: 33.9507, Num OF epochs: 0
+Epoch[016/650], Train Loss:32.0478, Valid Loss:33.0772, OFF:-0.9995 | Cur Optim: 3068881744992, Min VL: 33.0772, Num OF epochs: 0
+Epoch[017/650], Train Loss:31.4354, Valid Loss:32.7279, OFF:-0.9982 | Cur Optim: 3068881744752, Min VL: 32.7279, Num OF epochs: 0
+Epoch[018/650], Train Loss:30.7610, Valid Loss:32.0158, OFF:-0.9974 | Cur Optim: 3069720458624, Min VL: 32.0158, Num OF epochs: 0
+Epoch[019/650], Train Loss:30.1199, Valid Loss:31.4416, OFF:-0.9957 | Cur Optim: 3068881768848, Min VL: 31.4416, Num OF epochs: 0
+Epoch[020/650], Train Loss:29.4125, Valid Loss:31.0216, OFF:-0.9920 | Cur Optim: 3068881772016, Min VL: 31.0216, Num OF epochs: 0
+Epoch[021/650], Train Loss:28.9756, Valid Loss:30.3000, OFF:-0.9925 | Cur Optim: 3068881772400, Min VL: 30.3000, Num OF epochs: 0
+Epoch[022/650], Train Loss:28.1810, Valid Loss:30.0536, OFF:-0.9842 | Cur Optim: 3068881770528, Min VL: 30.0536, Num OF epochs: 0
+Epoch[023/650], Train Loss:27.7872, Valid Loss:29.4389, OFF:-0.9844 | Cur Optim: 3068881771776, Min VL: 29.4389, Num OF epochs: 0
+Epoch[024/650], Train Loss:27.2252, Valid Loss:29.2878, OFF:-0.9670 | Cur Optim: 3068880165520, Min VL: 29.2878, Num OF epochs: 0
+Epoch[025/650], Train Loss:27.0552, Valid Loss:28.5168, OFF:-0.9789 | Cur Optim: 3068881778576, Min VL: 28.5168, Num OF epochs: 0
+Epoch[026/650], Train Loss:26.4221, Valid Loss:28.2265, OFF:-0.9691 | Cur Optim: 3068881780160, Min VL: 28.2265, Num OF epochs: 0
+Epoch[027/650], Train Loss:26.0645, Valid Loss:27.9780, OFF:-0.9517 | Cur Optim: 3068881780496, Min VL: 27.9780, Num OF epochs: 0
+Epoch[028/650], Train Loss:25.6880, Valid Loss:27.4897, OFF:-0.9550 | Cur Optim: 3068881779872, Min VL: 27.4897, Num OF epochs: 0
+Epoch[029/650], Train Loss:25.2678, Valid Loss:27.5361, OFF:-0.8955 | Cur Optim: 3068881779872, Min VL: 27.4897, Num OF epochs: 1
+Epoch[030/650], Train Loss:24.9811, Valid Loss:27.1541, OFF:-0.8945 | Cur Optim: 3068881780496, Min VL: 27.1541, Num OF epochs: 0
+Epoch[031/650], Train Loss:24.7997, Valid Loss:26.7907, OFF:-0.8970 | Cur Optim: 3069720458624, Min VL: 26.7907, Num OF epochs: 0
+Epoch[032/650], Train Loss:24.3175, Valid Loss:26.4106, OFF:-0.9000 | Cur Optim: 3068881787968, Min VL: 26.4106, Num OF epochs: 0
+Epoch[033/650], Train Loss:24.1842, Valid Loss:26.2097, OFF:-0.8741 | Cur Optim: 3068881785232, Min VL: 26.2097, Num OF epochs: 0
+Epoch[034/650], Train Loss:23.8258, Valid Loss:25.9666, OFF:-0.8514 | Cur Optim: 3068881788688, Min VL: 25.9666, Num OF epochs: 0
+Epoch[035/650], Train Loss:23.4932, Valid Loss:25.7111, OFF:-0.8444 | Cur Optim: 3068881785232, Min VL: 25.7111, Num OF epochs: 0
+Epoch[036/650], Train Loss:23.1821, Valid Loss:26.0039, OFF:-0.6176 | Cur Optim: 3068881785232, Min VL: 25.7111, Num OF epochs: 1
+Epoch[037/650], Train Loss:23.0512, Valid Loss:25.4377, OFF:-0.7753 | Cur Optim: 3068881786960, Min VL: 25.4377, Num OF epochs: 0
+Epoch[038/650], Train Loss:22.9095, Valid Loss:25.0820, OFF:-0.8172 | Cur Optim: 3068881785232, Min VL: 25.0820, Num OF epochs: 0
+Epoch[039/650], Train Loss:22.6271, Valid Loss:24.9287, OFF:-0.7782 | Cur Optim: 3068881740896, Min VL: 24.9287, Num OF epochs: 0
+Epoch[040/650], Train Loss:22.4371, Valid Loss:25.0335, OFF:-0.6194 | Cur Optim: 3068881740896, Min VL: 24.9287, Num OF epochs: 1
+Epoch[041/650], Train Loss:22.2685, Valid Loss:24.4262, OFF:-0.7986 | Cur Optim: 3068881743152, Min VL: 24.4262, Num OF epochs: 0
+Epoch[042/650], Train Loss:22.0234, Valid Loss:24.4616, OFF:-0.6986 | Cur Optim: 3068881743152, Min VL: 24.4262, Num OF epochs: 1
+Epoch[043/650], Train Loss:22.0693, Valid Loss:24.3810, OFF:-0.6424 | Cur Optim: 3068881743392, Min VL: 24.3810, Num OF epochs: 0
+Epoch[044/650], Train Loss:21.7364, Valid Loss:24.1608, OFF:-0.6651 | Cur Optim: 3068881743680, Min VL: 24.1608, Num OF epochs: 0
+Epoch[045/650], Train Loss:21.5733, Valid Loss:24.3711, OFF:-0.4281 | Cur Optim: 3068881743680, Min VL: 24.1608, Num OF epochs: 1
+Epoch[046/650], Train Loss:21.5306, Valid Loss:23.9558, OFF:-0.5837 | Cur Optim: 3068881743392, Min VL: 23.9558, Num OF epochs: 0
+Epoch[047/650], Train Loss:21.3700, Valid Loss:23.8660, OFF:-0.5375 | Cur Optim: 3068881786960, Min VL: 23.8660, Num OF epochs: 0
+Epoch[048/650], Train Loss:21.0890, Valid Loss:23.6535, OFF:-0.5852 | Cur Optim: 3068881798000, Min VL: 23.6535, Num OF epochs: 0
+Epoch[049/650], Train Loss:21.1538, Valid Loss:23.4483, OFF:-0.6215 | Cur Optim: 3068881800304, Min VL: 23.4483, Num OF epochs: 0
+Epoch[050/650], Train Loss:21.0696, Valid Loss:23.1968, OFF:-0.6614 | Cur Optim: 3068881798000, Min VL: 23.1968, Num OF epochs: 0
+Epoch[051/650], Train Loss:20.7297, Valid Loss:23.8514, OFF:-0.0831 | Cur Optim: 3068881798000, Min VL: 23.1968, Num OF epochs: 1
+Epoch[052/650], Train Loss:20.5170, Valid Loss:22.9416, OFF:-0.6864 | Cur Optim: 3068881799152, Min VL: 22.9416, Num OF epochs: 0
+Epoch[053/650], Train Loss:20.4268, Valid Loss:22.7646, OFF:-0.6944 | Cur Optim: 3068881799920, Min VL: 22.7646, Num OF epochs: 0
+Epoch[054/650], Train Loss:20.3080, Valid Loss:22.6099, OFF:-0.6942 | Cur Optim: 3069720458624, Min VL: 22.6099, Num OF epochs: 0
+Epoch[055/650], Train Loss:20.2155, Valid Loss:22.4841, OFF:-0.6602 | Cur Optim: 3068881772992, Min VL: 22.4841, Num OF epochs: 0
+Epoch[056/650], Train Loss:20.0378, Valid Loss:22.5143, OFF:-0.5503 | Cur Optim: 3068881772992, Min VL: 22.4841, Num OF epochs: 1
+Epoch[057/650], Train Loss:19.9324, Valid Loss:22.7160, OFF:-0.2932 | Cur Optim: 3068881772992, Min VL: 22.4841, Num OF epochs: 2
+Epoch[058/650], Train Loss:19.8705, Valid Loss:22.5988, OFF:-0.3039 | Cur Optim: 3068881772992, Min VL: 22.4841, Num OF epochs: 3
+Epoch[059/650], Train Loss:19.5888, Valid Loss:22.0703, OFF:-0.6072 | Cur Optim: 3068881776016, Min VL: 22.0703, Num OF epochs: 2
+Epoch[060/650], Train Loss:19.7398, Valid Loss:22.1436, OFF:-0.4822 | Cur Optim: 3068881776016, Min VL: 22.0703, Num OF epochs: 3
+Epoch[061/650], Train Loss:19.5232, Valid Loss:21.8838, OFF:-0.5291 | Cur Optim: 3068881772992, Min VL: 21.8838, Num OF epochs: 2
+Epoch[062/650], Train Loss:19.4966, Valid Loss:21.8579, OFF:-0.4672 | Cur Optim: 3068881776160, Min VL: 21.8579, Num OF epochs: 1
+Epoch[063/650], Train Loss:19.2711, Valid Loss:21.6776, OFF:-0.5212 | Cur Optim: 3068881776016, Min VL: 21.6776, Num OF epochs: 0
+Epoch[064/650], Train Loss:19.2824, Valid Loss:22.8366, OFF: 0.5067 | Cur Optim: 3068881776016, Min VL: 21.6776, Num OF epochs: 1
+Epoch[065/650], Train Loss:18.9995, Valid Loss:21.6097, OFF:-0.5235 | Cur Optim: 3068881772992, Min VL: 21.6097, Num OF epochs: 0
+Epoch[066/650], Train Loss:19.0098, Valid Loss:21.3639, OFF:-0.6119 | Cur Optim: 3068881816448, Min VL: 21.3639, Num OF epochs: 0
+Epoch[067/650], Train Loss:18.9591, Valid Loss:21.3413, OFF:-0.5349 | Cur Optim: 3068881815008, Min VL: 21.3413, Num OF epochs: 0
+Epoch[068/650], Train Loss:18.7098, Valid Loss:21.2480, OFF:-0.5044 | Cur Optim: 3068881817216, Min VL: 21.2480, Num OF epochs: 0
+Epoch[069/650], Train Loss:18.7602, Valid Loss:21.8710, OFF: 0.0874 | Cur Optim: 3068881817216, Min VL: 21.2480, Num OF epochs: 1
+Epoch[070/650], Train Loss:18.6286, Valid Loss:21.8280, OFF: 0.0761 | Cur Optim: 3068881817216, Min VL: 21.2480, Num OF epochs: 2
+Epoch[071/650], Train Loss:18.4957, Valid Loss:20.8992, OFF:-0.6376 | Cur Optim: 3068881815008, Min VL: 20.8992, Num OF epochs: 1
+Epoch[072/650], Train Loss:18.4312, Valid Loss:20.9602, OFF:-0.5394 | Cur Optim: 3068881815008, Min VL: 20.8992, Num OF epochs: 2
+Epoch[073/650], Train Loss:18.4151, Valid Loss:20.6853, OFF:-0.6521 | Cur Optim: 3068881817216, Min VL: 20.6853, Num OF epochs: 1
+Epoch[074/650], Train Loss:18.2702, Valid Loss:21.6404, OFF: 0.2874 | Cur Optim: 3068881817216, Min VL: 20.6853, Num OF epochs: 2
+Epoch[075/650], Train Loss:18.2529, Valid Loss:21.0608, OFF:-0.2251 | Cur Optim: 3068881817216, Min VL: 20.6853, Num OF epochs: 3
+Epoch[076/650], Train Loss:18.2008, Valid Loss:21.0178, OFF:-0.2331 | Cur Optim: 3068881817216, Min VL: 20.6853, Num OF epochs: 4
+Epoch[077/650], Train Loss:17.9419, Valid Loss:20.7323, OFF:-0.4317 | Cur Optim: 3068881817216, Min VL: 20.6853, Num OF epochs: 5
+Early stopped at epoch 77. ID of optimized model: 3068881817216

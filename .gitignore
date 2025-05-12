@@ -81,6 +81,8 @@ step02_train_model_cnn/archived_models/*
 !step02_train_model_cnn/archived_models/.gitkeep
 step02_train_model_cnn/logs/*
 !step02_train_model_cnn/logs/.gitkeep
+step02_train_model_cnn/ablation_study/ablation_models/*
+!step02_train_model_cnn/ablation_study/ablation_models/.gitkeep
 step03_yolo_phone_detection/pvalue.py
 step03_yolo_phone_detection/non_tuned/*
 step03_yolo_phone_detection/roboflow_dataset_download/*
