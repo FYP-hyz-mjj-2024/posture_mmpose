@@ -1,14 +1,14 @@
 # Pedestrian Cell Phone Usage Detection - Inference Backend
 > Alias: **YOU FOCUS YOUR WALK**
 
-<img src="https://s2.loli.net/2025/04/15/fgjkbd7pYz295ZX.png" style="display: block; margin:auto;" width="600em">
+![inference-backend-readme.png](README%2Finference-backend-readme.png)
 
 ## Personnel
 - **Group Members:** [Mai Jiajun](https://github.com/SpinningMai), [Huang Yanzhen](https://github.com/YanzhenHuang)
 - **Supervisor:** Prof. Bob Zhang
 
 ## License
-This repository contains components licensed under different licenses.
+This repository uses the following project licensed under different licenses.
 The full texts are available in the [LICENSES](LICENSES) directory.
 
 | Component   | Type       | LICENSE File (Local)                                                             | Source (with License)                      |
