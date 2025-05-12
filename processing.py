@@ -305,7 +305,7 @@ def classify3D(classifier_model,
     with torch.no_grad():
         outputs = classifier_model(input_tensor)
         sg = torch.sigmoid(outputs[0])
-        prediction = sg[1] > sg[0]
+        prediction = sg[1] > sg[0] and sg[1] > 0.8
 
     out0, out1 = sg
     classify_signal = 0 if prediction != 1 else 1
