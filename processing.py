@@ -50,6 +50,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
     # Posture Recognition.
     classifier_model = pkg_classifier["classifier_model"]
     classifier_func = pkg_classifier["classifier_func"]
+    classifier_conf = pkg_classifier["pose_conf"]
     # normalize_parameters = pkg_classifier["norm_params"]
 
     # Cell Phone Detection
@@ -57,6 +58,8 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
     phone_detector_func = pkg_phone_detector["phone_detector_func"]
     self_trained = pkg_phone_detector["self_trained"]
     face_announce_interval = pkg_phone_detector["face_announce_interval"]
+    phone_conf = pkg_phone_detector["phone_conf"]
+    phone_strict = pkg_phone_detector["strict"]
 
     # Runtime options
     runtime_save_handframes_path = runtime_parameters["path_runtime_handframes"]
@@ -106,7 +109,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
 
         # Posture recognition model inference.  0: Not using, 1: Suspicious.
         start_mlp = time.time()
-        classifier_result_str, posture_signal = classifier_func(classifier_model, kas_one_person)
+        classifier_result_str, posture_signal = classifier_func(classifier_model, kas_one_person, conf=classifier_conf)
 
         # Adjust states according to posture recognition results.
         if posture_signal == 0:
@@ -203,7 +206,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
 
                 # Detection string and the relative bbox xyxy of cell phone.
                 phone_detect_str, phone_relative_xyxy = phone_detector_func(phone_detector_model, hand_frame,
-                                                                            device=device_name, threshold=0.3,
+                                                                            device=device_name, threshold=phone_conf,
                                                                             cell_phone_index=phone_index)
 
             except (cv2.error, IOError, TypeError) as e:     
@@ -247,9 +250,23 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                           f"Failed to save current hand frame. Exception: {e}"
                           f"{CC['reset']}")
 
-            # If the primary hand is already holding a phone, don't detect another.
+            # Stopping criteria.
             if phone_relative_xyxy is not None:
+                # If the primary hand is already holding a phone, don't detect another.
                 break
+
+            if not phone_strict:
+                # Not in strict mode.
+                # If the primary hand is not holding a phone, and it is far away from the secondary hand,
+                # then spare the secondary hand.
+                try:
+                    if np.linalg.norm(lhand_center - rhand_center) > 0.65 * bbox_h:
+                        break
+                except (TypeError, ZeroDivisionError) as e:
+                    # No matter for what reason the above calculation failed, just allow pass.....
+                    # TypeError: A None type is minus-ed or multiplied. (e.g., None - 1, 1 - None, None - None, etc.)
+                    # ZeroDivisionError: I sincerely don't know whether this will happen, but just handle it. ;)
+                    pass
 
         t_yolo = time.time() - start_yolo
 
@@ -286,11 +303,13 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
 
 
 def classify3D(classifier_model,
-               numeric_data: List[Union[float, np.float32]]) -> Tuple[str, int]:
+               numeric_data: List[Union[float, np.float32]],
+               conf=0.75) -> Tuple[str, int]:
     """
     Use the posture recognition model to classify a pedestrian's pose.
     :param classifier_model: The trained posture recognition model instance.
     :param numeric_data: 2-channel 3-d structured posture angle-score data.
+    :param conf: The threshold confidence.
     :return: Classification result string and the binary classification signal.
     """
     # Normalize
@@ -305,7 +324,7 @@ def classify3D(classifier_model,
     with torch.no_grad():
         outputs = classifier_model(input_tensor)
         sg = torch.sigmoid(outputs[0])
-        prediction = sg[1] > sg[0] and sg[1] > 0.8
+        prediction = sg[1] > sg[0] and sg[1] > conf
 
     out0, out1 = sg
     classify_signal = 0 if prediction != 1 else 1

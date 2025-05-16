@@ -309,13 +309,16 @@ def main(default_config):
         "classifier_model": classifier,
         "classifier_func": classifier_function,
         # "norm_params": norm_params,
+        "pose_conf": user_config["pose_conf"] if "pose_conf" in user_config else 0.75,
     }
 
     package_phone_detector = {
         "phone_detector_model": phone_detector,
         "phone_detector_func": detectPhone,
         "self_trained": user_config["use_trained_yolo"],
-        "face_announce_interval": user_config["face_announce_interval"]
+        "face_announce_interval": user_config["face_announce_interval"],
+        "phone_conf": user_config["phone_conf"] if "phone_conf" in user_config else 0.35,
+        "strict": user_config["strict"] if "strict" in user_config else False,
     }
 
     runtime_save_hf_path = "data/yolo_dataset_runtime/"

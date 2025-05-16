@@ -1,11 +1,15 @@
 import tkinter as tk
 from tkinter import ttk
+from utils.decorations import CONSOLE_COLORS as CC
 
 default_user_config = {
     "video_source": ("0", "Video source (Camera Index/File Path)"),
     "is_remote": (True, "Push video to remote?"),
     "websocket_url": ("ws://localhost:8976", "Remote source URL"),
     "face_announce_interval": (5, "Face announce interval?"),
+    "pose_conf": (0.8, "Posture Confidence"),
+    "phone_conf": (0.35, "Phone Confidence"),
+    "strict": (False, "Strict Mode"),
     "use_mmpose_visualizer": (False, "Use MMPOSE visualizer?"),
     "use_trained_yolo": (True, "Use self-trained YOLO model?"),
     "generate_report": (False, "Generate report?"),
@@ -19,7 +23,8 @@ gui_separator = {
 dtype_to_tk = {
     bool: "var",
     str: "entry",
-    int: "spinbox"
+    int: "spinbox",
+    float: "entry"
 }
 
 
@@ -37,9 +42,17 @@ def getUserGuiConfig(default_config):
         """
         nonlocal default_config, tk_vars, user_config
         for config_name, (config_value, _, *extra) in default_config.items():
-            user_config[config_name] = type(config_value)(     # Force convert to target type.
-                tk_vars[f"{config_name}_{dtype_to_tk[type(config_value)]}"].get()  # Suffix is determined by type
-            )
+            try:
+                user_config[config_name] = type(config_value)(     # Force convert to target type.
+                    tk_vars[f"{config_name}_{dtype_to_tk[type(config_value)]}"].get()  # Suffix is determined by type
+                )
+            except ValueError as e:
+                # Users may enter some bad strings into the float string field..... can't convert to float.
+                # Just use the default setting instead.
+                print(f"{CC['yellow']}"
+                      f"[Input Panel] Bad string for field {config_name}, "
+                      f"fall back to default value {config_value}."
+                      f"{CC['reset']}")
         root.quit()
 
     # Init main window
@@ -76,6 +89,14 @@ def getUserGuiConfig(default_config):
             tk_vars[f"{name}_{dtype_to_tk[int]}"] = spinbox
             tk.Label(root, text=desc).pack(anchor=tk.W)
             spinbox.pack(anchor=tk.W)
+
+        elif isinstance(default_value, float):
+            entry = tk.Entry(root, width=30)
+            entry.insert(0, str(default_value))
+            tk_vars[f"{name}_{dtype_to_tk[float]}"] = entry
+            tk.Label(root, text=desc).pack(anchor=tk.W)
+            entry.pack(anchor=tk.W)
+            pass
 
         else:
             raise ValueError(f"Invalid configuration datatype '{type(default_value)}'.")
