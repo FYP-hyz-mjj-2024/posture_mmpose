@@ -9,7 +9,7 @@ default_user_config = {
     "face_announce_interval": (5, "Face announce interval?"),
     "pose_conf": (0.8, "Posture Confidence"),
     "phone_conf": (0.35, "Phone Confidence"),
-    "strict": (False, "Strict Mode"),
+    "spare": (0.45, "Spareness"),
     "use_mmpose_visualizer": (False, "Use MMPOSE visualizer?"),
     "use_trained_yolo": (True, "Use self-trained YOLO model?"),
     "generate_report": (False, "Generate report?"),

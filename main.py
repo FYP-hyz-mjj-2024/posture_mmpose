@@ -318,7 +318,7 @@ def main(default_config):
         "self_trained": user_config["use_trained_yolo"],
         "face_announce_interval": user_config["face_announce_interval"],
         "phone_conf": user_config["phone_conf"] if "phone_conf" in user_config else 0.35,
-        "strict": user_config["strict"] if "strict" in user_config else False,
+        "spare": user_config["spare"] if "spare" in user_config else 1.0,
     }
 
     runtime_save_hf_path = "data/yolo_dataset_runtime/"

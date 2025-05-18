@@ -59,7 +59,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
     self_trained = pkg_phone_detector["self_trained"]
     face_announce_interval = pkg_phone_detector["face_announce_interval"]
     phone_conf = pkg_phone_detector["phone_conf"]
-    phone_strict = pkg_phone_detector["strict"]
+    spareness = pkg_phone_detector["spare"]
 
     # Runtime options
     runtime_save_handframes_path = runtime_parameters["path_runtime_handframes"]
@@ -151,6 +151,12 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
         # 1.5 L & R wrist to face center distances.
         lhand_face_dist = np.linalg.norm(lwrist_coord - face_center)
         rhand_face_dist = np.linalg.norm(rwrist_coord - face_center)
+        spare_dist_ratio = 1    # A ratio of two distance.
+        """
+        Spare distance ratio is the ratio of the two distances between the two hands to the face center.
+        Under non-strict mode, the smaller the spare ratio, the less likely the other hand is under
+        engagement.
+        """
 
         '''
         Phase 2: Decide the primary hand with respect to distances to face.
@@ -160,7 +166,20 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
             lhand_frame_xyxy = cropFrame(original_frame, lhand_center, hand_hw)
             rhand_frame_xyxy = cropFrame(original_frame, rhand_center, hand_hw)
 
-            # 2.1 If the wrist of one hand is closer to face, that hand is the primary. The other is secondary.
+            # 2.1.1 Calculate the spare ratio. Don't bother to do this if not in strict mode.
+            try:
+                spare_dist_ratio = (lhand_face_dist / (rhand_face_dist + np.finfo(np.float32).eps)
+                                    if lhand_face_dist <= rhand_face_dist
+                                    else rhand_face_dist / (lhand_face_dist + np.finfo(np.float32).eps))
+            except (TypeError, ZeroDivisionError) as e:
+                # No matter for what reason the above calculation failed, just allow pass.....
+                # TypeError: A None type is minus-ed or multiplied. (e.g., None + 1, 1 + None, None - None, etc.)
+                # ZeroDivisionError: I sincerely don't know whether this will happen, but just handle it. ;)
+                pass
+
+            print(f"{CC['yellow']}{spare_dist_ratio}{CC['reset']}")
+
+            # 2.1.2 If the wrist of one hand is closer to face, that hand is the primary. The other is secondary.
             prmhand_frame_xyxy, sndhand_frame_xyxy = (
                 (lhand_frame_xyxy, rhand_frame_xyxy)
                 if lhand_face_dist < rhand_face_dist
@@ -176,6 +195,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
         '''
         start_yolo = time.time()
         for idx, hand_frame_xyxy in enumerate([prmhand_frame_xyxy, sndhand_frame_xyxy]):
+            # This for-loop will only run at most two iterations.
 
             # 3.0 Filter out undetectable cases.
             if hand_frame_xyxy is None or not isinstance(hand_frame_xyxy, Tuple):
@@ -197,6 +217,7 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                 subframe_wh = abs(hand_xyxy[2] - hand_xyxy[0]), abs(hand_xyxy[3] - hand_xyxy[1])
 
                 # Resize subframe to YOLO required size.
+                # Below ratio: Direct stretch. After ratio: crop.
                 hand_frame = resizeFrameToSquare(frame=hand_frame,
                                                  edge_length=phone_frame_size,
                                                  ratio_threshold=0.5625)     # 9 / 16
@@ -251,22 +272,12 @@ def processOnePerson(frame: np.ndarray,             # shape: (H, W, 3)
                           f"{CC['reset']}")
 
             # Stopping criteria.
-            if phone_relative_xyxy is not None:
-                # If the primary hand is already holding a phone, don't detect another.
+            if ((phone_relative_xyxy is not None)
+                    or (spare_dist_ratio < spareness)):
+                # A. If the primary hand is already holding a phone, don't detect another.
+                # B. Not in strict mode. If the primary hand is not holding a phone, and it
+                # is far away from the secondary hand, then spare the secondary hand.
                 break
-
-            if not phone_strict:
-                # Not in strict mode.
-                # If the primary hand is not holding a phone, and it is far away from the secondary hand,
-                # then spare the secondary hand.
-                try:
-                    if np.linalg.norm(lhand_center - rhand_center) > 0.65 * bbox_h:
-                        break
-                except (TypeError, ZeroDivisionError) as e:
-                    # No matter for what reason the above calculation failed, just allow pass.....
-                    # TypeError: A None type is minus-ed or multiplied. (e.g., None - 1, 1 - None, None - None, etc.)
-                    # ZeroDivisionError: I sincerely don't know whether this will happen, but just handle it. ;)
-                    pass
 
         t_yolo = time.time() - start_yolo
 
