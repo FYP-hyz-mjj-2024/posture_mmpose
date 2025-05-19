@@ -100,7 +100,7 @@ def train_and_evaluate(model,
     log_strs = [f"Training started. ID of the current model:{id(model)}"]
 
     # Early stopping params
-    current_optimized_model = None
+    current_optimized_model_state = model.state_dict()
     current_min_valid_loss = np.inf
     num_overfit_epochs = 0
 
@@ -148,7 +148,7 @@ def train_and_evaluate(model,
         # Update early stopping parameters
         if current_min_valid_loss - early_stop_params["min_delta"] > valid_losses[-1]:
             current_min_valid_loss = valid_losses[-1]
-            current_optimized_model = copy.deepcopy(model)
+            current_optimized_model_state = copy.deepcopy(model.state_dict())
             num_overfit_epochs = max(num_overfit_epochs - 1, 0)
         else:
             num_overfit_epochs += 1
@@ -158,7 +158,7 @@ def train_and_evaluate(model,
                    f"Train Loss:{train_losses[-1]:.4f}, "
                    f"Valid Loss:{valid_losses[-1]:.4f}, "
                    f"OFF:{' ' if overfit_factor > 0 else ''}{overfit_factor:.4f} | "
-                   f"Cur Optim: {id(current_optimized_model)}, "
+                   f"Cur Optim: {id(current_optimized_model_state)}, "
                    f"Min VL: {current_min_valid_loss:.4f}, "
                    f"Num OF epochs: {num_overfit_epochs}")
 
@@ -167,13 +167,13 @@ def train_and_evaluate(model,
 
         # Perform early-stopping
         if num_overfit_epochs > early_stop_params["patience"]:
-            model = current_optimized_model
+            model.load_state_dict(current_optimized_model_state)
             early_stop_log = f"Early stopped at epoch {epoch+1}. ID of optimized model: {id(model)}"
             log_strs.append(early_stop_log)
             print(early_stop_log)
             break
 
-    return train_losses, valid_losses, overfit_factors, log_strs
+    return model, train_losses, valid_losses, overfit_factors, log_strs
 
 
 def normalize(X):
@@ -286,7 +286,8 @@ if __name__ == '__main__':
                 f"CUDA seed: {cuda_seed}, NumPy seed: {numpy_seed}")
     print(preamble)
 
-    (train_losses,
+    (model,
+     train_losses,
      valid_losses,
      overfit_factors,
      log_strs) = train_and_evaluate(model=model,

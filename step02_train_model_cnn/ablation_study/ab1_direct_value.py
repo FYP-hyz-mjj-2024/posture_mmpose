@@ -107,7 +107,8 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss()  # Binary cross entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Auto adjust lr prevent o.f.
 
-    (train_losses,
+    (model,
+     train_losses,
      valid_losses,
      overfit_factors,
      log_strs) = train_and_evaluate(model=model,
