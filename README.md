@@ -1,10 +1,10 @@
-# Pedestrian Cell Phone Usage Detection - Inference Backend
+# Real-time Pedestrian Cell Phone Usage Detection - Inference Backend
 > Alias: **YOU FOCUS YOUR WALK**
 
 <img src="README/inference-backend-readme.png" alt="Picture" width="500px" style="display: block; margin: 0 auto" />
 
 ## Personnel
-- **Group Members:** [Mai Jiajun](https://github.com/SpinningMai), [Huang Yanzhen](https://github.com/YanzhenHuang)
+- **Group Members:** [Mai Jiajun DC127853](https://github.com/SpinningMai), [Huang Yanzhen DC126732](https://github.com/YanzhenHuang)
 - **Supervisor:** Prof. Bob Zhang
 
 ## Pre-requisite
