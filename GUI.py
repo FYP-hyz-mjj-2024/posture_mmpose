@@ -8,7 +8,7 @@ default_user_config = {
     "websocket_url": ("ws://localhost:8976", "Remote source URL"),
     "face_announce_interval": (5, "Face announce interval?"),
     "pose_conf": (0.8, "Posture Confidence"),
-    "phone_conf": (0.35, "Phone Confidence"),
+    "phone_conf": (0.65, "Phone Confidence"),
     "spare": (0.45, "Spareness"),
     "use_mmpose_visualizer": (False, "Use MMPOSE visualizer?"),
     "use_trained_yolo": (True, "Use self-trained YOLO model?"),
