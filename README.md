@@ -1,11 +1,17 @@
 # Pedestrian Cell Phone Usage Detection - Inference Backend
 > Alias: **YOU FOCUS YOUR WALK**
 
-![inference-backend-readme.png](README%2Finference-backend-readme.png)
+<img src="README/inference-backend-readme.png" alt="Picture" width="500px" style="display: block; margin: 0 auto" />
 
 ## Personnel
 - **Group Members:** [Mai Jiajun](https://github.com/SpinningMai), [Huang Yanzhen](https://github.com/YanzhenHuang)
 - **Supervisor:** Prof. Bob Zhang
+
+## Pre-requisite
+- A Windows computer with a standalone GPU from NVIDIA.
+  - Reference GPU: NVIDIA GeForce RTX 4060 Laptop GPU (Ours)
+  - It's recommended to use a newer GPU.
+  - Used for both training and application of the two models.
 
 ## License
 This repository uses the following project licensed under different licenses.
@@ -20,26 +26,39 @@ More credits and copyrights info about ultralytics is in [main.py](main.py).
 
 ## Assets
 
-> [!NOTE] This is just a reference to the available sources. Please strictly follow the guidelines in the 
-> [Configure Project](#Configure-Project) section.
-
 ### RTMPose Model Config and Checkpoints
 
-The model configs and checkpoints are stored in [Google Drive](https://drive.google.com/drive/u/0/folders/1Oe6Z2GqkqDfGxmH2_x6f2wKSK0HIoEm9).
-Please download all of them and copy it into [model_config/checkpoints](model_config/checkpoints) and [model_config/configs](model_config/configs)
-respectively.
+- Get From:
+  - The model configs and checkpoints are stored in [Google Drive](https://drive.google.com/drive/u/0/folders/1Oe6Z2GqkqDfGxmH2_x6f2wKSK0HIoEm9) (Please download all).
 
-For integrity, you may also refer to the official source listed in below sections. We store them because the official source
-download speed may be slow.
+  - For integrity, you may also refer to the official source listed in below sections. We store them because the official source
+  download speed may be slow.
+
+- Move To:
+  - [model_config/checkpoints](model_config/checkpoints)
 
 ### Posture Recognition Models
 
-Trained models & training logs are stored under [Google Drive](https://drive.google.com/drive/folders/1DMO_cD-R3kO3tm_UTNezu3rM7ynG_hMj?usp=sharing).
+- Get From:
+  - Trained models & training logs are stored under [Google Drive](https://drive.google.com/drive/folders/1DMO_cD-R3kO3tm_UTNezu3rM7ynG_hMj?usp=sharing).
+  - Model referred in the project report: `posture_mmpose_vgg3d_0508-132048.pth`.
 
-Model referred in the project: `posture_mmpose_vgg3d_0508-132048.pth`.
+- Move To:
+  - [step02_train_model_cnn/archived_models](step02_train_model_cnn/archived_models)
 
 ### YOLO Models
+
 YOLO models are contained in this GitHub repository. Find it [here](step03_yolo_phone_detection/archived_onnx).
+
+## Resources
+- Posture Dataset:
+  - Raw Videos: <https://drive.google.com/drive/folders/1EfuFSjnZtJW_DKmfCdUalr19KOpqjrVN?usp=drive_link>
+  - Annotated `.npy` Files: [data/train/3dnpy](data/train/3dnpy)
+  - Annotation Function: [step01_annotate_image_mmpose/annotate_image.py](step01_annotate_image_mmpose/annotate_image.py)
+- Cell Phone Dataset:
+  - Raw Videos: <https://drive.google.com/drive/u/0/folders/1_RhlYpDtS8KXBRBiPI-0_vmgFCnJcXQo>
+  - Roboflow Project: <https://universe.roboflow.com/victor-workspace-owmoa/pedestrian-cell-phone-detection>
+  - Annotation Function: [step03_yolo_phone_detection/yolo11_data_gather.py](step03_yolo_phone_detection/yolo11_data_gather.py)
 
 ## Configure Project
 
@@ -95,25 +114,21 @@ You should have these installed:
 
 #### 2.1 Openmim
 
-After activating your conda environment, pleas install openmim package manager.
-For Windows users, please run:
+After activating your conda environment, pleas install `openmim` package manager.
 
 ```shell
 <PATH_TO_YOUR_VIRTUAL_ENVIRONMENT>/Scripts/pip.exe install -U openmim
 ```
 
-For Mac users, please run:
-
-```shell
-<PATH_TO_YOUR_VIRTUAL_ENVIRONMENT>/bin/pip install -U openmim
-```
-
-The absolute path to your pip executable is preferred to ensure that you have used the correct pip. 
+The absolute path to your pip executable is preferred to ensure that you have used the correct `pip`
+executable, i.e., the executable stored in the `Scripts/` directory in the virtual environment directory. 
 Using a wrong instance of pip will cause your packages to be downloaded to the wrong environment.
+
+> Notice that the `Scripts/pip.exe` is windows-only. For mac, it's `/bin/pip`, just for your reference.
 
 #### 2.2 MM Packages
 
-There are four MM packages you need to install. Please install the EXACT version listed in the form below. 
+There are four MM packages you need to install. Please install the **EXACT** version listed in the form below. 
 This is the best solution we could get to prevent package conflicts. For more information, please visit 
 <https://mmcv.readthedocs.io/en/latest/get_started/installation.html>.
 
@@ -138,9 +153,6 @@ error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft 
 
 You are missing a C++ requirement. Please download C++ build tools using the given link, and configure a C++ environment.
 Please inspect this link for more details about C++ environment configuration: https://blog.csdn.net/xiao_yan_/article/details/119538602.
-
-This is highly-likely a windows-only problem, considering macOS has its own gcc. If you use a mac and also received
-similar errors, please don't hesitate to propose an issue.
 
 #### 2.3 Checkpoint and Configuration Files
 
@@ -186,6 +198,9 @@ For windows:
 ```
 
 Try to run `main.py`. If an error regarding `opencv-python` occurred, uninstall it and re-install it again.
+
+> Roboflow will somehow install `opencv-python-headerless`, overwriting the `opencv-python` package.
+> If you encounter errors regarding `opencv-python`, just uninstall and re-install `opencv-python`.
 
 ```shell
 <PATH_TO_YOUR_VIRTUAL_ENVIRONMENT>/Scripts/pip.exe uninstall opencv-python
